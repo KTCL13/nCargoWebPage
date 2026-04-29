@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx prisma *)",
+      "Bash(node -e ' *)",
+      "Bash(DATABASE_URL=\"postgresql://neondb_owner:npg_qcKgRx7n2aEW@ep-lively-heart-ahtjwg0w-pooler.c-3.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require\" npx prisma generate)",
+      "Bash(npx tsc *)",
+      "Bash(npm install *)",
+      "Bash(npm run *)",
+      "Bash(rm -rf \"c:/Users/Brayan/Desktop/Proyecto N-cargo/ncargo-web-project/ncargo/.next\")",
+      "Bash(NODE_OPTIONS=\"--max-old-space-size=4096\" npm run dev)",
+      "Bash(npm list *)",
+      "Bash(git stash *)"
+    ]
+  }
+}

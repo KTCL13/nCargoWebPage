@@ -1,0 +1,186 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { employeeService } from '../services/employee.service'
+import { CreateEmployeeDto } from '../dtos/create-employee.dto'
+import { UpdateEmployeeDto } from '../dtos/update-employee.dto'
+import { CreateContractDto } from '../dtos/create-contract.dto'
+import { UpdateContractDto } from '../dtos/update-contract.dto'
+import { FilterEmployeeDto } from '../dtos/filter-employee.dto'
+import { AssignRoleDto } from '../dtos/assign-role.dto'
+
+class EmployeeController {
+    // Obtener todos los empleados con filtros
+    async findAll(req: NextRequest) {
+        const url = new URL(req.url)
+        const page = Number(url.searchParams.get('page') ?? '1')
+        const limit = Number(url.searchParams.get('limit') ?? '10')
+        const status = url.searchParams.get('status') as 'ACTIVE' | 'INACTIVE' | null
+        const roleId = url.searchParams.get('roleId')
+        const search = url.searchParams.get('search')
+
+        const filter: FilterEmployeeDto = {
+            status: status ?? undefined,
+            roleId: roleId ? Number(roleId) : undefined,
+            search: search ?? undefined,
+            page,
+            limit,
+        }
+
+        try {
+            const result = await employeeService.findAll(filter)
+            return NextResponse.json(result, { status: 200 })
+        } catch (error: unknown) {
+            return NextResponse.json(
+                { message: error instanceof Error ? error.message : 'Error interno del servidor' },
+                { status: 400 }
+            )
+        }
+    }
+
+    // Obtener un solo empleado por ID
+    async findOne(req: NextRequest) {
+        const url = new URL(req.url)
+        const id = Number(url.searchParams.get('id'))
+
+        try {
+            const result = await employeeService.findOne(id)
+            return NextResponse.json(result, { status: 200 })
+        } catch (error: unknown) {
+            return NextResponse.json(
+                { message: error instanceof Error ? error.message : 'Error interno del servidor' },
+                { status: 400 }
+            )
+        }
+    }
+
+    // Crear un nuevo empleado
+    async create(req: NextRequest) {
+        const body: CreateEmployeeDto = await req.json()
+        try {
+            const result = await employeeService.create(body)
+            return NextResponse.json(result, { status: 201 })
+        } catch (error: unknown) {
+            return NextResponse.json(
+                { message: error instanceof Error ? error.message : 'Error interno del servidor' },
+                { status: 400 }
+            )
+        }
+    }
+
+    // Actualizar un empleado
+    async update(req: NextRequest) {
+        const url = new URL(req.url)
+        const id = Number(url.searchParams.get('id'))
+        const body: UpdateEmployeeDto = await req.json()
+
+        try {
+            const result = await employeeService.update(id, body)
+            return NextResponse.json(result, { status: 200 })
+        } catch (error: unknown) {
+            return NextResponse.json(
+                { message: error instanceof Error ? error.message : 'Error interno del servidor' },
+                { status: 400 }
+            )
+        }
+    }
+
+    // Eliminar un empleado
+    async remove(req: NextRequest) {
+        const url = new URL(req.url)
+        const id = Number(url.searchParams.get('id'))
+
+        try {
+            await employeeService.remove(id)
+            return new NextResponse(null, { status: 204 })
+        } catch (error: unknown) {
+            return NextResponse.json(
+                { message: error instanceof Error ? error.message : 'Error interno del servidor' },
+                { status: 400 }
+            )
+        }
+    }
+
+    // Obtener los contratos de un empleado
+    async getContracts(req: NextRequest) {
+        const url = new URL(req.url)
+        const employeeId = Number(url.searchParams.get('employeeId'))
+
+        try {
+            const result = await employeeService.getContracts(employeeId)
+            return NextResponse.json(result, { status: 200 })
+        } catch (error: unknown) {
+            return NextResponse.json(
+                { message: error instanceof Error ? error.message : 'Error interno del servidor' },
+                { status: 400 }
+            )
+        }
+    }
+
+    // Obtener un contrato por ID
+    async findContractById(req: NextRequest) {
+        const url = new URL(req.url)
+        const contractId = Number(url.searchParams.get('contractId'))
+
+        try {
+            const result = await employeeService.findContractById(contractId)
+            return NextResponse.json(result, { status: 200 })
+        } catch (error: unknown) {
+            return NextResponse.json(
+                { message: error instanceof Error ? error.message : 'Error interno del servidor' },
+                { status: 400 }
+            )
+        }
+    }
+
+    // Crear un contrato para un empleado
+    async createContract(req: NextRequest) {
+        const url = new URL(req.url)
+        const employeeId = Number(url.searchParams.get('employeeId'))
+        const body: CreateContractDto = await req.json()
+
+        try {
+            const result = await employeeService.createContract(employeeId, body)
+            return NextResponse.json(result, { status: 201 })
+        } catch (error: unknown) {
+            return NextResponse.json(
+                { message: error instanceof Error ? error.message : 'Error interno del servidor' },
+                { status: 400 }
+            )
+        }
+    }
+
+    // Actualizar un contrato de un empleado
+    async updateContract(req: NextRequest) {
+        const url = new URL(req.url)
+        const contractId = Number(url.searchParams.get('contractId'))
+        const body: UpdateContractDto = await req.json()
+
+        try {
+            const result = await employeeService.updateContract(contractId, body)
+            return NextResponse.json(result, { status: 200 })
+        } catch (error: unknown) {
+            return NextResponse.json(
+                { message: error instanceof Error ? error.message : 'Error interno del servidor' },
+                { status: 400 }
+            )
+        }
+    }
+
+    // Asignar roles a un empleado
+    async assignRoles(req: NextRequest) {
+        const url = new URL(req.url)
+        const id = Number(url.searchParams.get('id'))
+        const body: AssignRoleDto = await req.json()
+
+        try {
+            const result = await employeeService.assignRoles(id, body)
+            return NextResponse.json(result, { status: 200 })
+        } catch (error: unknown) {
+            return NextResponse.json(
+                { message: error instanceof Error ? error.message : 'Error interno del servidor' },
+                { status: 400 }
+            )
+        }
+    }
+}
+
+export const employeeController = new EmployeeController()

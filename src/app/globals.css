@@ -1,0 +1,298 @@
+/* ncargo/src/app/globals.css */
+@import "tailwindcss";
+
+:root {
+  /* 🔴 PRIMARY */
+  --color-primary: #e11d48;
+  --color-primary-hover: #be123c;
+  --color-primary-light: #f43f5e;
+
+  /* 🔵 SECONDARY */
+  --color-secondary: #2563eb;
+  --color-secondary-hover: #1d4ed8;
+
+  /* 🟢 SUCCESS */
+  --color-success: #22c55e;
+  --color-success-hover: #16a34a;
+
+  /* 🟡 WARNING */
+  --color-warning: #f59e0b;
+  --color-warning-hover: #d97706;
+
+  /* 🔴 DANGER */
+  --color-danger: #e8002e;
+  --color-danger-hover: #b8001f;
+
+  /* 🎨 N-CARGO BRAND */
+  --color-nc-red: #ff003b;
+  --color-nc-dark: #040626;
+  --color-nc-blue: #0c1e8c;
+  --color-nc-white: #ffffff;
+
+  /* ⚫ BASE */
+  --color-background: #ffffff;
+  --color-foreground: #040626;
+
+  /* 🔘 RADIOS */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+
+  /* 🌫 SOMBRAS */
+  --shadow-sm: 0 1px 3px rgba(4, 6, 38, 0.1);
+  --shadow-md: 0 4px 14px rgba(4, 6, 38, 0.12);
+  --shadow-lg: 0 8px 30px rgba(4, 6, 38, 0.16);
+  --shadow-primary: 0 6px 20px rgba(244, 63, 94, 0.35);
+}
+
+/* =========================================================
+   RESET BASE
+   ========================================================= */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  background: var(--color-background);
+  color: var(--color-foreground);
+  font-family: var(--font-body);
+  margin: 0;
+}
+
+/* =========================================================
+   TIPOGRAFÍA (⚠️ SIN ROMPER TAILWIND)
+   ========================================================= */
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-titles);
+  text-transform: uppercase;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  margin: 0;
+}
+
+/* =========================================================
+   BOTONES
+   ========================================================= */
+
+.btn-primary,
+.btn-secondary,
+.btn-outline,
+.btn-ghost,
+.btn-danger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-family: var(--font-subtitles);
+  font-weight: 600;
+  padding: 0.75rem 1.5rem;
+  border-radius: var(--radius-lg);
+  transition: all 0.2s ease;
+  cursor: pointer;
+  border: none;
+  text-decoration: none;
+}
+
+/* 🔴 PRIMARY */
+.btn-primary {
+  background-color: var(--color-primary);
+  color: white;
+  box-shadow: var(--shadow-sm);
+}
+
+.btn-primary:hover {
+  background-color: var(--color-primary-hover);
+  box-shadow: var(--shadow-primary);
+  transform: translateY(-1px);
+}
+
+/* 🔵 SECONDARY */
+.btn-secondary {
+  background-color: var(--color-secondary);
+  color: white;
+}
+
+.btn-secondary:hover {
+  background-color: var(--color-secondary-hover);
+}
+
+/* ⚪ OUTLINE */
+.btn-outline {
+  border: 1px solid #e4e6ea;
+  color: var(--color-foreground);
+  background: transparent;
+}
+
+.btn-outline:hover {
+  background: #f8f9fb;
+}
+
+/* 👻 GHOST */
+.btn-ghost {
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  color: white;
+  background: transparent;
+}
+
+.btn-ghost:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: white;
+}
+
+/* 🔥 DANGER */
+.btn-danger {
+  background-color: var(--color-danger);
+  color: white;
+}
+
+.btn-danger:hover {
+  background-color: var(--color-danger-hover);
+}
+
+/* =========================================================
+   UTILIDADES PROPIAS
+   ========================================================= */
+
+.nc-container {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 1.25rem;
+}
+
+@media (min-width: 1024px) {
+  .nc-container {
+    padding: 0 5%;
+  }
+}
+
+.section-eyebrow {
+  font-family: var(--font-subtitles);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--color-primary);
+}
+
+.bg-dark .section-eyebrow,
+.force-white .section-eyebrow {
+  color: var(--color-primary-light);
+}
+
+/* Glass */
+.glass-card {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(12px);
+}
+
+/* Animación */
+.animate-fade-in-up {
+  animation: fadeInUp 0.65s ease both;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Accesibilidad */
+:focus-visible {
+  outline: 3px solid var(--color-secondary);
+  outline-offset: 3px;
+  border-radius: var(--radius-sm);
+}
+
+/* =========================================================
+   FORMULARIOS (ACCESIBILIDAD Y COHERENCIA)
+   ========================================================= */
+
+.form-input {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-lg);
+  border: 1px solid #d1d5db; /* Gray 300 for WCAG AA contrast */
+  background-color: var(--color-nc-white);
+  color: var(--color-foreground);
+  font-family: var(--font-subtitles);
+  font-size: 0.875rem;
+  transition: all 0.2s ease;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: var(--color-secondary);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.25);
+}
+
+.form-input:invalid:not(:placeholder-shown) {
+  border-color: var(--color-danger);
+}
+
+.form-error {
+  color: var(--color-danger);
+  font-size: 0.75rem;
+  margin-top: 0.25rem;
+  font-family: var(--font-subtitles);
+  display: block;
+}
+
+/* SWITCH BUTTON */
+.switch-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  width: 2.75rem;
+  height: 1.5rem;
+  border-radius: 9999px;
+  transition:
+    background-color 0.2s ease,
+    box-shadow 0.2s ease;
+  cursor: pointer;
+  border: none;
+}
+.switch-btn:focus-visible {
+  outline: 3px solid var(--color-secondary);
+  outline-offset: 2px;
+}
+.switch-btn[aria-checked="true"] {
+  background-color: var(
+    --color-success
+  ); /* Changed from primary to success color for active state to indicate ON */
+}
+.switch-btn[aria-checked="false"] {
+  background-color: #6b7280; /* Gray 500 for clear inactive state contrast */
+}
+.switch-thumb {
+  position: absolute;
+  top: 0.125rem;
+  width: 1.25rem;
+  height: 1.25rem;
+  background-color: white;
+  border-radius: 50%;
+  transition: transform 0.2s ease;
+  box-shadow: var(--shadow-sm);
+}
+.switch-btn[aria-checked="true"] .switch-thumb {
+  transform: translateX(1.375rem);
+}
+.switch-btn[aria-checked="false"] .switch-thumb {
+  transform: translateX(0.125rem);
+}
