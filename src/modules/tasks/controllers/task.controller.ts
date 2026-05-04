@@ -7,6 +7,7 @@ import { ReassignTaskDto } from '../dtos/reassign-task.dto'
 import { BulkAssignTaskDto } from '../dtos/bulk-assign-task.dto'
 import { FilterTaskDto } from '../dtos/filter-task.dto'
 import { TaskStatusName } from '../dtos/task-status.type'
+import { getAuthEmployee } from '@/lib/auth-guard'
 
 class TaskController {
     async findById(req: NextRequest) {
@@ -51,11 +52,10 @@ class TaskController {
 
     async assignTask(req: NextRequest) {
         try {
-            const url = new URL(req.url)
-            const adminId = Number(url.searchParams.get('adminId'))
+            const admin = getAuthEmployee(req)
             const body: CreateTaskDto = await req.json()
 
-            const result = await taskService.assignTask(body, adminId)
+            const result = await taskService.assignTask(body, admin.id)
             return NextResponse.json(result, { status: 201 })
         } catch (error: unknown) {
             return NextResponse.json(
@@ -67,11 +67,12 @@ class TaskController {
 
     async reassignTask(req: NextRequest) {
         try {
+            const admin = getAuthEmployee(req)
             const url = new URL(req.url)
             const id = Number(url.searchParams.get('id'))
             const body: ReassignTaskDto = await req.json()
 
-            const result = await taskService.reassignTask(id, body)
+            const result = await taskService.reassignTask(id, body, admin.id)
             return NextResponse.json(result, { status: 200 })
         } catch (error: unknown) {
             return NextResponse.json(
@@ -114,11 +115,10 @@ class TaskController {
 
     async bulkAssign(req: NextRequest) {
         try {
-            const url = new URL(req.url)
-            const adminId = Number(url.searchParams.get('adminId'))
+            const admin = getAuthEmployee(req)
             const body: BulkAssignTaskDto = await req.json()
 
-            const result = await taskService.bulkAssign(body, adminId)
+            const result = await taskService.bulkAssign(body, admin.id)
             return NextResponse.json(result, { status: 201 })
         } catch (error: unknown) {
             return NextResponse.json(

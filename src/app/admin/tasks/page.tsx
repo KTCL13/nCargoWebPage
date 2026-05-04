@@ -47,8 +47,10 @@ const STATUS_COLORS: Record<TaskStatus, string> = {
   NOT_DONE: 'bg-red-100 text-red-700 border-red-200',
 }
 
+type ToastMsg = { id: number; text: string }
+
 export default function GestionTareasPage() {
-  const { user } = useAuth()
+  const { user, token } = useAuth()
 
   // ── State ────────────────────────────────────────────────────────────
   const [tasks, setTasks] = useState<Task[]>([])
@@ -79,9 +81,19 @@ export default function GestionTareasPage() {
   const [newEmployeeId, setNewEmployeeId] = useState('')
   const [reassignLoading, setReassignLoading] = useState(false)
 
+  // Admin toasts (transient, never persisted)
+  const [toasts, setToasts] = useState<ToastMsg[]>([])
+  const showToast = (text: string) => {
+    const id = Date.now()
+    setToasts(ts => [...ts, { id, text }])
+    setTimeout(() => setToasts(ts => ts.filter(t => t.id !== id)), 5000)
+  }
+
   // ── Data Fetching ────────────────────────────────────────────────────
   const fetchData = useCallback(async () => {
+    if (!token) return
     setLoading(true)
+    const auth = { Authorization: `Bearer ${token}` }
     try {
       const taskParams = new URLSearchParams({
         page: String(page + 1),
@@ -91,8 +103,8 @@ export default function GestionTareasPage() {
       })
 
       const [tasksRes, empsRes] = await Promise.all([
-        fetch(`/api/tasks?${taskParams}`),
-        fetch('/api/employees?limit=100'), // Get active employees for selectors
+        fetch(`/api/tasks?${taskParams}`, { headers: auth }),
+        fetch('/api/employees?limit=100', { headers: auth }),
       ])
 
       const tasksData = await tasksRes.json()
@@ -134,9 +146,10 @@ export default function GestionTareasPage() {
 
   const handleCreateSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!token) return
     setCreateLoading(true)
     try {
-      const url = isBulk ? '/api/tasks/bulk-assign' : `/api/tasks?adminId=${user?.id ?? ''}`
+      const apiUrl = isBulk ? '/api/tasks/bulk-assign' : '/api/tasks'
       const payload = isBulk
         ? {
           title: form.title,
@@ -153,16 +166,22 @@ export default function GestionTareasPage() {
           endTime: form.endTime || undefined,
         }
 
-      const res = await fetch(url, {
+      const res = await fetch(apiUrl, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(payload),
       })
 
       if (res.ok) {
         setShowCreateModal(false)
         setForm({ title: '', description: '', employeeId: '', employeeIds: [], startTime: '', endTime: '' })
         fetchData()
+        if (isBulk) {
+          showToast(`Tareas asignadas a ${form.employeeIds.length} empleados`)
+        } else {
+          const emp = employees.find(e => e.id === Number(form.employeeId))
+          showToast(`Asignaste la tarea "${form.title}" a ${emp?.name ?? 'empleado'}`)
+        }
       } else {
         const err = await res.json()
         alert(err.message || 'Error al crear tarea')
@@ -173,15 +192,17 @@ export default function GestionTareasPage() {
   }
 
   const handleReassign = async () => {
-    if (!reassignTask || !newEmployeeId) return
+    if (!reassignTask || !newEmployeeId || !token) return
     setReassignLoading(true)
     try {
       const res = await fetch(`/api/tasks/reassign?id=${reassignTask.id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ newEmployeeId: Number(newEmployeeId) })
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ newEmployeeId: Number(newEmployeeId) }),
       })
       if (res.ok) {
+        const emp = employees.find(e => e.id === Number(newEmployeeId))
+        showToast(`Reasignaste "${reassignTask.title}" a ${emp?.name ?? 'empleado'}`)
         setReassignTask(null)
         setNewEmployeeId('')
         fetchData()
@@ -192,11 +213,14 @@ export default function GestionTareasPage() {
   }
 
   const handleDeleteTask = async (id: number) => {
-    if (!confirm('¿Deseas eliminar esta tarea permanentemente?')) return
+    if (!confirm('¿Deseas eliminar esta tarea permanentemente?') || !token) return
     try {
-      const res = await fetch(`/api/tasks?id=${id}`, { method: 'DELETE' })
+      const res = await fetch(`/api/tasks?id=${id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      })
       if (res.ok) fetchData()
-    } catch (err) {
+    } catch {
       alert('Error al eliminar tarea')
     }
   }
@@ -214,6 +238,7 @@ export default function GestionTareasPage() {
   const pageCount = Math.ceil(total / LIMIT)
 
   return (
+    <>
     <DashboardLayout
       pageTitle="Gestión de Tareas"
       navItems={NAV_ITEMS}
@@ -538,6 +563,24 @@ export default function GestionTareasPage() {
       )}
 
     </DashboardLayout>
+
+    {/* ── Admin toast stack ─────────────────────────────────────────── */}
+    <div
+      aria-live="polite"
+      className="fixed bottom-5 right-5 z-[9999] flex flex-col gap-2 pointer-events-none"
+    >
+      {toasts.map(t => (
+        <div
+          key={t.id}
+          className="pointer-events-auto flex items-center gap-3 bg-[var(--color-foreground)] text-white pl-4 pr-5 py-3.5 rounded-[var(--radius-lg)] shadow-lg text-sm font-medium"
+          style={{ animation: 'nb-slide-in 0.2s ease-out' }}
+        >
+          <span className="text-base shrink-0">✅</span>
+          <span>{t.text}</span>
+        </div>
+      ))}
+    </div>
+    </>
   )
 }
 

@@ -115,7 +115,7 @@ class TaskService {
         return this.toTaskResponseDto(task)
     }
 
-    async reassignTask(taskId: number, dto: ReassignTaskDto): Promise<TaskResponseDto> {
+    async reassignTask(taskId: number, dto: ReassignTaskDto, adminId: number): Promise<TaskResponseDto> {
         const existing = await taskRepository.findById(taskId)
 
         if (!existing) {
@@ -135,6 +135,7 @@ class TaskService {
                 newEmployeeId: newEmployee.id,
                 newEmployeeName: newEmployee.name,
                 newEmployeeEmail: newEmployee.email,
+                adminId,
             })
         }
 

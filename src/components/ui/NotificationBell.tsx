@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useEffect, useState, useRef, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import { useAuth } from '@/context/AuthContext'
 
 // ── Types ─────────────────────────────────────────────────────────────────
@@ -20,6 +21,7 @@ const PAGE_SIZE  = 8
 const POLL_MS    = 30_000
 
 const TYPE_CONFIG: Record<string, { label: string; icon: React.ReactNode; ring: string; bg: string }> = {
+  // ── Employee notifications ──────────────────────────────────────────
   TASK_ASSIGNED: {
     label: 'Tarea asignada',
     icon:  <TaskIcon />,
@@ -41,6 +43,17 @@ const TYPE_CONFIG: Record<string, { label: string; icon: React.ReactNode; ring: 
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────
+const TASK_TYPES = new Set(['TASK_ASSIGNED', 'TASK_REASSIGNED', 'TASK_NOT_DONE'])
+
+function resolveNavUrl(type: string, metadata: Record<string, unknown> | null, role: string): string | null {
+  if (!TASK_TYPES.has(type)) return null
+  const taskId = metadata?.taskId as number | undefined
+  if (role === 'ADMIN') {
+    return taskId ? `/admin/tasks?taskId=${taskId}` : '/admin/tasks'
+  }
+  return '/employee/tareas'
+}
+
 function relFmt(iso: string): string {
   const diff = Math.floor((Date.now() - new Date(iso).getTime()) / 1000)
   if (diff < 60)     return 'ahora'
@@ -80,7 +93,8 @@ function plural(n: number, one: string, many: string) {
 
 // ── Main component ────────────────────────────────────────────────────────
 export function NotificationBell() {
-  const { token } = useAuth()
+  const { token, user } = useAuth()
+  const router = useRouter()
 
   const [open,       setOpen]       = useState(false)
   const [items,      setItems]      = useState<NotifItem[]>([])
@@ -194,15 +208,19 @@ export function NotificationBell() {
 
   // ── Actions ──────────────────────────────────────────────────────────
 
-  const markRead = async (id: number) => {
-    await fetch('/api/notifications', {
-      method:  'PATCH',
-      headers: { ...authH(), 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ id, read: true }),
-    })
-    setItems(ns => ns.map(n => n.id === id ? { ...n, read: true } : n))
-    setUnread(c => Math.max(0, c - 1))
-    if (prevUnreadRef.current !== null) prevUnreadRef.current = Math.max(0, prevUnreadRef.current - 1)
+  const markRead = async (item: NotifItem) => {
+    if (!item.read) {
+      await fetch('/api/notifications', {
+        method:  'PATCH',
+        headers: { ...authH(), 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ id: item.id, read: true }),
+      })
+      setItems(ns => ns.map(n => n.id === item.id ? { ...n, read: true } : n))
+      setUnread(c => Math.max(0, c - 1))
+      if (prevUnreadRef.current !== null) prevUnreadRef.current = Math.max(0, prevUnreadRef.current - 1)
+    }
+    const url = resolveNavUrl(item.type, item.metadata, user?.role ?? '')
+    if (url) { setOpen(false); router.push(url) }
   }
 
   const markAllRead = async () => {
@@ -299,7 +317,8 @@ export function NotificationBell() {
                   <NotifRow
                     key={n.id}
                     item={n}
-                    onMarkRead={() => markRead(n.id)}
+                    role={user?.role ?? ''}
+                    onMarkRead={() => markRead(n)}
                     onDelete={() => deleteItem(n.id)}
                   />
                 ))
@@ -357,10 +376,12 @@ export function NotificationBell() {
 
 function NotifRow({
   item,
+  role,
   onMarkRead,
   onDelete,
 }: {
   item: NotifItem
+  role: string
   onMarkRead: () => void
   onDelete: () => void
 }) {
@@ -370,13 +391,18 @@ function NotifRow({
     ring:  'ring-gray-200',
     bg:    'bg-gray-500',
   }
+  const navUrl = resolveNavUrl(item.type, item.metadata, role)
+  const isClickable = !!navUrl
 
   return (
     <div
-      className={`group flex items-start gap-3.5 px-4 py-3.5 transition-colors cursor-default ${
-        !item.read ? 'bg-blue-50/50 hover:bg-blue-50/80' : 'hover:bg-gray-50'
-      }`}
-      onClick={() => { if (!item.read) onMarkRead() }}
+      role={isClickable ? 'button' : undefined}
+      tabIndex={isClickable ? 0 : undefined}
+      className={`group flex items-start gap-3.5 px-4 py-3.5 transition-colors ${
+        isClickable ? 'cursor-pointer' : 'cursor-default'
+      } ${!item.read ? 'bg-blue-50/50 hover:bg-blue-50/80' : 'hover:bg-gray-50'}`}
+      onClick={onMarkRead}
+      onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') onMarkRead() }}
     >
       {/* Type icon circle */}
       <div className={`shrink-0 w-10 h-10 rounded-full ring-2 ${cfg.ring} ${cfg.bg} flex items-center justify-center text-white shadow-sm`}>
@@ -398,12 +424,17 @@ function NotifRow({
           {item.message}
         </p>
 
-        {/* Action buttons */}
+        {/* Action row */}
         <div className="flex items-center gap-3 mt-1.5">
+          {isClickable && (
+            <span className="text-[10px] font-semibold text-[var(--color-secondary)] group-hover:underline transition">
+              Ver tarea →
+            </span>
+          )}
           {!item.read && (
             <button
               onClick={e => { e.stopPropagation(); onMarkRead() }}
-              className="text-[10px] font-semibold text-[var(--color-secondary)] hover:underline transition"
+              className="text-[10px] font-semibold text-gray-400 hover:text-[var(--color-secondary)] transition"
             >
               Marcar leída
             </button>
