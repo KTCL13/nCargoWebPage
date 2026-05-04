@@ -1,43 +1,81 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { createSaleOrder, getShippingProductId } from '@/lib/odoo'
+
+type Breakdown = {
+  total: number
+  transport: number
+  volumetricSurcharge: number
+  insurance: number
+  customs: number
+  cityDelivery: number
+  pickup: number
+  detail: {
+    actualWeightLb: number
+    volumetricWeightLb: number
+    chargeableWeightLb: number
+    flatRateApplied: boolean
+    cityName: string | null
+  }
+}
+
+function buildDescription(country: string | undefined, q: Breakdown): string {
+  const dest = country === 'MX' ? 'México' : country === 'CO' ? 'Colombia' : 'Internacional'
+  const city = q.detail.cityName ?? 'Tarifa única'
+  const usd = (n: number) => `USD ${n.toFixed(2)}`
+
+  return [
+    `Servicio de envío USA → ${dest}`,
+    `Destino: ${city}`,
+    ``,
+    `Pesos (lb): ${q.detail.actualWeightLb} real · ${q.detail.volumetricWeightLb} volumétrico · ${q.detail.chargeableWeightLb} facturable`,
+    ``,
+    `Desglose:`,
+    `  • Transporte: ${usd(q.transport)}`,
+    `  • Recargo volumétrico: ${usd(q.volumetricSurcharge)}`,
+    `  • Seguro: ${usd(q.insurance)}`,
+    `  • Aduana: ${usd(q.customs)}`,
+    `  • Entrega en ciudad: ${usd(q.cityDelivery)}`,
+    `  • Recogida: ${usd(q.pickup)}`,
+    ``,
+    `Total cotización: ${usd(q.total)}`,
+  ].join('\n')
+}
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
-    const { customerId, quotationData } = body
+    const { customerId, quotationData, country } = body as {
+      customerId: number
+      quotationData: Breakdown
+      country?: 'CO' | 'MX'
+    }
 
     if (!customerId) {
       return NextResponse.json({ message: 'Cliente no seleccionado' }, { status: 400 })
     }
+    if (!quotationData?.total) {
+      return NextResponse.json({ message: 'Cotización inválida' }, { status: 400 })
+    }
 
-    // Aquí iría la lógica real de conexión con Odoo vía XML-RPC o JSON-RPC
-    // Por ahora simulamos una respuesta exitosa
-    
-    console.log('Enviando a Odoo:', { customerId, quotationData })
+    const productId = await getShippingProductId()
 
-    // Simular retraso de red
-    await new Promise(resolve => setTimeout(resolve, 1500))
-
-    // Opcionalmente guardar la cotización en nuestra base de datos local vinculada a Odoo
-    // const newQuotation = await prisma.quotation.create({
-    //   data: {
-    //     ...
-    //     odooCustomerId: customerId,
-    //     ...
-    //   }
-    // })
-
-    return NextResponse.json({ 
-      success: true, 
-      odooOrderId: Math.floor(Math.random() * 10000),
-      message: 'Cotización enviada a Odoo exitosamente' 
+    const result = await createSaleOrder(customerId, productId, {
+      description: buildDescription(country, quotationData),
+      quantity: 1,
+      priceUnit: quotationData.total,
     })
 
+    return NextResponse.json({
+      success: true,
+      odooOrderId: result.orderId,
+      odooOrderName: result.name,
+      total: result.total,
+      message: `Cotización ${result.name} creada en Odoo`,
+    })
   } catch (error) {
-    console.error('Error al enviar a Odoo:', error)
     return NextResponse.json(
       { message: error instanceof Error ? error.message : 'Error interno' },
-      { status: 500 }
+      { status: 400 },
     )
   }
 }

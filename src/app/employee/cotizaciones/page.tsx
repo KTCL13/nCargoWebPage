@@ -152,7 +152,12 @@ export default function CotizacionesPage() {
       try {
         const res = await fetch(`/api/odoo/customers?q=${encodeURIComponent(odooSearchQuery)}`)
         const data = await res.json()
-        setOdooCustomers(data)
+        if (!res.ok) {
+          setOdooError(data?.message || 'Error al buscar clientes')
+          setOdooCustomers([])
+        } else {
+          setOdooCustomers(Array.isArray(data) ? data : [])
+        }
       } catch (err) {
         console.error('Error searching Odoo customers:', err)
         setOdooError('Error al buscar clientes')
@@ -176,18 +181,19 @@ export default function CotizacionesPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           customerId: selectedCustomer.id,
-          quotationData: result
+          quotationData: result,
+          country,
         })
       })
       const data = await res.json()
       if (res.ok) {
-        setOdooSuccess('¡Cotización enviada con éxito!')
+        setOdooSuccess(data.message || '¡Cotización enviada con éxito!')
         setTimeout(() => {
           setIsOdooModalOpen(false)
           setOdooSuccess('')
           setSelectedCustomer(null)
           setOdooSearchQuery('')
-        }, 2000)
+        }, 2500)
       } else {
         setOdooError(data.message || 'Error al enviar a Odoo')
       }
