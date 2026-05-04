@@ -4,6 +4,8 @@ interface PerformanceParams {
     employeeId?: number
     from?: Date
     to?: Date
+    page?: number
+    limit?: number
 }
 
 interface CompletionParams {
@@ -19,28 +21,33 @@ interface WorkloadParams {
 
 class AnalyticsService {
     async getEmployeePerformance(params: PerformanceParams) {
-        const { employeeId, from, to } = params
+        const { employeeId, from, to, page = 1, limit = 10 } = params
 
         const dateFilter = {
             ...(from && { gte: from }),
             ...(to && { lte: to }),
         }
 
-        const taskWhere = {
-            ...(employeeId && { employeeId }),
-            ...(Object.keys(dateFilter).length && { createdAt: dateFilter }),
-        }
+        const employeeWhere = employeeId ? { id: employeeId } : { status: 'ACTIVE' as const }
 
-        const employees = employeeId
-            ? await prisma.employee.findMany({ where: { id: employeeId } })
-            : await prisma.employee.findMany({ where: { status: 'ACTIVE' } })
+        const [total, employees] = await Promise.all([
+            prisma.employee.count({ where: employeeWhere }),
+            prisma.employee.findMany({
+                where: employeeWhere,
+                skip: (page - 1) * limit,
+                take: limit,
+                orderBy: { name: 'asc' },
+            }),
+        ])
+
+        const taskDateFilter = Object.keys(dateFilter).length ? { createdAt: dateFilter } : {}
 
         const results = await Promise.all(
             employees.map(async employee => {
                 const [completedTasks, notDoneTasks, attendances] = await Promise.all([
                     prisma.task.findMany({
                         where: {
-                            ...taskWhere,
+                            ...taskDateFilter,
                             employeeId: employee.id,
                             status: { name: 'COMPLETED' },
                         },
@@ -48,7 +55,7 @@ class AnalyticsService {
                     }),
                     prisma.task.count({
                         where: {
-                            ...taskWhere,
+                            ...taskDateFilter,
                             employeeId: employee.id,
                             status: { name: 'NOT_DONE' },
                         },
@@ -96,7 +103,7 @@ class AnalyticsService {
             }),
         )
 
-        return results
+        return { data: results, total }
     }
 
     async getTaskCompletionTimes(params: CompletionParams) {

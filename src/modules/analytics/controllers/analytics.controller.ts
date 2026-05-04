@@ -18,8 +18,10 @@ class AnalyticsController {
                 : undefined
             const from = this.parseDate(searchParams.get('from'))
             const to = this.parseDate(searchParams.get('to'))
+            const page = searchParams.get('page') ? Math.max(1, Number(searchParams.get('page'))) : 1
+            const limit = searchParams.get('limit') ? Math.min(100, Math.max(1, Number(searchParams.get('limit')))) : 10
 
-            const data = await analyticsService.getEmployeePerformance({ employeeId, from, to })
+            const data = await analyticsService.getEmployeePerformance({ employeeId, from, to, page, limit })
             return NextResponse.json(data)
         } catch (err: unknown) {
             const message = err instanceof Error ? err.message : 'Error'
