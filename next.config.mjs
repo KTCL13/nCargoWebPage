@@ -2,6 +2,8 @@
 const nextConfig = {
   reactStrictMode: true,
 
+  serverExternalPackages: ["@prisma/client", "prisma"],
+
   images: {
     remotePatterns: [
       {

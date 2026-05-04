@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/prisma'
-import { InputJsonValue } from '@prisma/client/runtime/library'
+import { Prisma } from '@prisma/client'
 
 class InAppNotificationAdapter {
     async notifyEmployee(
@@ -13,7 +13,7 @@ class InAppNotificationAdapter {
                 employeeId,
                 type,
                 message,
-                metadata: (metadata ?? {}) as InputJsonValue,
+                metadata: (metadata ?? {}) as Prisma.InputJsonValue,
             },
         })
     }

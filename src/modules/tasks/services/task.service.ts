@@ -12,8 +12,7 @@ import { FilterTaskDto } from '../dtos/filter-task.dto'
 import { TaskResponseDto } from '../dtos/task-response.dto'
 import { PaginatedResponseDto } from '../dtos/paginated-response.dto'
 import { TaskStatusName } from '../dtos/task-status.type'
-import { Task } from '@prisma/client'
-import { InputJsonValue } from '@prisma/client/runtime/library'
+import { Task, Prisma } from '@prisma/client'
 import { eventBus } from '../notifications/event-bus'
 import { auditLog } from '@/lib/audit-logger'
 
@@ -96,7 +95,7 @@ class TaskService {
             startTime: dto.startTime ? new Date(dto.startTime) : undefined,
             endTime: dto.endTime ? new Date(dto.endTime) : undefined,
 
-            metadata: dto.metadata as InputJsonValue | undefined,
+            metadata: dto.metadata as Prisma.InputJsonValue | undefined,
         })
 
         const employee = await employeeRepository.getEmployeeById(dto.employeeId)
@@ -211,7 +210,7 @@ class TaskService {
                     statusId: pendingStatusId,
                     startTime: dto.startTime,
                     endTime: dto.endTime,
-                    metadata: dto.metadata as InputJsonValue | undefined,
+                    metadata: dto.metadata as Prisma.InputJsonValue | undefined,
                 }),
             ),
         )
