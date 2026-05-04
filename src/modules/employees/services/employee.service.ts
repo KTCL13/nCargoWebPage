@@ -146,7 +146,7 @@ class EmployeeService {
                     salary: data.salary,
                     hourlyRate: data.hourlyRate,
                     startDate: newStartDate,
-                    endDate: data.endDate,
+                    endDate: data.endDate ? new Date(data.endDate) : null,
                     isActive: true,
                 },
             })
@@ -168,7 +168,11 @@ class EmployeeService {
     }
 
     async updateContract(contractId: number, data: UpdateContractDto): Promise<ContractResponseDto> {
-        const contract = await contractRepository.updateContract(contractId, data)
+        const updateData = { ...data }
+        if (data.endDate) {
+            updateData.endDate = new Date(data.endDate)
+        }
+        const contract = await contractRepository.updateContract(contractId, updateData)
         return this.toContractResponseDto(contract)
     }
 
