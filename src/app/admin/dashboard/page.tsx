@@ -4,6 +4,10 @@ import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
 import { NAV_ITEMS } from '@/components/layout/nav-config'
+import { useAuth } from '@/context/AuthContext'
+import {
+  PieChart, Pie, Cell, Legend, Tooltip, ResponsiveContainer,
+} from 'recharts'
 
 type Employee = {
   id: number
@@ -18,63 +22,71 @@ type WorkloadEntry = {
   employeeId: number
   employeeName: string
   totalTasks: number
+  pendingCount: number
   inProgressCount: number
   completedCount: number
+  notDoneCount: number
 }
 
-type PerformanceEntry = {
-  employeeId: number
-  employeeName: string
-  tasksCompleted: number
-  totalWorkedHours: number
-}
 
 function initials(name: string) {
   return name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()
 }
 
+const PIE_COLORS = [
+  { name: 'Pendientes',   key: 'pendingCount',    color: '#facc15' },
+  { name: 'En Proceso',   key: 'inProgressCount', color: '#3b82f6' },
+  { name: 'Completadas',  key: 'completedCount',  color: '#22c55e' },
+  { name: 'No Hechas',    key: 'notDoneCount',    color: '#ef4444' },
+]
+
 export default function DashboardPage() {
   const router = useRouter()
+  const { token } = useAuth()
 
   const [activeCount, setActiveCount] = useState<number | null>(null)
   const [inProgressTasks, setInProgressTasks] = useState<number | null>(null)
   const [todayAttendances, setTodayAttendances] = useState<number | null>(null)
   const [totalQuotations, setTotalQuotations] = useState<number | null>(null)
   const [recentEmployees, setRecentEmployees] = useState<Employee[]>([])
-  const [performance, setPerformance] = useState<PerformanceEntry[]>([])
+  const [pieData, setPieData] = useState<{ name: string; value: number; color: string }[]>([])
 
   const fetchAll = useCallback(async () => {
-    const [empRes, workloadRes, attendanceRes, quotationsRes, perfRes] = await Promise.allSettled([
-      fetch('/api/employees?status=ACTIVE&limit=1').then(r => r.json()),
-      fetch('/api/analytics/workload').then(r => r.json()),
-      fetch('/api/attendance?page=1&pageSize=1').then(r => r.json()),
-      fetch('/api/quotations?page=1&limit=1').then(r => r.json()),
-      fetch('/api/analytics/employee-performance').then(r => r.json()),
+    if (!token) return
+    const auth = { Authorization: `Bearer ${token}` }
+
+    const [empRes, workloadRes, attendanceRes, quotationsRes] = await Promise.allSettled([
+      fetch('/api/employees?status=ACTIVE&limit=1', { headers: auth }).then(r => r.json()),
+      fetch('/api/analytics/workload', { headers: auth }).then(r => r.json()),
+      fetch('/api/attendance?page=1&pageSize=1', { headers: auth }).then(r => r.json()),
+      fetch('/api/quotations?page=1&limit=1', { headers: auth }).then(r => r.json()),
     ])
 
     if (empRes.status === 'fulfilled') setActiveCount(empRes.value.total ?? 0)
     if (workloadRes.status === 'fulfilled' && Array.isArray(workloadRes.value)) {
-      const sum = (workloadRes.value as WorkloadEntry[]).reduce((acc, e) => acc + e.inProgressCount, 0)
-      setInProgressTasks(sum)
+      const rows = workloadRes.value as WorkloadEntry[]
+      setInProgressTasks(rows.reduce((acc, e) => acc + e.inProgressCount, 0))
+      const totals = PIE_COLORS.map(c => ({
+        name: c.name,
+        color: c.color,
+        value: rows.reduce((acc, e) => acc + (e[c.key as keyof WorkloadEntry] as number), 0),
+      })).filter(d => d.value > 0)
+      setPieData(totals)
     }
     if (attendanceRes.status === 'fulfilled') setTodayAttendances(attendanceRes.value.total ?? 0)
     if (quotationsRes.status === 'fulfilled') setTotalQuotations(quotationsRes.value.total ?? 0)
-    if (perfRes.status === 'fulfilled' && Array.isArray(perfRes.value)) {
-      setPerformance((perfRes.value as PerformanceEntry[]).slice(0, 5))
-    }
 
-    // Fetch recent employees for the table (separate call with limit=4)
+    // Recent employees table
     try {
-      const empList = await fetch('/api/employees?page=1&limit=4').then(r => r.json())
+      const empList = await fetch('/api/employees?page=1&limit=4', { headers: auth }).then(r => r.json())
       setRecentEmployees(empList.data ?? [])
     } catch { /* silent */ }
-  }, [])
+  }, [token])
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { fetchAll() }, [fetchAll])
 
   const navigateTo = (path: string) => router.push(`/admin/${path}`)
-
-  const maxTasks = Math.max(...performance.map(p => p.tasksCompleted), 1)
 
   return (
     <DashboardLayout
@@ -188,23 +200,31 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Productivity Bars */}
+          {/* Productivity Pie */}
           <div className="bg-white rounded-[var(--radius-xl)] border border-gray-100 shadow-sm p-5">
-            <h3 className="font-bold mb-6">Productividad del equipo</h3>
-            {performance.length === 0 ? (
+            <h3 className="font-bold mb-4">Productividad del equipo</h3>
+            {pieData.length === 0 ? (
               <p className="text-center text-gray-400 text-sm py-6">Sin datos de rendimiento</p>
             ) : (
-              <div className="space-y-5">
-                {performance.map(p => (
-                  <ProgressBar
-                    key={p.employeeId}
-                    label={p.employeeName}
-                    value={Math.round((p.tasksCompleted / maxTasks) * 100)}
-                    color="bg-blue-600"
-                    detail={`${p.tasksCompleted} tareas · ${p.totalWorkedHours}h`}
+              <ResponsiveContainer width="100%" height={260}>
+                <PieChart>
+                  <Pie
+                    data={pieData}
+                    innerRadius={65}
+                    outerRadius={100}
+                    paddingAngle={4}
+                    dataKey="value"
+                  >
+                    {pieData.map((entry, i) => (
+                      <Cell key={i} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(v) => [`${v} tareas`, '']} />
+                  <Legend
+                    formatter={(value) => <span className="text-xs text-gray-600">{value}</span>}
                   />
-                ))}
-              </div>
+                </PieChart>
+              </ResponsiveContainer>
             )}
           </div>
 
@@ -244,16 +264,3 @@ function EmployeeRow({ name, role, initials, status, statusColor }: { name: stri
   )
 }
 
-function ProgressBar({ label, value, color, detail }: { label: string; value: number; color: string; detail?: string }) {
-  return (
-    <div>
-      <div className="flex justify-between text-xs mb-1">
-        <span className="text-gray-500">{label}</span>
-        <span className="font-bold text-gray-600 text-[10px]">{detail ?? `${value}%`}</span>
-      </div>
-      <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-        <div className={`h-full ${color} rounded-full`} style={{ width: `${value}%` }}></div>
-      </div>
-    </div>
-  )
-}

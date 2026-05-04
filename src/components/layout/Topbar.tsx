@@ -1,6 +1,8 @@
 //src/components/layout/Topbar.tsx
 'use client'
 
+import { NotificationBell } from '@/components/ui/NotificationBell'
+
 interface TopbarProps {
   pageTitle: string
   userName: string
@@ -62,6 +64,9 @@ export function Topbar({
             ↻
           </button>
         )}
+
+        {/* Notification bell */}
+        <NotificationBell />
 
         {/* User */}
         <div className="flex items-center gap-3">
