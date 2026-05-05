@@ -225,8 +225,8 @@ model Office {
   longitude           Decimal     @db.Decimal(10, 7)
   coverageRadiusMiles Decimal?    @map("coverage_radius_miles") @db.Decimal(8, 2)
   isActive            Boolean     @default(true) @map("is_active")
-  locationId          Int         @map("location_id")
-  location            Location    @relation(fields: [locationId], references: [id])
+  locationId          Int?        @map("location_id")
+  location            Location?   @relation(fields: [locationId], references: [id])
   quotations          Quotation[]
 
   @@map("offices")

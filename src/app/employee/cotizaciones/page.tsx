@@ -1,9 +1,12 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import dynamic from 'next/dynamic'
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
 import { NAV_ITEMS } from '@/components/layout/nav-config'
 import { useAuth } from '@/context/AuthContext'
+
+const MapPicker = dynamic(() => import('@/components/ui/MapPicker'), { ssr: false })
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -27,14 +30,15 @@ type Breakdown = {
   }
 }
 
-// ── Map panel origins ─────────────────────────────────────────────────────────
+// ── Pickup office type ────────────────────────────────────────────────────────
 
-const ORIGINS = [
-  { value: 'miami', label: '📦 Miami, FL — Almacén Principal', addr: '7950 NW 53rd St, Miami, FL 33166' },
-  { value: 'houston', label: '🏭 Houston, TX — Centro de Distribución', addr: '1234 Westheimer Rd, Houston, TX 77006' },
-  { value: 'laredo', label: '🌉 Laredo, TX — Frontera México', addr: '2200 Corpus Christi St, Laredo, TX 78043' },
-  { value: 'losangeles', label: '🌴 Los Ángeles, CA — Puerto Oeste', addr: '5000 S Alameda St, Los Angeles, CA 90058' },
-]
+type Office = {
+  id: number
+  name: string
+  address: string
+  latitude: number | string
+  longitude: number | string
+}
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
@@ -54,7 +58,8 @@ export default function CotizacionesPage() {
   const [result, setResult] = useState<Breakdown | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [origin, setOrigin] = useState(ORIGINS[0])
+  const [offices, setOffices] = useState<Office[]>([])
+  const [origin, setOrigin] = useState<Office | null>(null)
 
   // ── Odoo Modal State ──
   const [isOdooModalOpen, setIsOdooModalOpen] = useState(false)
@@ -87,6 +92,17 @@ export default function CotizacionesPage() {
   const isValid =
     !!weight && !!dims.h && !!dims.w && !!dims.l && valor !== '' &&
     (flatRate.enabled || !!cityId)
+
+  useEffect(() => {
+    fetch('/api/pickup-points?active=true')
+      .then(r => r.json())
+      .then(data => {
+        const list: Office[] = data.data ?? []
+        setOffices(list)
+        if (list.length > 0) setOrigin(list[0])
+      })
+      .catch(() => {})
+  }, [])
 
   useEffect(() => {
     setCitiesLoading(true)
@@ -206,8 +222,6 @@ export default function CotizacionesPage() {
 
   const inp = 'border border-black/15 rounded-lg px-3 py-2 text-sm font-body outline-none focus:border-[var(--color-nc-blue)] transition-colors bg-white w-full'
 
-  const mapSrc = `https://maps.google.com/maps?q=${encodeURIComponent(origin.addr)}&z=14&output=embed`
-
   return (
     <DashboardLayout
       pageTitle="Cotizaciones"
@@ -308,7 +322,7 @@ export default function CotizacionesPage() {
             </div>
           </div>
 
-          {/* Pickup miles */}
+          {/* Pickup miles — auto-filled by the map */}
           <div className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
             <span className="font-subtitles text-sm font-semibold text-amber-800">🛣️ Millas de recogida:</span>
             <input
@@ -317,6 +331,11 @@ export default function CotizacionesPage() {
               className="w-20 border-b border-amber-400 bg-transparent px-1 py-0.5 text-sm font-body text-amber-900 outline-none text-center"
             />
             <span className="font-subtitles text-sm text-amber-700">mi</span>
+            {parseFloat(millas) > 0 && (
+              <span className="ml-auto text-[10px] font-subtitles text-amber-600 bg-amber-100 px-2 py-0.5 rounded-full">
+                🗺️ desde mapa
+              </span>
+            )}
           </div>
 
           {/* Validation error */}
@@ -377,44 +396,29 @@ export default function CotizacionesPage() {
 
         {/* ── Map panel ── */}
         <div className="bg-white rounded-2xl border border-black/5 shadow-sm overflow-hidden flex flex-col">
-          <div className="p-5 border-b border-black/5">
-            <p className="font-subtitles font-semibold text-sm text-[var(--color-nc-dark)] flex items-center gap-2">
-              📍 Seleccionar Punto de Recogida
-            </p>
-            <p className="font-subtitles text-xs text-[var(--color-nc-dark)]/50 mt-0.5 mb-3">
-              Elige el almacén más cercano
-            </p>
+          {/* Office selector */}
+          <div className="px-4 pt-4 pb-2 border-b border-black/5">
+            <label className="font-subtitles text-xs font-semibold text-[var(--color-nc-dark)]/60 block mb-1">
+              🏭 Almacén de origen
+            </label>
             <select
-              value={origin.value}
-              onChange={e => setOrigin(ORIGINS.find(o => o.value === e.target.value) ?? ORIGINS[0])}
+              value={origin?.id ?? ''}
+              onChange={e => setOrigin(offices.find(o => o.id === Number(e.target.value)) ?? null)}
               className="w-full border border-black/15 rounded-lg px-3 py-2 text-sm font-body bg-[#F7F8FA] outline-none focus:border-[var(--color-nc-blue)] transition-colors"
+              disabled={offices.length === 0}
             >
-              {ORIGINS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+              {offices.length === 0
+                ? <option>Cargando almacenes...</option>
+                : offices.map(o => <option key={o.id} value={o.id}>📦 {o.name}</option>)
+              }
             </select>
           </div>
 
-          <iframe
-            key={origin.value}
-            src={mapSrc}
-            className="flex-1 min-h-[300px] w-full border-0"
-            allowFullScreen
-            loading="lazy"
-            referrerPolicy="no-referrer-when-downgrade"
+          {/* Interactive map */}
+          <MapPicker
+            office={origin}
+            onDistanceChange={(miles) => setMillas(String(miles))}
           />
-
-          <div className="px-5 py-3 border-t border-black/5 flex items-center justify-between gap-3 bg-[#F7F8FA]">
-            <p className="font-subtitles text-xs text-[var(--color-nc-dark)]/60 flex items-center gap-1.5">
-              📍 <span>{origin.addr}</span>
-            </p>
-            <a
-              href={`https://maps.google.com/maps?q=${encodeURIComponent(origin.addr)}`}
-              target="_blank"
-              rel="noreferrer"
-              className="text-xs font-subtitles font-semibold text-white bg-[var(--color-nc-dark)] px-3 py-1.5 rounded-lg hover:bg-[var(--color-nc-blue)] transition-colors whitespace-nowrap"
-            >
-              🧭 Cómo llegar
-            </a>
-          </div>
         </div>
 
       </div>
