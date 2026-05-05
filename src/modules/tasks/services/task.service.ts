@@ -165,7 +165,9 @@ class TaskService {
             }
 
             if (dto.status === 'IN_PROGRESS' && !existing.attendanceId) {
-                const activeAttendance = await attendanceRepository.findActiveByEmployee(existing.employeeId)
+                const emp = await employeeRepository.getEmployeeById(existing.employeeId)
+                const timezone = emp?.timezone ?? 'America/Bogota'
+                const activeAttendance = await attendanceRepository.findActiveByEmployee(existing.employeeId, timezone)
                 if (activeAttendance) {
                     data.attendance = { connect: { id: activeAttendance.id } }
                 }

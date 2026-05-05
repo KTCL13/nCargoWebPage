@@ -127,7 +127,19 @@ export default function LoginPage() {
         token: json.accessToken,
       });
 
-      // 🚀 Redirección por rol
+      const detectedTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      if (detectedTz) {
+        fetch("/api/employee/me", {
+          method: "PATCH",
+          headers: {
+            Authorization: `Bearer ${json.accessToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ timezone: detectedTz }),
+        }).catch(() => {});
+      }
+
+      // Redirección por rol
       router.push(
         json.role === "ADMIN" ? "/admin/dashboard" : "/employee/dashboard",
       );

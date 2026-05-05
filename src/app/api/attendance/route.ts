@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { attendanceService } from '@/modules/attendance/services/attendance.service'
+import { getAuthEmployee } from '@/lib/auth-guard'
 
 /**
  * GET /api/attendance
@@ -7,6 +8,11 @@ import { attendanceService } from '@/modules/attendance/services/attendance.serv
  */
 export async function GET(req: NextRequest) {
     try {
+        const employee = getAuthEmployee(req)
+        if (employee.role !== 'ADMIN') {
+            return NextResponse.json({ message: 'Acceso denegado' }, { status: 403 })
+        }
+
         const url = new URL(req.url)
         const date = url.searchParams.get('date') || undefined
         const employeeId = url.searchParams.get('employeeId') ? Number(url.searchParams.get('employeeId')) : undefined
@@ -23,6 +29,7 @@ export async function GET(req: NextRequest) {
         })
         return NextResponse.json(result)
     } catch (error: any) {
-        return NextResponse.json({ message: error.message }, { status: 400 })
+        const status = error.message.includes('Token') ? 401 : 400
+        return NextResponse.json({ message: error.message }, { status })
     }
 }

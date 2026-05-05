@@ -26,6 +26,12 @@ interface AttendanceRecord {
   events: AttendanceEvent[]
 }
 
+interface TaskItem {
+  id: number
+  title: string
+  status: string
+}
+
 function formatHMS(secs: number) {
   const h = Math.floor(secs / 3600)
   const m = Math.floor((secs % 3600) / 60)
@@ -66,6 +72,10 @@ export default function JornadaPage() {
   const [loading, setLoading] = useState(false)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  const [tasks, setTasks] = useState<TaskItem[]>([])
+  const [selectedTaskId, setSelectedTaskId] = useState<number | null>(null)
+  const [taskLoading, setTaskLoading] = useState(false)
 
   const authHeaders = useCallback(
     (extra?: Record<string, string>) => ({
@@ -111,9 +121,54 @@ export default function JornadaPage() {
     }
   }, [token, authHeaders, applyAttendance])
 
+  const loadTasks = useCallback(async () => {
+    if (!token || !employeeId) return
+    try {
+      const [pendingRes, inProgressRes] = await Promise.all([
+        fetch(`/api/tasks?employeeId=${employeeId}&status=PENDING&limit=50`, { headers: authHeaders() }),
+        fetch(`/api/tasks?employeeId=${employeeId}&status=IN_PROGRESS&limit=50`, { headers: authHeaders() }),
+      ])
+      const [pending, inProgress] = await Promise.all([
+        pendingRes.ok ? pendingRes.json() : { data: [] },
+        inProgressRes.ok ? inProgressRes.json() : { data: [] },
+      ])
+      const combined: TaskItem[] = [
+        ...(pending.data ?? pending ?? []),
+        ...(inProgress.data ?? inProgress ?? []),
+      ].map((t: any) => ({ id: t.id, title: t.title, status: t.status }))
+      setTasks(combined)
+    } catch {
+      // silent — task list is best-effort
+    }
+  }, [token, employeeId, authHeaders])
+
+  const handleCompleteTask = async () => {
+    if (!selectedTaskId || !token) return
+    setTaskLoading(true)
+    try {
+      const res = await fetch(`/api/tasks?id=${selectedTaskId}`, {
+        method: 'PUT',
+        headers: authHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ status: 'COMPLETED', endTime: new Date() }),
+      })
+      if (res.ok) {
+        setSelectedTaskId(null)
+        await loadTasks()
+      }
+    } catch {
+      // silent
+    } finally {
+      setTaskLoading(false)
+    }
+  }
+
   useEffect(() => {
     if (token) loadToday()
   }, [token, loadToday])
+
+  useEffect(() => {
+    if (token && employeeId) loadTasks()
+  }, [token, employeeId, loadTasks])
 
   useEffect(() => {
     if (timerState === 'running') {
@@ -145,6 +200,7 @@ export default function JornadaPage() {
         return
       }
       applyAttendance(data as AttendanceRecord)
+      await loadTasks()
     } catch (err) {
       console.error('[jornada] POST', path, 'error:', err)
       setErrorMsg('Error de red')
@@ -252,8 +308,40 @@ export default function JornadaPage() {
             </div>
           </div>
 
-          <div className="mt-2 px-4 py-2 rounded-full bg-[var(--color-nc-dark)]/5 text-sm font-subtitles text-[var(--color-nc-dark)]/60">
-            🎯 Tarea actual: <span className="font-semibold text-[var(--color-nc-dark)]">—</span>
+          <div className="mt-2 flex items-center gap-2 w-full max-w-sm">
+            <div className="flex items-center gap-2 flex-1 px-4 py-2 rounded-full bg-[var(--color-nc-dark)]/5 min-w-0">
+              <span className="text-sm flex-shrink-0">🎯</span>
+              {timerState === 'idle' || timerState === 'closed' ? (
+                <span className="font-subtitles text-sm text-[var(--color-nc-dark)]/60 truncate">
+                  Tarea actual: —
+                </span>
+              ) : tasks.length === 0 ? (
+                <span className="font-subtitles text-sm text-[var(--color-nc-dark)]/50 truncate">
+                  Sin tareas pendientes
+                </span>
+              ) : (
+                <select
+                  value={selectedTaskId ?? ''}
+                  onChange={e => setSelectedTaskId(e.target.value ? Number(e.target.value) : null)}
+                  className="flex-1 bg-transparent font-subtitles text-sm text-[var(--color-nc-dark)] outline-none cursor-pointer min-w-0"
+                >
+                  <option value="">— Seleccionar tarea —</option>
+                  {tasks.map(t => (
+                    <option key={t.id} value={t.id}>{t.title}</option>
+                  ))}
+                </select>
+              )}
+            </div>
+            {selectedTaskId !== null && (timerState === 'running' || timerState === 'paused') && (
+              <button
+                onClick={handleCompleteTask}
+                disabled={taskLoading}
+                title="Marcar como completada"
+                className="w-9 h-9 flex-shrink-0 rounded-full bg-green-500 hover:bg-green-600 flex items-center justify-center text-white font-bold text-base transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                ✓
+              </button>
+            )}
           </div>
         </div>
 

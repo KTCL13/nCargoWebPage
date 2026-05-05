@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { attendanceService } from '@/modules/attendance/services/attendance.service'
+import { getAuthEmployee } from '@/lib/auth-guard'
 
 /**
  * POST /api/attendance/force-close?id=X
@@ -7,16 +8,21 @@ import { attendanceService } from '@/modules/attendance/services/attendance.serv
  */
 export async function POST(req: NextRequest) {
     try {
+        const employee = getAuthEmployee(req)
+        if (employee.role !== 'ADMIN') {
+            return NextResponse.json({ message: 'Acceso denegado' }, { status: 403 })
+        }
+
         const url = new URL(req.url)
         const id = Number(url.searchParams.get('id'))
-        
+
         if (!id) return NextResponse.json({ message: 'ID es requerido' }, { status: 400 })
 
-        // Mock adminId as 1 for now (should come from auth session in a real app)
-        const result = await attendanceService.forceClose(id, 1)
-        
+        const result = await attendanceService.forceClose(id, employee.id)
+
         return NextResponse.json(result)
     } catch (error: any) {
-        return NextResponse.json({ message: error.message }, { status: 400 })
+        const status = error.message.includes('Token') ? 401 : 400
+        return NextResponse.json({ message: error.message }, { status })
     }
 }
