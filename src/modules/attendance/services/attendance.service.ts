@@ -1,5 +1,7 @@
 import { attendanceRepository } from '../repositories/attendance.repository'
 import { attendanceEventRepository } from '../repositories/attendance-event.repository'
+import { employeeRepository } from '@/modules/employees/repositories/employee.repository'
+import { analyticsService } from '@/modules/analytics/services/analytics.service'
 import { auditLog } from '@/lib/audit-logger'
 import { Attendance, AttendanceEvent, AttendanceStatus } from '@prisma/client'
 
@@ -29,7 +31,10 @@ function extractClockInIp(events: AttendanceEvent[]): string | null {
 
 class AttendanceService {
     async clockIn(employeeId: number, ip: string): Promise<AttendanceWithEvents> {
-        const existing = await attendanceRepository.findTodayByEmployee(employeeId)
+        const emp = await employeeRepository.getEmployeeById(employeeId)
+        const timezone = emp?.timezone ?? 'America/Bogota'
+
+        const existing = await attendanceRepository.findTodayByEmployee(employeeId, timezone)
         if (existing) {
             throw new Error('El empleado ya tiene una asistencia activa hoy')
         }
@@ -37,6 +42,7 @@ class AttendanceService {
         const attendance = await attendanceRepository.create({
             employeeId,
             startedAt: new Date(),
+            timezone,
         })
 
         const event = await attendanceEventRepository.create({
@@ -57,7 +63,9 @@ class AttendanceService {
     }
 
     async pause(employeeId: number, ip: string): Promise<AttendanceWithEvents> {
-        const attendance = await attendanceRepository.findActiveByEmployee(employeeId)
+        const emp = await employeeRepository.getEmployeeById(employeeId)
+        const timezone = emp?.timezone ?? 'America/Bogota'
+        const attendance = await attendanceRepository.findActiveByEmployee(employeeId, timezone)
         if (!attendance || attendance.status !== 'OPEN') {
             throw new Error('No hay una sesión activa para pausar')
         }
@@ -87,7 +95,9 @@ class AttendanceService {
     }
 
     async resume(employeeId: number, ip: string): Promise<AttendanceWithEvents> {
-        const attendance = await attendanceRepository.findActiveByEmployee(employeeId)
+        const emp = await employeeRepository.getEmployeeById(employeeId)
+        const timezone = emp?.timezone ?? 'America/Bogota'
+        const attendance = await attendanceRepository.findActiveByEmployee(employeeId, timezone)
         if (!attendance || attendance.status !== 'PAUSED') {
             throw new Error('No hay una sesión pausada para reanudar')
         }
@@ -117,7 +127,9 @@ class AttendanceService {
     }
 
     async clockOut(employeeId: number, ip: string): Promise<AttendanceWithEvents> {
-        const attendance = await attendanceRepository.findActiveByEmployee(employeeId)
+        const emp = await employeeRepository.getEmployeeById(employeeId)
+        const timezone = emp?.timezone ?? 'America/Bogota'
+        const attendance = await attendanceRepository.findActiveByEmployee(employeeId, timezone)
         if (!attendance) {
             throw new Error('No hay una sesión activa para cerrar')
         }
@@ -151,11 +163,18 @@ class AttendanceService {
             newValues: { ip, endedAt, workedHours },
         })
 
+        // Fire-and-forget: populate EmployeeKPI for today
+        const today = new Date()
+        today.setHours(0, 0, 0, 0)
+        analyticsService.aggregateKPIs({ employeeId, from: today, to: today }).catch(() => {})
+
         return { ...updated, events: allEvents }
     }
 
     async getToday(employeeId: number): Promise<AttendanceWithEvents | null> {
-        const attendance = await attendanceRepository.findTodayByEmployee(employeeId)
+        const emp = await employeeRepository.getEmployeeById(employeeId)
+        const timezone = emp?.timezone ?? 'America/Bogota'
+        const attendance = await attendanceRepository.findTodayByEmployee(employeeId, timezone)
         if (!attendance) return null
 
         const events = await attendanceEventRepository.findByAttendance(attendance.id)
@@ -211,6 +230,11 @@ class AttendanceService {
             performedBy: adminId,
             newValues: { status: 'CLOSED', endedAt: now, workedHours }
         })
+
+        // Fire-and-forget: update EmployeeKPI for the affected day
+        const day = new Date(attendance.startedAt)
+        day.setHours(0, 0, 0, 0)
+        analyticsService.aggregateKPIs({ employeeId: attendance.employeeId, from: day, to: day }).catch(() => {})
 
         return updated
     }

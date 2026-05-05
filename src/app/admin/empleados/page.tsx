@@ -31,6 +31,15 @@ function avatarColor(name: string) {
   return colors[name.charCodeAt(0) % colors.length]
 }
 
+const roleTranslations: Record<string, string> = {
+  'ADMIN': 'Administrador',
+  'EMPLOYEE': 'Empleado',
+}
+
+function translateRole(role: string) {
+  return roleTranslations[role] || role
+}
+
 export default function EmpleadosPage() {
   const router = useRouter()
 
@@ -87,9 +96,22 @@ export default function EmpleadosPage() {
     } finally {
       setLoading(false)
     }
-  }, [page, search])
+  }, [page, search, filterStatus, filterRole])
 
   useEffect(() => { fetchEmployees() }, [fetchEmployees])
+
+  // Fetch dependencies on mount
+  useEffect(() => {
+    Promise.all([
+      fetch('/api/roles').then(x => x.json()),
+      fetch('/api/jobs').then(x => x.json()),
+      fetch('/api/contract-types').then(x => x.json()),
+    ]).then(([r, j, ct]) => {
+      setRoles(r)
+      setJobs(j)
+      setContractTypes(ct)
+    }).catch(err => console.error('Error fetching dependencies:', err))
+  }, [])
 
   // KPI
   useEffect(() => {
@@ -115,15 +137,17 @@ export default function EmpleadosPage() {
     }
     setForm(emptyForm)
 
-    // Load dependencies (roles, jobs, etc)
-    const [r, j, ct] = await Promise.all([
-      fetch('/api/roles').then(x => x.json()),
-      fetch('/api/jobs').then(x => x.json()),
-      fetch('/api/contract-types').then(x => x.json()),
-    ])
-    setRoles(r)
-    setJobs(j)
-    setContractTypes(ct)
+    // Load dependencies if not already loaded (though they should be from mount)
+    if (roles.length === 0) {
+      const [r, j, ct] = await Promise.all([
+        fetch('/api/roles').then(x => x.json()),
+        fetch('/api/jobs').then(x => x.json()),
+        fetch('/api/contract-types').then(x => x.json()),
+      ])
+      setRoles(r)
+      setJobs(j)
+      setContractTypes(ct)
+    }
 
     // If editing or viewing, fetch full employee details and populate form
     if (emp) {
@@ -135,7 +159,7 @@ export default function EmpleadosPage() {
 
         // Map roles: if fullData.roles is objects, get id, else find in roles list
         const roleId = fullData.roles?.[0]?.id?.toString() ||
-          r.find((role: Role) => role.name === fullData.roles?.[0])?.id?.toString() || '';
+          roles.find((role: Role) => role.name === fullData.roles?.[0])?.id?.toString() || '';
 
         const [firstName, ...lastNames] = (fullData.name || '').split(' ')
         setForm({
@@ -201,7 +225,7 @@ export default function EmpleadosPage() {
       if (form.jobId && form.contractTypeId) {
         // For simplicity, we use the same endpoint, 
         // usually it handles create or update based on employee ID
-        await fetch(`/api/employees/contracts?id=${isEditing ? editingId : empData.id}`, {
+        await fetch(`/api/employees/contracts?employeeId=${isEditing ? editingId : empData.id}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -332,17 +356,17 @@ export default function EmpleadosPage() {
                 onChange={e => { setFilterRole(e.target.value); setPage(0) }}
                 className="text-xs font-subtitles px-3 py-2 rounded-[var(--radius-lg)] border border-gray-200 bg-white focus:border-[var(--color-primary)] outline-none"
               >
-                <option value="">Todos los roles</option>
-                {roles.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+                <option value="">Tipo de trabajador</option>
+                {roles.map(r => <option key={r.id} value={r.id}>{translateRole(r.name)}</option>)}
               </select>
             </div>
             <div className="relative">
               <input
                 type="text"
-                placeholder="Nombre o email..."
+                placeholder="Nombre, apellido o cédula..."
                 value={search}
                 onChange={e => { setSearch(e.target.value); setPage(0) }}
-                className="pl-8 pr-3 py-2 rounded-[var(--radius-lg)] border border-gray-200 text-xs font-subtitles focus:outline-none focus:border-[var(--color-primary)] w-40"
+                className="pl-8 pr-3 py-2 rounded-[var(--radius-lg)] border border-gray-200 text-xs font-subtitles focus:outline-none focus:border-[var(--color-primary)] w-52"
               />
               <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs">🔍</span>
             </div>
@@ -391,8 +415,9 @@ export default function EmpleadosPage() {
                 </th>
                 <th className="px-4 py-3 text-left font-subtitles text-xs uppercase tracking-wide text-gray-500">Nombre</th>
                 <th className="px-4 py-3 text-left font-subtitles text-xs uppercase tracking-wide text-gray-500">Rol</th>
+                <th className="px-4 py-3 text-left font-subtitles text-xs uppercase tracking-wide text-gray-500">Cargo</th>
                 <th className="px-4 py-3 text-left font-subtitles text-xs uppercase tracking-wide text-gray-500">Estado</th>
-                <th className="px-4 py-3 text-left font-subtitles text-xs uppercase tracking-wide text-gray-500">Acciones</th>
+                <th className="px-4 py-3 text-right font-subtitles text-xs uppercase tracking-wide text-gray-500">Acciones</th>
               </tr>
             </thead>
             <tbody>
@@ -440,7 +465,14 @@ export default function EmpleadosPage() {
                     {/* Role */}
                     <td className="px-4 py-3">
                       <span className="font-subtitles text-gray-600 text-sm">
-                        {emp.roles[0] ?? '—'}
+                        {translateRole(emp.roles[0] ?? '—')}
+                      </span>
+                    </td>
+
+                    {/* Job Title */}
+                    <td className="px-4 py-3">
+                      <span className="text-xs font-medium font-subtitles text-gray-600 bg-gray-100 px-2 py-1 rounded-[var(--radius-md)]">
+                        {emp.activeContract?.job.title ?? 'Sin cargo'}
                       </span>
                     </td>
 
@@ -458,42 +490,41 @@ export default function EmpleadosPage() {
                     </td>
 
                     {/* Actions */}
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        {emp.activeContract && (
-                          <span className="text-xs text-gray-500 font-subtitles border border-gray-200 px-2 py-1 rounded-[var(--radius-md)]">
-                            📋 {emp.activeContract.job.title}
-                          </span>
-                        )}
-                        <div className="flex items-center gap-1 bg-gray-50 p-1 rounded-[var(--radius-lg)] border border-gray-100">
+                    <td className="px-4 py-3 text-right">
+                      <div className="flex items-center justify-end gap-2 flex-wrap">
+                        <div className="flex items-center gap-1 bg-white p-1 rounded-[var(--radius-lg)] shadow-sm border border-gray-100">
                           <button
                             onClick={() => openModal(emp, true)}
-                            className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-white rounded-[var(--radius-md)] transition-all"
+                            className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-[var(--radius-md)] transition-all"
                             title="Ver detalles"
                           >
                             👁️
                           </button>
                           <button
                             onClick={() => openModal(emp, false)}
-                            className="p-1.5 text-gray-500 hover:text-[var(--color-primary)] hover:bg-white rounded-[var(--radius-md)] transition-all"
+                            className="p-1.5 text-[var(--color-primary)] hover:bg-red-50 rounded-[var(--radius-md)] transition-all"
                             title="Editar detalles"
                           >
                             ✏️
                           </button>
-                          <button
-                            onClick={() => saveRow(emp.id)}
-                            disabled={!isDirty || isSaving}
-                            className={`
-                              text-[10px] px-2 py-1 rounded-[var(--radius-md)] font-bold font-subtitles transition uppercase tracking-tighter
-                              ${isDirty && !isSaving
-                                ? 'bg-[var(--color-foreground)] text-white hover:opacity-80'
-                                : 'bg-transparent text-gray-300 cursor-not-allowed'
-                              }
-                            `}
-                          >
-                            {isSaving ? '...' : 'Guardar Cambios'}
-                          </button>
                         </div>
+                        
+                        <button
+                          onClick={() => saveRow(emp.id)}
+                          disabled={!isDirty || isSaving}
+                          className={`
+                            flex items-center gap-1.5 px-3 py-1.5 rounded-[var(--radius-lg)] text-xs font-bold font-subtitles transition-all shadow-sm
+                            ${isDirty && !isSaving
+                              ? 'bg-green-600 text-white hover:bg-green-700 hover:shadow-md'
+                              : 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200'
+                            }
+                          `}
+                        >
+                          {isSaving ? (
+                            <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                          ) : '💾'}
+                          <span>{isSaving ? 'Guardando' : 'Guardar'}</span>
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -632,7 +663,7 @@ export default function EmpleadosPage() {
                       className="form-input bg-white disabled:bg-gray-50 disabled:text-gray-500"
                     >
                       <option value="">Seleccionar...</option>
-                      {roles.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+                      {roles.map(r => <option key={r.id} value={r.id}>{translateRole(r.name)}</option>)}
                     </select>
                   </div>
                 </div>

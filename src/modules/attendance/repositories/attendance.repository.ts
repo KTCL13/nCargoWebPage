@@ -1,32 +1,34 @@
 import { prisma } from '@/lib/prisma'
 import { Attendance, AttendanceStatus } from '@prisma/client'
+import { toZonedTime, fromZonedTime } from 'date-fns-tz'
+import { startOfDay } from 'date-fns'
 
-function startOfToday(): Date {
-    const d = new Date()
-    d.setHours(0, 0, 0, 0)
-    return d
+function getStartOfDayForEmployee(timezone: string): Date {
+    const nowInTz = toZonedTime(new Date(), timezone)
+    const midnightInTz = startOfDay(nowInTz)
+    return fromZonedTime(midnightInTz, timezone)
 }
 
 class AttendanceRepository {
-    async findTodayByEmployee(employeeId: number): Promise<Attendance | null> {
+    async findTodayByEmployee(employeeId: number, timezone: string): Promise<Attendance | null> {
         return prisma.attendance.findFirst({
-            where: { employeeId, startedAt: { gte: startOfToday() } },
+            where: { employeeId, startedAt: { gte: getStartOfDayForEmployee(timezone) } },
             orderBy: { startedAt: 'desc' },
         })
     }
 
-    async findActiveByEmployee(employeeId: number): Promise<Attendance | null> {
+    async findActiveByEmployee(employeeId: number, timezone: string): Promise<Attendance | null> {
         return prisma.attendance.findFirst({
             where: {
                 employeeId,
-                startedAt: { gte: startOfToday() },
+                startedAt: { gte: getStartOfDayForEmployee(timezone) },
                 status: { in: ['OPEN', 'PAUSED'] },
             },
             orderBy: { startedAt: 'desc' },
         })
     }
 
-    async create(data: { employeeId: number; startedAt: Date }): Promise<Attendance> {
+    async create(data: { employeeId: number; startedAt: Date; timezone: string }): Promise<Attendance> {
         return prisma.attendance.create({ data: { ...data, status: 'OPEN' } })
     }
 

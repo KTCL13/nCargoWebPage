@@ -201,7 +201,7 @@ describe('taskService.reassignTask', () => {
     mocked(taskRepository.update).mockResolvedValue({ ...fakeTask, employeeId: 7 })
     mocked(employeeRepository.getEmployeeById).mockResolvedValue({ id: 7, name: 'Carol', email: 'c@x.y' })
 
-    const result = await taskService.reassignTask(10, { newEmployeeId: 7 })
+    const result = await taskService.reassignTask(10, { newEmployeeId: 7 }, 1)
 
     expect(taskRepository.update).toHaveBeenCalledWith(10, {
       employee: { connect: { id: 7 } },
@@ -213,7 +213,7 @@ describe('taskService.reassignTask', () => {
   it('G2 error de negocio: tarea no existe → lanza "Task no encontrada con id X"', async () => {
     mocked(taskRepository.findById).mockResolvedValue(null)
 
-    await expect(taskService.reassignTask(999, { newEmployeeId: 7 })).rejects.toThrow(
+    await expect(taskService.reassignTask(999, { newEmployeeId: 7 }, 1)).rejects.toThrow(
       'Task no encontrada con id 999',
     )
   })
@@ -225,7 +225,7 @@ describe('taskService.reassignTask', () => {
     mocked(taskRepository.update).mockResolvedValue(fakeTask)
     mocked(employeeRepository.getEmployeeById).mockResolvedValue(null)
 
-    await taskService.reassignTask(10, { newEmployeeId: 999 })
+    await taskService.reassignTask(10, { newEmployeeId: 999 }, 1)
 
     expect(eventBus.publish).not.toHaveBeenCalledWith('task.reassigned', expect.anything())
   })

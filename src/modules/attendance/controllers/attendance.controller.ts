@@ -72,9 +72,11 @@ class AttendanceController {
         try {
             const employee = getAuthEmployee(req)
             const url = new URL(req.url)
-            const employeeId = url.searchParams.get('employeeId')
-                ? Number(url.searchParams.get('employeeId'))
-                : employee.id
+            const employeeIdParam = url.searchParams.get('employeeId')
+            if (employeeIdParam && employee.role !== 'ADMIN') {
+                return NextResponse.json({ message: 'Acceso denegado' }, { status: 403 })
+            }
+            const employeeId = employeeIdParam ? Number(employeeIdParam) : employee.id
             const result = await attendanceService.getToday(employeeId)
             return NextResponse.json(result ?? null, { status: 200 })
         } catch (error: unknown) {
@@ -90,9 +92,11 @@ class AttendanceController {
         try {
             const employee = getAuthEmployee(req)
             const url = new URL(req.url)
-            const employeeId = url.searchParams.get('employeeId')
-                ? Number(url.searchParams.get('employeeId'))
-                : employee.id
+            const employeeIdParam = url.searchParams.get('employeeId')
+            if (employeeIdParam && employee.role !== 'ADMIN') {
+                return NextResponse.json({ message: 'Acceso denegado' }, { status: 403 })
+            }
+            const employeeId = employeeIdParam ? Number(employeeIdParam) : employee.id
             const page = Number(url.searchParams.get('page') ?? '1')
             const limit = Number(url.searchParams.get('limit') ?? '10')
             const result = await attendanceService.getHistory(employeeId, page, limit)

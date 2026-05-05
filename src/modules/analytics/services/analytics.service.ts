@@ -4,6 +4,8 @@ interface PerformanceParams {
     employeeId?: number
     from?: Date
     to?: Date
+    page?: number
+    limit?: number
 }
 
 interface CompletionParams {
@@ -19,28 +21,33 @@ interface WorkloadParams {
 
 class AnalyticsService {
     async getEmployeePerformance(params: PerformanceParams) {
-        const { employeeId, from, to } = params
+        const { employeeId, from, to, page = 1, limit = 10 } = params
 
         const dateFilter = {
             ...(from && { gte: from }),
             ...(to && { lte: to }),
         }
 
-        const taskWhere = {
-            ...(employeeId && { employeeId }),
-            ...(Object.keys(dateFilter).length && { createdAt: dateFilter }),
-        }
+        const employeeWhere = employeeId ? { id: employeeId } : { status: 'ACTIVE' as const }
 
-        const employees = employeeId
-            ? await prisma.employee.findMany({ where: { id: employeeId } })
-            : await prisma.employee.findMany({ where: { status: 'ACTIVE' } })
+        const [total, employees] = await Promise.all([
+            prisma.employee.count({ where: employeeWhere }),
+            prisma.employee.findMany({
+                where: employeeWhere,
+                skip: (page - 1) * limit,
+                take: limit,
+                orderBy: { name: 'asc' },
+            }),
+        ])
+
+        const taskDateFilter = Object.keys(dateFilter).length ? { createdAt: dateFilter } : {}
 
         const results = await Promise.all(
             employees.map(async employee => {
                 const [completedTasks, notDoneTasks, attendances] = await Promise.all([
                     prisma.task.findMany({
                         where: {
-                            ...taskWhere,
+                            ...taskDateFilter,
                             employeeId: employee.id,
                             status: { name: 'COMPLETED' },
                         },
@@ -48,7 +55,7 @@ class AnalyticsService {
                     }),
                     prisma.task.count({
                         where: {
-                            ...taskWhere,
+                            ...taskDateFilter,
                             employeeId: employee.id,
                             status: { name: 'NOT_DONE' },
                         },
@@ -96,7 +103,7 @@ class AnalyticsService {
             }),
         )
 
-        return results
+        return { data: results, total }
     }
 
     async getTaskCompletionTimes(params: CompletionParams) {
@@ -194,6 +201,140 @@ class AnalyticsService {
         )
 
         return results
+    }
+
+    async aggregateKPIs(params: {
+        employeeId?: number
+        from?: Date
+        to?: Date
+        backfill?: boolean
+    } = {}) {
+        const { employeeId, backfill } = params
+
+        // Resolve date range
+        let rangeStart: Date
+        let rangeEnd: Date
+
+        if (backfill) {
+            const earliest = await prisma.attendance.findFirst({
+                where: { status: 'CLOSED' },
+                orderBy: { startedAt: 'asc' },
+            })
+            const today = new Date()
+            today.setHours(0, 0, 0, 0)
+            rangeStart = earliest ? new Date(earliest.startedAt) : today
+            rangeStart.setHours(0, 0, 0, 0)
+            rangeEnd = today
+        } else if (params.from) {
+            rangeStart = new Date(params.from)
+            rangeStart.setHours(0, 0, 0, 0)
+            rangeEnd = params.to ? new Date(params.to) : new Date()
+            rangeEnd.setHours(0, 0, 0, 0)
+        } else {
+            // Default: yesterday
+            rangeStart = new Date()
+            rangeStart.setDate(rangeStart.getDate() - 1)
+            rangeStart.setHours(0, 0, 0, 0)
+            rangeEnd = new Date(rangeStart)
+        }
+
+        const employeeWhere = employeeId
+            ? { id: employeeId }
+            : { status: 'ACTIVE' as const }
+        const employees = await prisma.employee.findMany({ where: employeeWhere })
+
+        const [completedStatus, pendingStatuses] = await Promise.all([
+            prisma.taskStatus.findUnique({ where: { name: 'COMPLETED' } }),
+            prisma.taskStatus.findMany({ where: { name: { in: ['PENDING', 'IN_PROGRESS'] } } }),
+        ])
+
+        let upserted = 0
+        const cursor = new Date(rangeStart)
+
+        while (cursor <= rangeEnd) {
+            const dayStart = new Date(cursor)
+            const dayEnd   = new Date(cursor)
+            dayEnd.setDate(dayEnd.getDate() + 1)
+
+            await Promise.all(employees.map(async emp => {
+                const attendances = await prisma.attendance.findMany({
+                    where: {
+                        employeeId: emp.id,
+                        status: 'CLOSED',
+                        startedAt: { gte: dayStart, lt: dayEnd },
+                    },
+                })
+                if (attendances.length === 0) return
+
+                const [completedTasks, tasksPendingCount] = await Promise.all([
+                    completedStatus
+                        ? prisma.task.findMany({
+                            where: {
+                                employeeId: emp.id,
+                                statusId: completedStatus.id,
+                                endTime: { gte: dayStart, lt: dayEnd },
+                            },
+                        })
+                        : Promise.resolve([]),
+                    pendingStatuses.length > 0
+                        ? prisma.task.count({
+                            where: {
+                                employeeId: emp.id,
+                                statusId: { in: pendingStatuses.map(s => s.id) },
+                            },
+                        })
+                        : Promise.resolve(0),
+                ])
+
+                const totalWorkedHours = attendances.reduce(
+                    (s, a) => s + Number(a.workedHours ?? 0), 0,
+                )
+                const tasksCompleted = completedTasks.length
+
+                const minutesValues = completedTasks
+                    .map(t =>
+                        t.minutesSpent != null ? t.minutesSpent
+                            : t.startTime && t.endTime
+                                ? Math.round((t.endTime.getTime() - t.startTime.getTime()) / 60000)
+                                : null,
+                    )
+                    .filter((v): v is number => v != null)
+
+                const avgTaskTimeMinutes = minutesValues.length > 0
+                    ? Math.round(minutesValues.reduce((a, b) => a + b, 0) / minutesValues.length)
+                    : null
+
+                const hoursScore      = Math.min(totalWorkedHours / 8, 1) * 100
+                const totalTasks      = tasksCompleted + tasksPendingCount
+                const completionScore = totalTasks > 0 ? (tasksCompleted / totalTasks) * 100 : 0
+                const productivityScore = Math.round((hoursScore * 0.6 + completionScore * 0.4) * 100) / 100
+
+                await prisma.employeeKPI.upsert({
+                    where: { employeeId_date: { employeeId: emp.id, date: dayStart } },
+                    create: {
+                        employeeId:        emp.id,
+                        date:              dayStart,
+                        tasksCompleted,
+                        tasksPending:      tasksPendingCount,
+                        avgTaskTimeMinutes,
+                        totalWorkedHours:  Math.round(totalWorkedHours * 100) / 100,
+                        productivityScore,
+                    },
+                    update: {
+                        tasksCompleted,
+                        tasksPending:      tasksPendingCount,
+                        avgTaskTimeMinutes,
+                        totalWorkedHours:  Math.round(totalWorkedHours * 100) / 100,
+                        productivityScore,
+                    },
+                })
+                upserted++
+            }))
+
+            cursor.setDate(cursor.getDate() + 1)
+        }
+
+        return { upserted }
     }
 
     async getAlerts() {
