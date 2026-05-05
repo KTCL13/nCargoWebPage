@@ -1,6 +1,7 @@
 import { attendanceRepository } from '../repositories/attendance.repository'
 import { attendanceEventRepository } from '../repositories/attendance-event.repository'
 import { employeeRepository } from '@/modules/employees/repositories/employee.repository'
+import { analyticsService } from '@/modules/analytics/services/analytics.service'
 import { auditLog } from '@/lib/audit-logger'
 import { Attendance, AttendanceEvent, AttendanceStatus } from '@prisma/client'
 
@@ -162,6 +163,11 @@ class AttendanceService {
             newValues: { ip, endedAt, workedHours },
         })
 
+        // Fire-and-forget: populate EmployeeKPI for today
+        const today = new Date()
+        today.setHours(0, 0, 0, 0)
+        analyticsService.aggregateKPIs({ employeeId, from: today, to: today }).catch(() => {})
+
         return { ...updated, events: allEvents }
     }
 
@@ -224,6 +230,11 @@ class AttendanceService {
             performedBy: adminId,
             newValues: { status: 'CLOSED', endedAt: now, workedHours }
         })
+
+        // Fire-and-forget: update EmployeeKPI for the affected day
+        const day = new Date(attendance.startedAt)
+        day.setHours(0, 0, 0, 0)
+        analyticsService.aggregateKPIs({ employeeId: attendance.employeeId, from: day, to: day }).catch(() => {})
 
         return updated
     }

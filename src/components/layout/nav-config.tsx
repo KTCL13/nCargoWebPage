@@ -60,6 +60,12 @@ export const NAV_ITEMS: NavItem[] = [
     roles: ['ADMIN'],
   },
   {
+    label: 'KPIs Empleados',
+    href: '/employees/reports',
+    icon: <span aria-hidden="true">📈</span>,
+    roles: ['ADMIN'],
+  },
+  {
     label: 'Configuración',
     href: '/admin/configuracion',
     icon: <span aria-hidden="true">⚙️</span>,
