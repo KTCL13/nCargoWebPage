@@ -5,4 +5,5 @@ export type TaskReassignedEvent = {
     newEmployeeId: number
     newEmployeeName: string
     newEmployeeEmail: string
+    adminId: number
 }

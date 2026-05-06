@@ -114,7 +114,7 @@ class TaskService {
         return this.toTaskResponseDto(task)
     }
 
-    async reassignTask(taskId: number, dto: ReassignTaskDto): Promise<TaskResponseDto> {
+    async reassignTask(taskId: number, dto: ReassignTaskDto, adminId: number): Promise<TaskResponseDto> {
         const existing = await taskRepository.findById(taskId)
 
         if (!existing) {
@@ -134,6 +134,7 @@ class TaskService {
                 newEmployeeId: newEmployee.id,
                 newEmployeeName: newEmployee.name,
                 newEmployeeEmail: newEmployee.email,
+                adminId,
             })
         }
 
@@ -163,7 +164,9 @@ class TaskService {
             }
 
             if (dto.status === 'IN_PROGRESS' && !existing.attendanceId) {
-                const activeAttendance = await attendanceRepository.findActiveByEmployee(existing.employeeId)
+                const emp = await employeeRepository.getEmployeeById(existing.employeeId)
+                const timezone = emp?.timezone ?? 'America/Bogota'
+                const activeAttendance = await attendanceRepository.findActiveByEmployee(existing.employeeId, timezone)
                 if (activeAttendance) {
                     data.attendance = { connect: { id: activeAttendance.id } }
                 }

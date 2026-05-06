@@ -13,3 +13,11 @@ export function getAuthEmployee(req: NextRequest): AuthEmployee {
     const token = authHeader.slice(7)
     return jwtService.verify(token)
 }
+
+export function requireAdmin(req: NextRequest): AuthEmployee {
+    const employee = getAuthEmployee(req)
+    if (employee.role !== 'ADMIN') {
+        throw new Error('Forbidden: se requiere rol ADMIN')
+    }
+    return employee
+}

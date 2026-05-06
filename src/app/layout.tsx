@@ -2,6 +2,7 @@
 import type { Metadata } from "next";
 import { League_Spartan, Poppins, Montserrat } from "next/font/google";
 import "./globals.css";
+import "leaflet/dist/leaflet.css";
 import { AuthProvider } from '@/context/AuthContext'
 
 const leagueSpartan = League_Spartan({

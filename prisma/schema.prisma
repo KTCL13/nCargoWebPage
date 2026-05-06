@@ -14,6 +14,7 @@ model Employee {
   name           String              @db.VarChar(150)
   email          String              @unique @db.VarChar(255)
   status         EmployeeStatus      @default(ACTIVE)
+  timezone       String              @default("America/Bogota")
   metadata       Json?
   createdAt      DateTime            @default(now()) @map("created_at")
   updatedAt      DateTime            @updatedAt @map("updated_at")
@@ -154,6 +155,7 @@ model Attendance {
   id          Int               @id @default(autoincrement())
   employeeId  Int               @map("employee_id")
   status      AttendanceStatus  @default(OPEN)
+  timezone    String            @default("America/Bogota")
   startedAt   DateTime          @map("started_at")
   endedAt     DateTime?         @map("ended_at")
   workedHours Decimal?          @map("worked_hours") @db.Decimal(5, 2)
@@ -222,8 +224,8 @@ model Office {
   longitude           Decimal     @db.Decimal(10, 7)
   coverageRadiusMiles Decimal?    @map("coverage_radius_miles") @db.Decimal(8, 2)
   isActive            Boolean     @default(true) @map("is_active")
-  locationId          Int         @map("location_id")
-  location            Location    @relation(fields: [locationId], references: [id])
+  locationId          Int?        @map("location_id")
+  location            Location?   @relation(fields: [locationId], references: [id])
   quotations          Quotation[]
 
   @@map("offices")
