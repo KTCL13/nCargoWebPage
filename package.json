@@ -33,6 +33,7 @@
     "swagger-ui-dist": "^5.32.4",
     "tailwind-merge": "^3.5.0",
     "tsx": "^4.21.0",
+    "xmlrpc": "^1.3.2",
     "zod": "^4.3.6"
   },
   "devDependencies": {
@@ -45,6 +46,7 @@
     "@types/react-dom": "^19",
     "@types/react-paginate": "^7.1.4",
     "@types/swagger-ui-dist": "^3.30.6",
+    "@types/xmlrpc": "^1.3.10",
     "cross-env": "^10.1.0",
     "eslint": "^9",
     "eslint-config-next": "16.2.3",
