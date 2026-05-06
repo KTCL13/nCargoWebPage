@@ -180,7 +180,9 @@ class CotizacionCalculatorService {
           pickup,
           total,
           flatRateApplied: flatEnabled,
+          source: input.employeeId ? 'EMPLOYEE' : 'PUBLIC',
           employeeId: input.employeeId ?? null,
+          shipmentId: input.shipmentId ?? null,
         },
       })
       .catch((err) => console.error("[CotizacionRecord] save failed:", err));
