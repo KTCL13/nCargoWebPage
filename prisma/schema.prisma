@@ -286,6 +286,20 @@ model Quotation {
 // =======================
 // Shipments
 // =======================
+model Locker {
+  id              Int        @id @default(autoincrement())
+  odooProjectId   Int        @unique @map("odoo_project_id")
+  odooProjectName String     @map("odoo_project_name") @db.VarChar(255)
+  customerName    String?    @map("customer_name") @db.VarChar(255)
+  customerEmail   String?    @map("customer_email") @db.VarChar(255)
+  lastSyncedAt    DateTime?  @map("last_synced_at")
+  createdAt       DateTime   @default(now()) @map("created_at")
+  updatedAt       DateTime   @updatedAt @map("updated_at")
+  shipments       Shipment[]
+
+  @@map("lockers")
+}
+
 model ShipmentStatus {
   id        Int        @id @default(autoincrement())
   name      String     @unique @db.VarChar(100)
@@ -301,6 +315,15 @@ model Shipment {
   statusId           Int              @map("status_id")
   odooOrderId        Int?             @map("odoo_order_id")
   odooCustomerId     Int?             @map("odoo_customer_id")
+  odooTaskId         Int?             @map("odoo_task_id")
+  odooProjectId      Int?             @map("odoo_project_id")
+  odooProjectName    String?          @map("odoo_project_name") @db.VarChar(255)
+  odooCustomerName   String?          @map("odoo_customer_name") @db.VarChar(255)
+  odooStageName      String?          @map("odoo_stage_name") @db.VarChar(100)
+  odooTaskName       String?          @map("odoo_task_name") @db.VarChar(255)
+  isLocker           Boolean          @default(false) @map("is_locker")
+  lockerId           Int?             @map("locker_id")
+  locker             Locker?          @relation(fields: [lockerId], references: [id])
   trackingNumber     String?          @map("tracking_number") @db.VarChar(100)
   weightLbs          Decimal?         @map("weight_lbs") @db.Decimal(8, 2)
   receivedAtMailbox  DateTime?        @map("received_at_mailbox")
@@ -314,6 +337,7 @@ model Shipment {
   createdAt          DateTime         @default(now()) @map("created_at")
   updatedAt          DateTime         @updatedAt @map("updated_at")
   events             ShipmentEvent[]
+  cotizaciones       CotizacionRecord[]
   provider           ShippingProvider @relation(fields: [providerId], references: [id])
   quotation          Quotation?       @relation(fields: [quotationId], references: [id])
   status             ShipmentStatus   @relation(fields: [statusId], references: [id])
@@ -492,11 +516,14 @@ model CotizacionRecord {
   pickup              Decimal   @db.Decimal(12, 2)
   total               Decimal   @db.Decimal(12, 2)
   flatRateApplied     Boolean   @default(false) @map("flat_rate_applied")
+  source              String    @default("PUBLIC") @map("source") @db.VarChar(10)
   employeeId          Int?      @map("employee_id")
+  shipmentId          Int?      @map("shipment_id")
   createdAt           DateTime  @default(now()) @map("created_at")
 
-  destinationLocation Location? @relation(fields: [destinationLocationId], references: [id])
-  employee            Employee? @relation(fields: [employeeId], references: [id])
+  destinationLocation Location?  @relation(fields: [destinationLocationId], references: [id])
+  employee            Employee?  @relation(fields: [employeeId], references: [id])
+  shipment            Shipment?  @relation(fields: [shipmentId], references: [id])
 
   @@map("cotizacion_records")
 }

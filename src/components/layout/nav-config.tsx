@@ -99,4 +99,11 @@ export const NAV_ITEMS: NavItem[] = [
     roles: ['EMPLOYEE'],
     section: 'Cotizaciones',
   },
+  {
+    label: 'Envíos',
+    href: '/employee/envios',
+    icon: <span aria-hidden="true">📦</span>,
+    roles: ['EMPLOYEE'],
+    section: 'Envíos y Casilleros',
+  },
 ]

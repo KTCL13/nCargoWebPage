@@ -2,9 +2,5 @@ import { NextRequest } from 'next/server'
 import { odooLockerController } from '@/modules/shipping/controllers/odoo-locker.controller'
 
 export async function GET(req: NextRequest) {
-  return odooLockerController.getShipments(req)
-}
-
-export async function PATCH(req: NextRequest) {
-  return odooLockerController.updateShipment(req)
+  return odooLockerController.getLockers(req)
 }

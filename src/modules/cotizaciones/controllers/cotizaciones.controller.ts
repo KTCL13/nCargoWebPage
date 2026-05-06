@@ -30,11 +30,14 @@ class CotizacionesController {
 
       const employeeId: number | undefined =
         body.employeeId != null ? Number(body.employeeId) : undefined
+      const shipmentId: number | undefined =
+        body.shipmentId != null ? Number(body.shipmentId) : undefined
 
       const result = await cotizacionCalculatorService.calculate({
         ...body,
         country:    String(country).toUpperCase() as 'CO' | 'MX',
         employeeId,
+        shipmentId,
       })
       return NextResponse.json(result)
     } catch (error: unknown) {
