@@ -27,16 +27,23 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  const include = { employee: { select: { id: true, name: true } } }
+  const include = { employee: { select: { id: true, firstName: true, lastName: true } } }
+
+  function mapKpi(kpis: { employee: { id: number; firstName: string; lastName: string } }[]) {
+    return kpis.map(k => ({
+      ...k,
+      employee: { ...k.employee, name: `${k.employee.firstName} ${k.employee.lastName}`.trim() },
+    }))
+  }
 
   if (pageSize > 0) {
-    const [data, total] = await Promise.all([
+    const [raw, total] = await Promise.all([
       prisma.employeeKPI.findMany({ skip: (page - 1) * pageSize, take: pageSize, where, include, orderBy: { date: 'desc' } }),
       prisma.employeeKPI.count({ where }),
     ])
-    return NextResponse.json({ data, total, page, pageSize, totalPages: Math.ceil(total / pageSize) })
+    return NextResponse.json({ data: mapKpi(raw), total, page, pageSize, totalPages: Math.ceil(total / pageSize) })
   }
 
-  const data = await prisma.employeeKPI.findMany({ where, include, orderBy: { date: 'asc' } })
-  return NextResponse.json({ data, total: data.length })
+  const raw = await prisma.employeeKPI.findMany({ where, include, orderBy: { date: 'asc' } })
+  return NextResponse.json({ data: mapKpi(raw), total: raw.length })
 }

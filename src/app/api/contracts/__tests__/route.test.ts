@@ -50,14 +50,15 @@ function makeReq({ url = 'http://localhost/api/contracts', body }: { url?: strin
 // =====================================================================
 describe('GET /api/contracts', () => {
   it('G1 happy path: sin filtros retorna paginación con defaults', async () => {
-    const contracts = [{ id: 1, salary: 5000, employee: { id: 1, name: 'A' }, job: { id: 1, title: 'Dev' } }]
-    mocked((prisma as any).contract.findMany).mockResolvedValue(contracts)
+    const rawContracts = [{ id: 1, salary: 5000, employee: { id: 1, firstName: 'Ana', lastName: 'García' }, job: { id: 1, title: 'Dev' } }]
+    const mappedContracts = [{ id: 1, salary: 5000, employee: { id: 1, firstName: 'Ana', lastName: 'García', name: 'Ana García' }, job: { id: 1, title: 'Dev' } }]
+    mocked((prisma as any).contract.findMany).mockResolvedValue(rawContracts)
     mocked((prisma as any).contract.count).mockResolvedValue(1)
 
     const res: any = await GET(makeReq())
 
     expect(res.status).toBe(200)
-    await expect(res.json()).resolves.toEqual({ data: contracts, total: 1, page: 1, limit: 10 })
+    await expect(res.json()).resolves.toEqual({ data: mappedContracts, total: 1, page: 1, limit: 10 })
     expect((prisma as any).contract.findMany).toHaveBeenCalledWith(
       expect.objectContaining({ where: {}, skip: 0, take: 10 }),
     )
@@ -72,7 +73,8 @@ describe('GET /api/contracts', () => {
     const call = mocked((prisma as any).contract.findMany).mock.calls[0][0]
     expect(call.where).toEqual({
       OR: [
-        { employee: { name: { contains: 'Juan', mode: 'insensitive' } } },
+        { employee: { firstName: { contains: 'Juan', mode: 'insensitive' } } },
+        { employee: { lastName: { contains: 'Juan', mode: 'insensitive' } } },
         { job: { title: { contains: 'Juan', mode: 'insensitive' } } },
       ],
     })
@@ -101,15 +103,16 @@ describe('GET /api/contracts', () => {
 // =====================================================================
 describe('PUT /api/contracts?id=X', () => {
   it('G1 happy path: retorna 200 con el contrato actualizado y pasa solo campos presentes a prisma.update', async () => {
-    const updated = { id: 7, salary: 8000, hourlyRate: 35, isActive: true }
-    mocked((prisma as any).contract.update).mockResolvedValue(updated)
+    const rawUpdated = { id: 7, salary: 8000, hourlyRate: 35, isActive: true, employee: { id: 1, firstName: 'Ana', lastName: 'García' }, job: { id: 1, title: 'Dev' }, contractType: { id: 1, name: 'MENSUAL' } }
+    const mappedUpdated = { ...rawUpdated, employee: { id: 1, firstName: 'Ana', lastName: 'García', name: 'Ana García' } }
+    mocked((prisma as any).contract.update).mockResolvedValue(rawUpdated)
 
     const res: any = await PUT(
       makeReq({ url: 'http://localhost/api/contracts?id=7', body: { salary: 8000, hourlyRate: 35 } }),
     )
 
     expect(res.status).toBe(200)
-    await expect(res.json()).resolves.toEqual(updated)
+    await expect(res.json()).resolves.toEqual(mappedUpdated)
     const call = mocked((prisma as any).contract.update).mock.calls[0][0]
     expect(call.where).toEqual({ id: 7 })
     expect(call.data).toEqual({ salary: 8000, hourlyRate: 35 })

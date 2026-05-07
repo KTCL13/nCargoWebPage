@@ -36,7 +36,7 @@ class AnalyticsService {
                 where: employeeWhere,
                 skip: (page - 1) * limit,
                 take: limit,
-                orderBy: { name: 'asc' },
+                orderBy: { firstName: 'asc' },
             }),
         ])
 
@@ -94,7 +94,7 @@ class AnalyticsService {
 
                 return {
                     employeeId: employee.id,
-                    employeeName: employee.name,
+                    employeeName: `${employee.firstName} ${employee.lastName}`.trim(),
                     tasksCompleted,
                     avgCompletionMinutes,
                     totalWorkedHours: Math.round(totalWorkedHours * 100) / 100,
@@ -122,7 +122,7 @@ class AnalyticsService {
                 startTime: { not: null },
                 ...(Object.keys(dateFilter).length && { createdAt: dateFilter }),
             },
-            include: { status: true, employee: { select: { name: true } } },
+            include: { status: true, employee: { select: { firstName: true, lastName: true } } },
         })
 
         return tasks.map(t => {
@@ -136,7 +136,7 @@ class AnalyticsService {
                 taskId: t.id,
                 title: t.title,
                 employeeId: t.employeeId,
-                employeeName: t.employee.name,
+                employeeName: `${t.employee.firstName} ${t.employee.lastName}`.trim(),
                 startTime: t.startTime,
                 endTime: t.endTime,
                 minutesSpent: computedMinutes,
@@ -154,7 +154,7 @@ class AnalyticsService {
 
         const employees = await prisma.employee.findMany({
             where: { status: 'ACTIVE' },
-            select: { id: true, name: true },
+            select: { id: true, firstName: true, lastName: true },
         })
 
         const results = await Promise.all(
@@ -190,7 +190,7 @@ class AnalyticsService {
 
                 return {
                     employeeId: employee.id,
-                    employeeName: employee.name,
+                    employeeName: `${employee.firstName} ${employee.lastName}`.trim(),
                     totalTasks,
                     pendingCount: counts['PENDING'],
                     inProgressCount: counts['IN_PROGRESS'],
@@ -355,15 +355,15 @@ class AnalyticsService {
                         status: { in: ['OPEN', 'PAUSED'] },
                         startedAt: { lt: startOfToday },
                     },
-                    include: { employee: { select: { id: true, name: true } } },
+                    include: { employee: { select: { id: true, firstName: true, lastName: true } } },
                 }),
                 prisma.task.findMany({
                     where: { status: { name: 'NOT_DONE' } },
-                    include: { employee: { select: { id: true, name: true } } },
+                    include: { employee: { select: { id: true, firstName: true, lastName: true } } },
                 }),
                 prisma.employee.findMany({
                     where: { status: 'ACTIVE' },
-                    select: { id: true, name: true },
+                    select: { id: true, firstName: true, lastName: true },
                 }),
                 prisma.attendance.findMany({
                     where: { startedAt: { gte: sevenDaysAgo } },
@@ -384,7 +384,7 @@ class AnalyticsService {
                 type: 'UNCLOSED_ATTENDANCE',
                 severity: 'medium',
                 employeeId: a.employee.id,
-                employeeName: a.employee.name,
+                employeeName: `${a.employee.firstName} ${a.employee.lastName}`.trim(),
                 detail: `Attendance started at ${a.startedAt.toISOString()} was never closed`,
             })
         }
@@ -394,7 +394,7 @@ class AnalyticsService {
                 type: 'OVERDUE_TASK',
                 severity: 'high',
                 employeeId: t.employee.id,
-                employeeName: t.employee.name,
+                employeeName: `${t.employee.firstName} ${t.employee.lastName}`.trim(),
                 detail: `Task "${t.title}" (id: ${t.id}) is marked NOT_DONE`,
             })
         }
@@ -406,7 +406,7 @@ class AnalyticsService {
                     type: 'NO_ACTIVITY',
                     severity: 'low',
                     employeeId: emp.id,
-                    employeeName: emp.name,
+                    employeeName: `${emp.firstName} ${emp.lastName}`.trim(),
                     detail: `No attendance recorded in the last 7 days`,
                 })
             }
@@ -428,7 +428,7 @@ class AnalyticsService {
             notDoneByEmployee.map(r => [r.employeeId, r._count.id]),
         )
 
-        const empMap = Object.fromEntries(allEmployees.map(e => [e.id, e.name]))
+        const empMap = Object.fromEntries(allEmployees.map(e => [e.id, `${e.firstName} ${e.lastName}`.trim()]))
 
         for (const row of tasksByEmployee) {
             const notDone = notDoneMap[row.employeeId] ?? 0

@@ -5,6 +5,24 @@ import { COLOMBIA_CITIES } from "./data/colombia-cities";
 const prisma = new PrismaClient();
 
 async function main() {
+  // ── IdentificationType ────────────────────────────────────────────
+  const idTypes = [
+    { code: 'CC',       name: 'Cédula de ciudadanía' },
+    { code: 'CE',       name: 'Cédula de extranjería' },
+    { code: 'PASSPORT', name: 'Passport' },
+    { code: 'NIT',      name: 'NIT' },
+    { code: 'TI',       name: 'Tarjeta de identidad' },
+    { code: 'PPT',      name: 'Permiso de protección temporal' },
+  ]
+  for (const idType of idTypes) {
+    await prisma.identificationType.upsert({
+      where: { code: idType.code },
+      update: { name: idType.name },
+      create: idType,
+    })
+  }
+  console.log(`✓ IdentificationType: ${idTypes.length} records`)
+
   // ── SystemConfig ──────────────────────────────────────────────────
   const configs: { key: string; value: unknown; description: string }[] = [
     {
@@ -173,6 +191,7 @@ async function main() {
   console.log("✓ seed-shipping complete");
 
   const defaultPasswordHash = await bcrypt.hash("123", 10);
+  const ccType = await prisma.identificationType.findUniqueOrThrow({ where: { code: 'CC' } });
 
   // ── 1. JOBS ──
   const jobs = await Promise.all([
@@ -224,7 +243,8 @@ async function main() {
   const employees = await Promise.all([
     prisma.employee.create({
       data: {
-        name: "Carlos Mendoza",
+        firstName: "Carlos", lastName: "Mendoza",
+        identificationNumber: "10000001", identificationTypeId: ccType.id,
         email: "carlos@ncargo.com",
         status: "ACTIVE",
         passwordHash: defaultPasswordHash,
@@ -233,7 +253,8 @@ async function main() {
     }),
     prisma.employee.create({
       data: {
-        name: "Ana Gómez",
+        firstName: "Ana", lastName: "Gómez",
+        identificationNumber: "10000002", identificationTypeId: ccType.id,
         email: "ana@ncargo.com",
         status: "ACTIVE",
         passwordHash: defaultPasswordHash,
@@ -242,7 +263,8 @@ async function main() {
     }),
     prisma.employee.create({
       data: {
-        name: "Luis Torres",
+        firstName: "Luis", lastName: "Torres",
+        identificationNumber: "10000003", identificationTypeId: ccType.id,
         email: "luis@ncargo.com",
         status: "ACTIVE",
         passwordHash: defaultPasswordHash,
@@ -251,7 +273,8 @@ async function main() {
     }),
     prisma.employee.create({
       data: {
-        name: "María Rodríguez",
+        firstName: "María", lastName: "Rodríguez",
+        identificationNumber: "10000004", identificationTypeId: ccType.id,
         email: "maria@ncargo.com",
         status: "ACTIVE",
         passwordHash: defaultPasswordHash,
@@ -260,7 +283,8 @@ async function main() {
     }),
     prisma.employee.create({
       data: {
-        name: "Pedro Sánchez",
+        firstName: "Pedro", lastName: "Sánchez",
+        identificationNumber: "10000005", identificationTypeId: ccType.id,
         email: "pedro@ncargo.com",
         status: "ACTIVE",
         passwordHash: defaultPasswordHash,
@@ -269,7 +293,8 @@ async function main() {
     }),
     prisma.employee.create({
       data: {
-        name: "Sofía Castro",
+        firstName: "Sofía", lastName: "Castro",
+        identificationNumber: "10000006", identificationTypeId: ccType.id,
         email: "sofia@ncargo.com",
         status: "ACTIVE",
         passwordHash: defaultPasswordHash,
@@ -278,7 +303,8 @@ async function main() {
     }),
     prisma.employee.create({
       data: {
-        name: "Andrés Vargas",
+        firstName: "Andrés", lastName: "Vargas",
+        identificationNumber: "10000007", identificationTypeId: ccType.id,
         email: "andres@ncargo.com",
         status: "ACTIVE",
         passwordHash: defaultPasswordHash,
@@ -287,7 +313,8 @@ async function main() {
     }),
     prisma.employee.create({
       data: {
-        name: "Valentina López",
+        firstName: "Valentina", lastName: "López",
+        identificationNumber: "10000008", identificationTypeId: ccType.id,
         email: "valentina@ncargo.com",
         status: "INACTIVE",
         passwordHash: defaultPasswordHash,
@@ -296,7 +323,8 @@ async function main() {
     }),
     prisma.employee.create({
       data: {
-        name: "Javier Morales",
+        firstName: "Javier", lastName: "Morales",
+        identificationNumber: "10000009", identificationTypeId: ccType.id,
         email: "javier@ncargo.com",
         status: "ACTIVE",
         passwordHash: defaultPasswordHash,
@@ -305,7 +333,8 @@ async function main() {
     }),
     prisma.employee.create({
       data: {
-        name: "Camila Herrera",
+        firstName: "Camila", lastName: "Herrera",
+        identificationNumber: "10000010", identificationTypeId: ccType.id,
         email: "camila@ncargo.com",
         status: "ACTIVE",
         passwordHash: defaultPasswordHash,
@@ -314,7 +343,8 @@ async function main() {
     }),
     prisma.employee.create({
       data: {
-        name: "Thomas Sorza",
+        firstName: "Thomas", lastName: "Sorza",
+        identificationNumber: "10000011", identificationTypeId: ccType.id,
         email: "thomas@sorza.com",
         status: "ACTIVE",
         passwordHash: defaultPasswordHash,

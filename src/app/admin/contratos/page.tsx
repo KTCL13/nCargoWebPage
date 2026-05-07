@@ -20,11 +20,6 @@ type Contract = {
   contractType: { id: number; name: string }
 }
 
-type ContractType = {
-  id: number
-  name: string
-}
-
 function fmt(date: string | null) {
   if (!date) return '—'
   return new Date(date).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' })
@@ -39,11 +34,10 @@ export default function ContratosPage() {
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(false)
 
-  const [dirty, setDirty] = useState<Record<number, Partial<Contract & { contractTypeId: number }>>>({})
+  const [dirty, setDirty] = useState<Record<number, { isActive: boolean }>>({})
   const [selected, setSelected] = useState<Set<number>>(new Set())
   const [saving, setSaving] = useState<Set<number>>(new Set())
 
-  const [contractTypes, setContractTypes] = useState<ContractType[]>([])
   const [historyOpen, setHistoryOpen] = useState(false)
   const [historyList, setHistoryList] = useState<Contract[]>([])
   const [historyLoading, setHistoryLoading] = useState(false)
@@ -82,7 +76,6 @@ export default function ContratosPage() {
 
   useEffect(() => {
     fetchContracts()
-    fetch('/api/contract-types').then(r => r.json()).then(setContractTypes).catch(() => { })
   }, [fetchContracts])
 
   // ── Inline Edit ───────────────────────────────────────────────────────
@@ -91,14 +84,6 @@ export default function ContratosPage() {
       ...d,
       [id]: { ...(d[id] ?? {}), isActive: !(d[id]?.isActive ?? current) },
     }))
-  }
-
-  function updateField<K extends keyof (Contract & { contractTypeId: number })>(
-    id: number,
-    field: K,
-    value: (Contract & { contractTypeId: number })[K]
-  ) {
-    setDirty(d => ({ ...d, [id]: { ...(d[id] ?? {}), [field]: value } }))
   }
 
   // ── History Modal ─────────────────────────────────────────────────────
@@ -266,34 +251,14 @@ export default function ContratosPage() {
                       <p className="text-xs text-gray-400">{c.employee.email}</p>
                     </td>
                     <td className="px-4 py-3 font-subtitles text-gray-700">{c.job.title}</td>
-                    <td className="px-4 py-3 font-subtitles text-gray-600">
-                      <select
-                        value={dirty[c.id]?.contractTypeId ?? c.contractType.id}
-                        onChange={e => updateField(c.id, 'contractTypeId', Number(e.target.value))}
-                        className="form-input text-xs px-2 py-1.5 w-full min-w-[100px] border-transparent hover:border-gray-200 focus:border-[var(--color-primary)] transition"
-                      >
-                        {contractTypes.map(ct => (
-                          <option key={ct.id} value={ct.id}>{ct.name}</option>
-                        ))}
-                      </select>
+                    <td className="px-4 py-3 font-subtitles text-gray-600 text-xs">
+                      {c.contractType?.name ?? '—'}
                     </td>
-                    <td className="px-4 py-3 font-subtitles text-gray-700">
-                      <input
-                        type="number" step="0.01"
-                        value={dirty[c.id]?.salary ?? c.salary ?? ''}
-                        onChange={e => updateField(c.id, 'salary', Number(e.target.value) || null)}
-                        className="form-input text-xs px-2 py-1.5 w-24 border-transparent hover:border-gray-200 focus:border-[var(--color-primary)] transition"
-                        placeholder="0.00"
-                      />
+                    <td className="px-4 py-3 font-subtitles text-gray-700 text-xs whitespace-nowrap">
+                      {c.salary != null ? `$${c.salary}` : '—'}
                     </td>
-                    <td className="px-4 py-3 font-subtitles text-gray-700">
-                      <input
-                        type="number" step="0.01"
-                        value={dirty[c.id]?.hourlyRate ?? c.hourlyRate ?? ''}
-                        onChange={e => updateField(c.id, 'hourlyRate', Number(e.target.value) || null)}
-                        className="form-input text-xs px-2 py-1.5 w-20 border-transparent hover:border-gray-200 focus:border-[var(--color-primary)] transition"
-                        placeholder="0.00"
-                      />
+                    <td className="px-4 py-3 font-subtitles text-gray-700 text-xs whitespace-nowrap">
+                      {c.hourlyRate != null ? `$${c.hourlyRate}` : '—'}
                     </td>
                     <td className="px-4 py-3">
                       <button

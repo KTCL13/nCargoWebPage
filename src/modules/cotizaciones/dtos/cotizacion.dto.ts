@@ -7,10 +7,12 @@ export interface CalcularCotizacionDto {
   actualWeightLb: number           // Excel col A — Peso (lb)
   declaredValueUsd: number         // Excel col F — Valor declarado (USD)
   pickupMiles?: number             // Excel col H — Millas de recogida (default 0)
-  employeeId?: number              // optional: set by employee dashboard, null for public
+  employeeId?: number              // set by employee dashboard; absent on public quotes
+  shipmentId?: number              // links the quote to a specific envío/locker task
 }
 
 export interface CotizacionBreakdownDto {
+  quotationId: number
   transport: number
   volumetricSurcharge: number
   insurance: number

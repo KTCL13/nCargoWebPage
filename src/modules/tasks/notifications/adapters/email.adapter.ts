@@ -1,12 +1,23 @@
-import { Resend } from 'resend'
+import { Resend, CreateEmailOptions, CreateEmailResponse } from 'resend'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 
-const FROM = 'N-Cargo <noreply@ncargo.app>'
+const FROM = process.env.RESEND_FROM ?? 'N-Cargo <onboarding@resend.dev>'
+
+async function send(payload: CreateEmailOptions): Promise<void> {
+    if (!process.env.RESEND_API_KEY) {
+        throw new Error('RESEND_API_KEY no está configurada')
+    }
+    const result: CreateEmailResponse = await resend.emails.send(payload)
+    if (result.error) {
+        const { name, message } = result.error
+        throw new Error(`Resend rechazó el envío a ${payload.to} (${name}): ${message}`)
+    }
+}
 
 class EmailAdapter {
     async sendTaskAssigned(to: string, employeeName: string, taskTitle: string): Promise<void> {
-        await resend.emails.send({
+        await send({
             from: FROM,
             to,
             subject: `Nueva tarea asignada: ${taskTitle}`,
@@ -19,7 +30,7 @@ class EmailAdapter {
     }
 
     async sendTaskReassigned(to: string, employeeName: string, taskTitle: string): Promise<void> {
-        await resend.emails.send({
+        await send({
             from: FROM,
             to,
             subject: `Tarea reasignada: ${taskTitle}`,
@@ -37,7 +48,7 @@ class EmailAdapter {
         taskTitle: string,
         employeeName: string,
     ): Promise<void> {
-        await resend.emails.send({
+        await send({
             from: FROM,
             to,
             subject: `Alerta: Tarea no completada — ${taskTitle}`,

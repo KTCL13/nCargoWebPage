@@ -1,5 +1,8 @@
 export type CreateEmployeeDto = {
-    name: string
+    firstName: string
+    lastName: string
+    identificationNumber: string
+    identificationTypeId: number
     email: string
     password: string
     status: 'ACTIVE' | 'INACTIVE'

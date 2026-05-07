@@ -8,9 +8,15 @@ import { Pagination } from '@/components/ui/Pagination'
 
 const LIMIT = 10
 
+type IdentificationType = { id: number; code: string; name: string }
+
 type Employee = {
   id: number
+  firstName: string
+  lastName: string
   name: string
+  identificationNumber: string
+  identificationType: IdentificationType
   email: string
   status: 'ACTIVE' | 'INACTIVE'
   roles: string[]
@@ -21,6 +27,7 @@ type Employee = {
 type Role = { id: number; name: string }
 type Job = { id: number; title: string }
 type ContractType = { id: number; name: string }
+// IdentificationType already declared above
 
 function initials(name: string) {
   return name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()
@@ -60,12 +67,14 @@ export default function EmpleadosPage() {
   const [roles, setRoles] = useState<Role[]>([])
   const [jobs, setJobs] = useState<Job[]>([])
   const [contractTypes, setContractTypes] = useState<ContractType[]>([])
+  const [identificationTypes, setIdentificationTypes] = useState<IdentificationType[]>([])
   const [modalLoading, setModalLoading] = useState(false)
   const [modalError, setModalError] = useState('')
   const [editingId, setEditingId] = useState<number | null>(null)
   const [isViewOnly, setIsViewOnly] = useState(false)
   const [form, setForm] = useState({
-    firstName: '', lastName: '', identification: '', email: '', password: '', phone: '',
+    firstName: '', lastName: '', identificationNumber: '', identificationTypeId: '',
+    email: '', password: '', phone: '',
     roleId: '', status: 'ACTIVE' as 'ACTIVE' | 'INACTIVE',
     jobId: '', contractTypeId: '',
     salary: '', hourlyRate: '', startDate: '', endDate: '',
@@ -73,8 +82,25 @@ export default function EmpleadosPage() {
   const [filterStatus, setFilterStatus] = useState<string>('')
   const [filterRole, setFilterRole] = useState<string>('')
 
+  // Contract modal (assign a new contract to existing employee)
+  const [contractModalOpen, setContractModalOpen] = useState(false)
+  const [contractModalEmpId, setContractModalEmpId] = useState<number | null>(null)
+  const [contractModalEmpName, setContractModalEmpName] = useState('')
+  const [contractModalLoading, setContractModalLoading] = useState(false)
+  const [contractModalError, setContractModalError] = useState('')
+  const [contractForm, setContractForm] = useState({
+    jobId: '', contractTypeId: '', salary: '', hourlyRate: '', startDate: '', endDate: '',
+  })
+
   // KPI
   const [activeCount, setActiveCount] = useState<number | null>(null)
+
+  // Determines whether a contract type is hourly-based (POR_HORA) vs monthly (MENSUAL)
+  function isHourlyContractType(typeId: string | number) {
+    if (!typeId) return false
+    const type = contractTypes.find(ct => String(ct.id) === String(typeId))
+    return type?.name?.toUpperCase().includes('HORA') ?? false
+  }
 
   // ── Fetch employees ──────────────────────────────────────────────────
   const fetchEmployees = useCallback(async () => {
@@ -106,10 +132,12 @@ export default function EmpleadosPage() {
       fetch('/api/roles').then(x => x.json()),
       fetch('/api/jobs').then(x => x.json()),
       fetch('/api/contract-types').then(x => x.json()),
-    ]).then(([r, j, ct]) => {
+      fetch('/api/identification-types').then(x => x.json()),
+    ]).then(([r, j, ct, it]) => {
       setRoles(r)
       setJobs(j)
       setContractTypes(ct)
+      setIdentificationTypes(it)
     }).catch(err => console.error('Error fetching dependencies:', err))
   }, [])
 
@@ -130,24 +158,13 @@ export default function EmpleadosPage() {
     setIsViewOnly(view)
 
     const emptyForm = {
-      firstName: '', lastName: '', identification: '', email: '', password: '', phone: '',
+      firstName: '', lastName: '', identificationNumber: '', identificationTypeId: '',
+      email: '', password: '', phone: '',
       roleId: '', status: 'ACTIVE' as 'ACTIVE' | 'INACTIVE',
       jobId: '', contractTypeId: '',
       salary: '', hourlyRate: '', startDate: '', endDate: '',
     }
     setForm(emptyForm)
-
-    // Load dependencies if not already loaded (though they should be from mount)
-    if (roles.length === 0) {
-      const [r, j, ct] = await Promise.all([
-        fetch('/api/roles').then(x => x.json()),
-        fetch('/api/jobs').then(x => x.json()),
-        fetch('/api/contract-types').then(x => x.json()),
-      ])
-      setRoles(r)
-      setJobs(j)
-      setContractTypes(ct)
-    }
 
     // If editing or viewing, fetch full employee details and populate form
     if (emp) {
@@ -157,22 +174,20 @@ export default function EmpleadosPage() {
         if (!res.ok) throw new Error('Error al cargar datos')
         const fullData = await res.json()
 
-        // Map roles: if fullData.roles is objects, get id, else find in roles list
-        const roleId = fullData.roles?.[0]?.id?.toString() ||
-          roles.find((role: Role) => role.name === fullData.roles?.[0])?.id?.toString() || '';
+        const roleId = roles.find((role: Role) => role.name === fullData.roles?.[0])?.id?.toString() || ''
 
-        const [firstName, ...lastNames] = (fullData.name || '').split(' ')
         setForm({
           ...emptyForm,
-          firstName: firstName || '',
-          lastName: lastNames.join(' ') || '',
-          identification: fullData.metadata?.identification || '',
+          firstName: fullData.firstName || '',
+          lastName: fullData.lastName || '',
+          identificationNumber: fullData.identificationNumber || '',
+          identificationTypeId: fullData.identificationType?.id?.toString() || '',
           email: fullData.email || '',
           status: fullData.status || 'ACTIVE',
           phone: fullData.metadata?.phone || '',
-          roleId: roleId,
+          roleId,
           jobId: fullData.activeContract?.job?.id?.toString() || '',
-          contractTypeId: fullData.activeContract?.contractTypeId?.toString() || '',
+          contractTypeId: fullData.activeContract?.contractType?.id?.toString() || '',
           salary: fullData.activeContract?.salary?.toString() || '',
           hourlyRate: fullData.activeContract?.hourlyRate?.toString() || '',
           startDate: fullData.activeContract?.startDate ? new Date(fullData.activeContract.startDate).toISOString().split('T')[0] : '',
@@ -197,14 +212,14 @@ export default function EmpleadosPage() {
       const method = isEditing ? 'PUT' : 'POST'
 
       const body: any = {
-        name: `${form.firstName} ${form.lastName}`.trim(),
+        firstName: form.firstName.trim(),
+        lastName: form.lastName.trim(),
+        identificationNumber: form.identificationNumber.trim(),
+        identificationTypeId: Number(form.identificationTypeId),
         email: form.email,
         status: form.status,
         roleIds: [Number(form.roleId)],
-        metadata: {
-          phone: form.phone,
-          identification: form.identification,
-        },
+        metadata: { phone: form.phone },
       }
 
       // Only include password if creating or if provided during edit
@@ -221,18 +236,17 @@ export default function EmpleadosPage() {
       const empData = await empRes.json()
       if (!empRes.ok) throw new Error(empData.message || 'Error en la operación')
 
-      // Handle contract (only if provided)
-      if (form.jobId && form.contractTypeId) {
-        // For simplicity, we use the same endpoint, 
-        // usually it handles create or update based on employee ID
-        await fetch(`/api/employees/contracts?employeeId=${isEditing ? editingId : empData.id}`, {
+      // Initial contract is only created on employee creation, not on edit.
+      // To add a new contract to an existing employee, use the "Asignar nuevo contrato" action.
+      if (!isEditing && form.jobId && form.contractTypeId) {
+        await fetch(`/api/employees/contracts?employeeId=${empData.id}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             jobId: Number(form.jobId),
             contractTypeId: Number(form.contractTypeId),
-            salary: Number(form.salary),
-            hourlyRate: Number(form.hourlyRate),
+            salary: form.salary ? Number(form.salary) : 0,
+            hourlyRate: form.hourlyRate ? Number(form.hourlyRate) : 0,
             startDate: form.startDate,
             ...(form.endDate && { endDate: form.endDate }),
           }),
@@ -245,6 +259,46 @@ export default function EmpleadosPage() {
       setModalError(err instanceof Error ? err.message : 'Error al guardar empleado')
     } finally {
       setModalLoading(false)
+    }
+  }
+
+  // ── Contract modal (assign new contract to existing employee) ─────────
+  function openContractModal(emp: Employee) {
+    setContractModalEmpId(emp.id)
+    setContractModalEmpName(emp.name)
+    setContractForm({ jobId: '', contractTypeId: '', salary: '', hourlyRate: '', startDate: '', endDate: '' })
+    setContractModalError('')
+    setContractModalOpen(true)
+  }
+
+  async function handleContractSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!contractModalEmpId) return
+    setContractModalLoading(true)
+    setContractModalError('')
+    try {
+      const res = await fetch(`/api/employees/contracts?employeeId=${contractModalEmpId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jobId: Number(contractForm.jobId),
+          contractTypeId: Number(contractForm.contractTypeId),
+          salary: contractForm.salary ? Number(contractForm.salary) : 0,
+          hourlyRate: contractForm.hourlyRate ? Number(contractForm.hourlyRate) : 0,
+          startDate: contractForm.startDate,
+          ...(contractForm.endDate && { endDate: contractForm.endDate }),
+        }),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err.message || 'Error creando contrato')
+      }
+      setContractModalOpen(false)
+      fetchEmployees()
+    } catch (err) {
+      setContractModalError(err instanceof Error ? err.message : 'Error al crear contrato')
+    } finally {
+      setContractModalLoading(false)
     }
   }
 
@@ -507,6 +561,13 @@ export default function EmpleadosPage() {
                           >
                             ✏️
                           </button>
+                          <button
+                            onClick={() => openContractModal(emp)}
+                            className="p-1.5 text-green-600 hover:bg-green-50 rounded-[var(--radius-md)] transition-all"
+                            title="Asignar nuevo contrato"
+                          >
+                            📝
+                          </button>
                         </div>
                         
                         <button
@@ -604,12 +665,27 @@ export default function EmpleadosPage() {
                       className="form-input disabled:bg-gray-50 disabled:text-gray-500"
                     />
                   </div>
-                  <div className="sm:col-span-2">
-                    <label className="block text-xs font-subtitles font-semibold text-gray-600 mb-1">Identificación <span className="text-red-500">*</span></label>
-                    <input
-                      type="text" required placeholder="C.C. / DNI / Pasaporte"
+                  <div>
+                    <label className="block text-xs font-subtitles font-semibold text-gray-600 mb-1">Tipo de identificación <span className="text-red-500">*</span></label>
+                    <select
+                      required
                       disabled={isViewOnly}
-                      value={form.identification} onChange={e => setForm(f => ({ ...f, identification: e.target.value }))}
+                      value={form.identificationTypeId}
+                      onChange={e => setForm(f => ({ ...f, identificationTypeId: e.target.value }))}
+                      className="form-input bg-white disabled:bg-gray-50 disabled:text-gray-500"
+                    >
+                      <option value="">Seleccionar...</option>
+                      {identificationTypes.map(it => (
+                        <option key={it.id} value={it.id}>{it.code} — {it.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-subtitles font-semibold text-gray-600 mb-1">Número de identificación <span className="text-red-500">*</span></label>
+                    <input
+                      type="text" required placeholder="Ej: 1234567890"
+                      disabled={isViewOnly}
+                      value={form.identificationNumber} onChange={e => setForm(f => ({ ...f, identificationNumber: e.target.value }))}
                       className="form-input disabled:bg-gray-50 disabled:text-gray-500"
                     />
                   </div>
@@ -669,10 +745,11 @@ export default function EmpleadosPage() {
                 </div>
               </div>
 
-              {/* Contract section */}
+              {/* Contract section — only shown on create or view (edit uses the dedicated "Asignar nuevo contrato" action) */}
+              {(!editingId || isViewOnly) && (
               <div>
                 <p className="font-subtitles text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">
-                  Contrato inicial
+                  {isViewOnly ? 'Contrato activo' : 'Contrato inicial'}
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
@@ -692,7 +769,15 @@ export default function EmpleadosPage() {
                     <select
                       required value={form.contractTypeId}
                       disabled={isViewOnly}
-                      onChange={e => setForm(f => ({ ...f, contractTypeId: e.target.value }))}
+                      onChange={e => {
+                        const newTypeId = e.target.value
+                        setForm(f => ({
+                          ...f,
+                          contractTypeId: newTypeId,
+                          salary: isHourlyContractType(newTypeId) ? '' : f.salary,
+                          hourlyRate: isHourlyContractType(newTypeId) ? f.hourlyRate : '',
+                        }))
+                      }}
                       className="form-input bg-white disabled:bg-gray-50 disabled:text-gray-500"
                     >
                       <option value="">Seleccionar...</option>
@@ -700,29 +785,35 @@ export default function EmpleadosPage() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-subtitles font-semibold text-gray-600 mb-1">Salario <span className="text-red-500">*</span></label>
+                    <label className="block text-xs font-subtitles font-semibold text-gray-600 mb-1">
+                      Salario {!isHourlyContractType(form.contractTypeId) && <span className="text-red-500">*</span>}
+                    </label>
                     <input
-                      type="text" required placeholder="0.00" inputMode="decimal"
+                      type="text" placeholder="0.00" inputMode="decimal"
+                      required={!isHourlyContractType(form.contractTypeId)}
                       value={form.salary}
-                      disabled={isViewOnly}
+                      disabled={isViewOnly || isHourlyContractType(form.contractTypeId)}
                       onChange={e => {
                         const val = e.target.value.replace(/[^0-9.]/g, '');
                         setForm(f => ({ ...f, salary: val }));
                       }}
-                      className="form-input disabled:bg-gray-50 disabled:text-gray-500"
+                      className="form-input disabled:bg-gray-50 disabled:text-gray-400"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-subtitles font-semibold text-gray-600 mb-1">Tarifa por hora <span className="text-red-500">*</span></label>
+                    <label className="block text-xs font-subtitles font-semibold text-gray-600 mb-1">
+                      Tarifa por hora {isHourlyContractType(form.contractTypeId) && <span className="text-red-500">*</span>}
+                    </label>
                     <input
-                      type="text" required placeholder="0.00" inputMode="decimal"
+                      type="text" placeholder="0.00" inputMode="decimal"
+                      required={isHourlyContractType(form.contractTypeId)}
                       value={form.hourlyRate}
-                      disabled={isViewOnly}
+                      disabled={isViewOnly || !isHourlyContractType(form.contractTypeId)}
                       onChange={e => {
                         const val = e.target.value.replace(/[^0-9.]/g, '');
                         setForm(f => ({ ...f, hourlyRate: val }));
                       }}
-                      className="form-input disabled:bg-gray-50 disabled:text-gray-500"
+                      className="form-input disabled:bg-gray-50 disabled:text-gray-400"
                     />
                   </div>
                   <div>
@@ -745,6 +836,7 @@ export default function EmpleadosPage() {
                   </div>
                 </div>
               </div>
+              )}
 
               {modalError && (
                 <p className="text-xs text-[var(--color-primary)] px-3 py-2 bg-red-50 rounded-[var(--radius-lg)] border border-red-100">
@@ -778,6 +870,141 @@ export default function EmpleadosPage() {
                     Habilitar edición
                   </button>
                 )}
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── Assign New Contract Modal ── */}
+      {contractModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+          <div className="bg-white rounded-[var(--radius-xl)] shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <div className="px-6 py-5 border-b border-gray-100 flex justify-between items-center">
+              <div>
+                <h2 className="font-titles text-xl font-extrabold text-[var(--color-foreground)]">
+                  Asignar nuevo contrato
+                </h2>
+                <p className="font-subtitles text-sm text-gray-500 mt-0.5">
+                  Empleado: {contractModalEmpName}
+                </p>
+              </div>
+              <button onClick={() => setContractModalOpen(false)} className="text-gray-400 hover:text-gray-600 text-xl">✕</button>
+            </div>
+
+            <form onSubmit={handleContractSubmit} className="px-6 py-5 flex flex-col gap-5">
+              <div>
+                <p className="font-subtitles text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">
+                  Datos del contrato
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-subtitles font-semibold text-gray-600 mb-1">Cargo <span className="text-red-500">*</span></label>
+                    <select
+                      required value={contractForm.jobId}
+                      onChange={e => setContractForm(f => ({ ...f, jobId: e.target.value }))}
+                      className="form-input bg-white"
+                    >
+                      <option value="">Seleccionar...</option>
+                      {jobs.map(j => <option key={j.id} value={j.id}>{j.title}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-subtitles font-semibold text-gray-600 mb-1">Tipo de contrato <span className="text-red-500">*</span></label>
+                    <select
+                      required value={contractForm.contractTypeId}
+                      onChange={e => {
+                        const newTypeId = e.target.value
+                        setContractForm(f => ({
+                          ...f,
+                          contractTypeId: newTypeId,
+                          salary: isHourlyContractType(newTypeId) ? '' : f.salary,
+                          hourlyRate: isHourlyContractType(newTypeId) ? f.hourlyRate : '',
+                        }))
+                      }}
+                      className="form-input bg-white"
+                    >
+                      <option value="">Seleccionar...</option>
+                      {contractTypes.map(ct => <option key={ct.id} value={ct.id}>{ct.name}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-subtitles font-semibold text-gray-600 mb-1">
+                      Salario {!isHourlyContractType(contractForm.contractTypeId) && <span className="text-red-500">*</span>}
+                    </label>
+                    <input
+                      type="text" placeholder="0.00" inputMode="decimal"
+                      required={!isHourlyContractType(contractForm.contractTypeId)}
+                      disabled={isHourlyContractType(contractForm.contractTypeId)}
+                      value={contractForm.salary}
+                      onChange={e => {
+                        const val = e.target.value.replace(/[^0-9.]/g, '')
+                        setContractForm(f => ({ ...f, salary: val }))
+                      }}
+                      className="form-input disabled:bg-gray-50 disabled:text-gray-400"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-subtitles font-semibold text-gray-600 mb-1">
+                      Tarifa por hora {isHourlyContractType(contractForm.contractTypeId) && <span className="text-red-500">*</span>}
+                    </label>
+                    <input
+                      type="text" placeholder="0.00" inputMode="decimal"
+                      required={isHourlyContractType(contractForm.contractTypeId)}
+                      disabled={!isHourlyContractType(contractForm.contractTypeId)}
+                      value={contractForm.hourlyRate}
+                      onChange={e => {
+                        const val = e.target.value.replace(/[^0-9.]/g, '')
+                        setContractForm(f => ({ ...f, hourlyRate: val }))
+                      }}
+                      className="form-input disabled:bg-gray-50 disabled:text-gray-400"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-subtitles font-semibold text-gray-600 mb-1">Fecha de inicio <span className="text-red-500">*</span></label>
+                    <input
+                      type="date" required
+                      value={contractForm.startDate}
+                      onChange={e => setContractForm(f => ({ ...f, startDate: e.target.value }))}
+                      className="form-input"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-subtitles font-semibold text-gray-600 mb-1">Fecha de fin <span className="text-gray-400">(opcional)</span></label>
+                    <input
+                      type="date"
+                      value={contractForm.endDate}
+                      onChange={e => setContractForm(f => ({ ...f, endDate: e.target.value }))}
+                      className="form-input"
+                    />
+                  </div>
+                </div>
+                <p className="text-xs text-gray-500 mt-3">
+                  Al crear el contrato se desactivará automáticamente el contrato vigente.
+                </p>
+              </div>
+
+              {contractModalError && (
+                <p className="text-xs text-[var(--color-primary)] px-3 py-2 bg-red-50 rounded-[var(--radius-lg)] border border-red-100">
+                  {contractModalError}
+                </p>
+              )}
+
+              <div className="flex gap-3 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setContractModalOpen(false)}
+                  className="flex-1 py-2.5 rounded-[var(--radius-lg)] border border-gray-200 text-sm font-subtitles font-semibold text-gray-600 hover:bg-gray-50 transition"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={contractModalLoading}
+                  className="flex-1 py-2.5 rounded-[var(--radius-lg)] bg-[var(--color-primary)] text-white text-sm font-subtitles font-semibold hover:opacity-90 transition disabled:opacity-50"
+                >
+                  {contractModalLoading ? 'Guardando...' : 'Crear contrato'}
+                </button>
               </div>
             </form>
           </div>

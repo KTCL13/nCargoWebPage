@@ -88,7 +88,7 @@ export default function ReportesPage() {
   const [loading, setLoading] = useState(true)
 
   const authHeaders = useMemo(
-    () => (token ? { Authorization: `Bearer ${token}` } : {}),
+    (): Record<string, string> => (token ? { Authorization: `Bearer ${token}` } : {}),
     [token],
   )
 

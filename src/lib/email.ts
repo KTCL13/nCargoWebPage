@@ -2,9 +2,11 @@ import { Resend } from 'resend'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 
+const FROM = process.env.RESEND_FROM ?? 'N-Cargo <onboarding@resend.dev>'
+
 export async function sendPasswordResetEmail(to: string, resetUrl: string) {
     await resend.emails.send({
-        from: 'N-Cargo <onboarding@resend.dev>',
+        from: FROM,
         to,
         subject: 'Recuperación de contraseña — N-Cargo',
         html: `

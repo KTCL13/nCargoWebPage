@@ -12,6 +12,7 @@ const MapPicker = dynamic(() => import('@/components/ui/MapPicker'), { ssr: fals
 
 type Country = 'CO' | 'MX'
 type CityItem = { id: number; city: string; department: string | null }
+type ShipmentOption = { id: number; label: string }
 
 type Breakdown = {
   total: number
@@ -43,7 +44,7 @@ type Office = {
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function CotizacionesPage() {
-  const { user } = useAuth()
+  const { user, token } = useAuth()
 
   const [country, setCountry] = useState<Country>('CO')
   const [allCities, setAllCities] = useState<CityItem[]>([])
@@ -56,8 +57,11 @@ export default function CotizacionesPage() {
   const [valor, setValor] = useState('')
   const [millas, setMillas] = useState('0')
   const [result, setResult] = useState<Breakdown | null>(null)
+  const [quotationId, setQuotationId] = useState<number | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [shipments, setShipments] = useState<ShipmentOption[]>([])
+  const [shipmentId, setShipmentId] = useState<number | null>(null)
   const [offices, setOffices] = useState<Office[]>([])
   const [origin, setOrigin] = useState<Office | null>(null)
 
@@ -94,6 +98,28 @@ export default function CotizacionesPage() {
     (flatRate.enabled || !!cityId)
 
   useEffect(() => {
+    if (!token) return
+    fetch('/api/shipments?isLocker=true&pageSize=100&page=1', {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(r => r.json())
+      .then(data => {
+        const list = (data.data ?? []) as Array<{
+          id: number
+          odooTaskName?: string | null
+          odooProjectName?: string | null
+          odooCustomerName?: string | null
+        }>
+        setShipments(list.map(s => ({
+          id: s.id,
+          label: [s.odooTaskName, s.odooProjectName, s.odooCustomerName]
+            .filter(Boolean).join(' — ') || `Envío #${s.id}`,
+        })))
+      })
+      .catch(() => {})
+  }, [token])
+
+  useEffect(() => {
     fetch('/api/pickup-points?active=true')
       .then(r => r.json())
       .then(data => {
@@ -107,6 +133,7 @@ export default function CotizacionesPage() {
   useEffect(() => {
     setCitiesLoading(true)
     setResult(null)
+    setQuotationId(null)
     setError('')
     setDept('')
     setCityId('')
@@ -139,6 +166,7 @@ export default function CotizacionesPage() {
       }
       if (!flatRate.enabled && cityId) body.destinationCityId = Number(cityId)
       if (user?.id) body.employeeId = user.id
+      if (shipmentId) body.shipmentId = shipmentId
 
       const res = await fetch('/api/cotizaciones/calcular', {
         method: 'POST',
@@ -146,9 +174,17 @@ export default function CotizacionesPage() {
         body: JSON.stringify(body),
       })
       const data = await res.json()
-      if (!res.ok) { setError(data.message ?? 'Error al calcular'); return }
+      if (!res.ok) {
+        setResult(null)
+        setQuotationId(null)
+        setError(data.message ?? 'Error al calcular')
+        return
+      }
+      setQuotationId(data.quotationId ?? null)
       setResult(data as Breakdown)
     } catch {
+      setResult(null)
+      setQuotationId(null)
       setError('Error de conexión')
     } finally {
       setLoading(false)
@@ -199,6 +235,7 @@ export default function CotizacionesPage() {
           customerId: selectedCustomer.id,
           quotationData: result,
           country,
+          quotationId,
         })
       })
       const data = await res.json()
@@ -245,7 +282,7 @@ export default function CotizacionesPage() {
             {(['CO', 'MX'] as Country[]).map(c => (
               <button
                 key={c}
-                onClick={() => { setCountry(c); setResult(null); setError('') }}
+                onClick={() => { setCountry(c); setResult(null); setQuotationId(null); setError('') }}
                 className={`py-2 px-3 rounded-lg text-xs font-subtitles font-semibold transition-all text-center ${country === c
                     ? 'bg-[var(--color-nc-dark)] text-white shadow-md'
                     : 'text-[var(--color-nc-dark)]/60 hover:bg-white/60'
@@ -255,6 +292,25 @@ export default function CotizacionesPage() {
               </button>
             ))}
           </div>
+
+          {/* Shipment link (optional) */}
+          {shipments.length > 0 && (
+            <div className="flex flex-col gap-1">
+              <label className="font-subtitles text-xs font-semibold text-[var(--color-nc-dark)]/60">
+                📦 Vincular a envío (opcional)
+              </label>
+              <select
+                value={shipmentId ?? ''}
+                onChange={e => setShipmentId(e.target.value ? Number(e.target.value) : null)}
+                className={inp}
+              >
+                <option value="">— Sin vincular —</option>
+                {shipments.map(s => (
+                  <option key={s.id} value={s.id}>{s.label}</option>
+                ))}
+              </select>
+            </div>
+          )}
 
           {/* Department → City cascade */}
           {citiesLoading ? (
@@ -318,7 +374,7 @@ export default function CotizacionesPage() {
             </div>
             <div className="flex flex-col gap-1">
               <label className="font-subtitles text-xs font-semibold text-[var(--color-nc-dark)]/60">💵 Valor declarado (USD)</label>
-              <input type="number" value={valor} onChange={e => setValor(e.target.value)} placeholder="ej. 100" min="0" className={inp} />
+              <input type="number" value={valor} onChange={e => setValor(e.target.value)} placeholder="ej. 100" min="0" max="200" className={inp} />
             </div>
           </div>
 
@@ -340,7 +396,29 @@ export default function CotizacionesPage() {
 
           {/* Validation error */}
           {error && (
-            <p className="font-subtitles text-xs font-semibold text-red-500">{error}</p>
+            <div
+              role="alert"
+              aria-live="polite"
+              className="flex items-start gap-3 rounded-xl border border-red-300 bg-red-50 px-4 py-3 shadow-sm"
+            >
+              <span aria-hidden="true" className="text-lg leading-none">⚠️</span>
+              <div className="flex-1">
+                <p className="font-subtitles text-xs font-bold uppercase tracking-wide text-red-700">
+                  No se pudo calcular
+                </p>
+                <p className="font-subtitles text-sm font-semibold text-red-700 mt-0.5">
+                  {error}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setError('')}
+                className="text-red-400 hover:text-red-600 text-lg leading-none"
+                aria-label="Cerrar mensaje"
+              >
+                ×
+              </button>
+            </div>
           )}
 
           {/* Result card */}
