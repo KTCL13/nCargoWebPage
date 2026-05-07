@@ -12,7 +12,6 @@ const MapPicker = dynamic(() => import('@/components/ui/MapPicker'), { ssr: fals
 
 type Country = 'CO' | 'MX'
 type CityItem = { id: number; city: string; department: string | null }
-type ShipmentOption = { id: number; label: string }
 
 type Breakdown = {
   total: number
@@ -44,7 +43,7 @@ type Office = {
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function CotizacionesPage() {
-  const { user, token } = useAuth()
+  const { user } = useAuth()
 
   const [country, setCountry] = useState<Country>('CO')
   const [allCities, setAllCities] = useState<CityItem[]>([])
@@ -60,8 +59,6 @@ export default function CotizacionesPage() {
   const [quotationId, setQuotationId] = useState<number | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [shipments, setShipments] = useState<ShipmentOption[]>([])
-  const [shipmentId, setShipmentId] = useState<number | null>(null)
   const [offices, setOffices] = useState<Office[]>([])
   const [origin, setOrigin] = useState<Office | null>(null)
 
@@ -96,28 +93,6 @@ export default function CotizacionesPage() {
   const isValid =
     !!weight && !!dims.h && !!dims.w && !!dims.l && valor !== '' &&
     (flatRate.enabled || !!cityId)
-
-  useEffect(() => {
-    if (!token) return
-    fetch('/api/shipments?isLocker=true&pageSize=100&page=1', {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then(r => r.json())
-      .then(data => {
-        const list = (data.data ?? []) as Array<{
-          id: number
-          odooTaskName?: string | null
-          odooProjectName?: string | null
-          odooCustomerName?: string | null
-        }>
-        setShipments(list.map(s => ({
-          id: s.id,
-          label: [s.odooTaskName, s.odooProjectName, s.odooCustomerName]
-            .filter(Boolean).join(' — ') || `Envío #${s.id}`,
-        })))
-      })
-      .catch(() => {})
-  }, [token])
 
   useEffect(() => {
     fetch('/api/pickup-points?active=true')
@@ -166,7 +141,6 @@ export default function CotizacionesPage() {
       }
       if (!flatRate.enabled && cityId) body.destinationCityId = Number(cityId)
       if (user?.id) body.employeeId = user.id
-      if (shipmentId) body.shipmentId = shipmentId
 
       const res = await fetch('/api/cotizaciones/calcular', {
         method: 'POST',
@@ -292,25 +266,6 @@ export default function CotizacionesPage() {
               </button>
             ))}
           </div>
-
-          {/* Shipment link (optional) */}
-          {shipments.length > 0 && (
-            <div className="flex flex-col gap-1">
-              <label className="font-subtitles text-xs font-semibold text-[var(--color-nc-dark)]/60">
-                📦 Vincular a envío (opcional)
-              </label>
-              <select
-                value={shipmentId ?? ''}
-                onChange={e => setShipmentId(e.target.value ? Number(e.target.value) : null)}
-                className={inp}
-              >
-                <option value="">— Sin vincular —</option>
-                {shipments.map(s => (
-                  <option key={s.id} value={s.id}>{s.label}</option>
-                ))}
-              </select>
-            </div>
-          )}
 
           {/* Department → City cascade */}
           {citiesLoading ? (

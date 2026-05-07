@@ -58,6 +58,14 @@ export default function MapPicker({ office, onDistanceChange }: Props) {
   const destMarkerRef = useRef<Marker | null>(null)
   const routeLineRef = useRef<Polyline | null>(null)
 
+  // Keep refs to props/callbacks so the map's click handler (bound once, in
+  // the empty-deps init effect) always reads the latest values instead of a
+  // stale closure capture.
+  const officeRef = useRef(office)
+  const onDistanceChangeRef = useRef(onDistanceChange)
+  useEffect(() => { officeRef.current = office }, [office])
+  useEffect(() => { onDistanceChangeRef.current = onDistanceChange }, [onDistanceChange])
+
   const [searchInput, setSearchInput] = useState('')
   const [searching, setSearching] = useState(false)
   const [routeInfo, setRouteInfo] = useState<{ miles: number; address: string } | null>(null)
@@ -65,11 +73,12 @@ export default function MapPicker({ office, onDistanceChange }: Props) {
 
   // Build and place route on map
   const drawRoute = async (destLat: number, destLng: number, destAddress: string) => {
-    if (!mapRef.current || !office) return
+    const currentOffice = officeRef.current
+    if (!mapRef.current || !currentOffice) return
     const L = (await import('leaflet')).default
 
-    const originLat = parseFloat(String(office.latitude))
-    const originLng = parseFloat(String(office.longitude))
+    const originLat = parseFloat(String(currentOffice.latitude))
+    const originLng = parseFloat(String(currentOffice.longitude))
 
     // Remove previous route + dest marker
     routeLineRef.current?.remove()
@@ -99,7 +108,7 @@ export default function MapPicker({ office, onDistanceChange }: Props) {
 
       const miles = parseFloat((route.distanceMeters * METERS_TO_MILES).toFixed(2))
       setRouteInfo({ miles, address: destAddress })
-      onDistanceChange(miles, destAddress)
+      onDistanceChangeRef.current(miles, destAddress)
     } else {
       // No route found, still place marker and calculate straight-line distance
       const toRad = (d: number) => (d * Math.PI) / 180
@@ -111,7 +120,7 @@ export default function MapPicker({ office, onDistanceChange }: Props) {
         Math.cos(toRad(originLat)) * Math.cos(toRad(destLat)) * Math.sin(dLng / 2) ** 2
       const miles = parseFloat((R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))).toFixed(2))
       setRouteInfo({ miles, address: destAddress })
-      onDistanceChange(miles, destAddress)
+      onDistanceChangeRef.current(miles, destAddress)
     }
   }
 
@@ -119,10 +128,16 @@ export default function MapPicker({ office, onDistanceChange }: Props) {
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return
 
-    let map: LeafletMap
+    let cancelled = false
 
     const init = async () => {
       const L = (await import('leaflet')).default
+      if (cancelled || !containerRef.current) return
+
+      // Defend against StrictMode double-mount: if the container is still
+      // tagged with a previous Leaflet id, the previous instance lives.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      if ((containerRef.current as any)._leaflet_id) return
 
       // Fix default icon paths broken by webpack
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -136,7 +151,12 @@ export default function MapPicker({ office, onDistanceChange }: Props) {
       const lat = office ? parseFloat(String(office.latitude)) : 25.7617
       const lng = office ? parseFloat(String(office.longitude)) : -80.1918
 
-      map = L.map(containerRef.current!, { zoomControl: true }).setView([lat, lng], 13)
+      const map = L.map(containerRef.current, { zoomControl: true }).setView([lat, lng], 13)
+
+      if (cancelled) {
+        map.remove()
+        return
+      }
       mapRef.current = map
 
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -178,8 +198,14 @@ export default function MapPicker({ office, onDistanceChange }: Props) {
     init()
 
     return () => {
-      mapRef.current?.remove()
-      mapRef.current = null
+      cancelled = true
+      if (mapRef.current) {
+        mapRef.current.remove()
+        mapRef.current = null
+      }
+      originMarkerRef.current = null
+      destMarkerRef.current = null
+      routeLineRef.current = null
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -230,10 +256,29 @@ export default function MapPicker({ office, onDistanceChange }: Props) {
         <p className="font-subtitles font-semibold text-sm text-[var(--color-nc-dark)] flex items-center gap-1.5">
           📍 Seleccionar Punto de Recogida
         </p>
-        <p className="font-subtitles text-xs text-[var(--color-nc-dark)]/50">
-          Haz clic en el mapa o busca la dirección de recogida
-        </p>
-        <div className="flex gap-2">
+
+        {/* Two-option helper banner — stacks on mobile, side-by-side on ≥sm */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-1">
+          <div className="flex items-start gap-2 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
+            <span className="text-base leading-tight shrink-0">🖱️</span>
+            <div className="min-w-0">
+              <p className="font-subtitles text-[11px] font-bold text-blue-800 leading-tight">Opción 1</p>
+              <p className="font-subtitles text-[11px] text-blue-700 leading-tight">
+                <span className="sm:hidden">Toca el mapa donde recoges</span>
+                <span className="hidden sm:inline">Haz clic directamente en el mapa</span>
+              </p>
+            </div>
+          </div>
+          <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+            <span className="text-base leading-tight shrink-0">⌨️</span>
+            <div className="min-w-0">
+              <p className="font-subtitles text-[11px] font-bold text-amber-800 leading-tight">Opción 2</p>
+              <p className="font-subtitles text-[11px] text-amber-700 leading-tight">Escribe una dirección abajo</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex gap-2 mt-1">
           <input
             type="text"
             value={searchInput}
@@ -253,26 +298,44 @@ export default function MapPicker({ office, onDistanceChange }: Props) {
         {searchError && <p className="text-xs text-red-500 font-subtitles">{searchError}</p>}
       </div>
 
-      {/* Map container */}
-      <div ref={containerRef} className="flex-1 min-h-[300px] w-full" />
+      {/* Map container with click/tap-to-pick affordance */}
+      <div className="relative flex-1 min-h-[260px] sm:min-h-[300px]">
+        <div ref={containerRef} className="absolute inset-0 w-full h-full map-clickable" />
+        <div className="pointer-events-none absolute top-2 sm:top-3 left-1/2 -translate-x-1/2 z-[400] max-w-[90%] bg-white/95 backdrop-blur-sm border border-blue-300 rounded-full px-2.5 sm:px-3 py-1 shadow-md flex items-center gap-1 sm:gap-1.5 animate-pulse">
+          <span className="text-[10px] sm:text-xs">👆</span>
+          <span className="font-subtitles text-[10px] sm:text-[11px] font-bold text-blue-700 whitespace-nowrap">
+            <span className="sm:hidden">Toca para recoger</span>
+            <span className="hidden sm:inline">Haz clic donde quieres recoger</span>
+          </span>
+        </div>
+        <style>{`
+          @media (hover: hover) and (pointer: fine) {
+            .map-clickable .leaflet-container { cursor: crosshair !important; }
+            .map-clickable .leaflet-container:active { cursor: grabbing !important; }
+            .map-clickable .leaflet-marker-icon,
+            .map-clickable .leaflet-control-zoom a { cursor: pointer !important; }
+          }
+        `}</style>
+      </div>
 
       {/* Footer: office address + route info */}
       <div className="px-4 py-3 border-t border-black/5 bg-[#F7F8FA] flex flex-col gap-1.5">
         {office && (
-          <p className="font-subtitles text-xs text-[var(--color-nc-dark)]/60 flex items-center gap-1.5">
+          <p className="font-subtitles text-xs text-[var(--color-nc-dark)]/60 break-words leading-snug">
             🏭 <span className="font-semibold">{office.name}</span> — {office.address}
           </p>
         )}
         {routeInfo && (
-          <div className="flex items-center justify-between">
-            <p className="font-subtitles text-xs text-blue-700 font-semibold flex items-center gap-1.5">
-              🛣️ Ruta calculada: <span className="text-blue-900">{routeInfo.miles} mi</span>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+            <p className="font-subtitles text-xs text-blue-700 font-semibold flex items-center gap-1.5 min-w-0">
+              <span className="shrink-0">🛣️ Ruta calculada:</span>
+              <span className="text-blue-900 whitespace-nowrap">{routeInfo.miles} mi</span>
             </p>
             <a
               href={`https://maps.google.com/maps?saddr=${encodeURIComponent(office?.address ?? '')}&daddr=${encodeURIComponent(routeInfo.address)}`}
               target="_blank"
               rel="noreferrer"
-              className="text-xs font-subtitles font-semibold text-white bg-[var(--color-nc-dark)] px-3 py-1.5 rounded-lg hover:bg-[var(--color-nc-blue)] transition-colors whitespace-nowrap"
+              className="text-xs font-subtitles font-semibold text-white bg-[var(--color-nc-dark)] px-3 py-1.5 rounded-lg hover:bg-[var(--color-nc-blue)] transition-colors whitespace-nowrap text-center"
             >
               🧭 Cómo llegar
             </a>
@@ -280,7 +343,8 @@ export default function MapPicker({ office, onDistanceChange }: Props) {
         )}
         {!routeInfo && (
           <p className="font-subtitles text-xs text-[var(--color-nc-dark)]/40 italic">
-            Haz clic en el mapa para calcular la ruta de recogida
+            <span className="sm:hidden">Toca el mapa para calcular la ruta</span>
+            <span className="hidden sm:inline">Haz clic en el mapa para calcular la ruta de recogida</span>
           </p>
         )}
       </div>
