@@ -10,7 +10,9 @@
       "Bash(rm -rf \"c:/Users/Brayan/Desktop/Proyecto N-cargo/ncargo-web-project/ncargo/.next\")",
       "Bash(NODE_OPTIONS=\"--max-old-space-size=4096\" npm run dev)",
       "Bash(npm list *)",
-      "Bash(git stash *)"
+      "Bash(git stash *)",
+      "Bash(ls -la \"c:\\\\Users\\\\Brayan\\\\Desktop\\\\Proyecto N-cargo\\\\nCargoWebPage\\\\\" | grep -i env)",
+      "Read(//c/Users/Brayan/Desktop/Proyecto N-cargo/**)"
     ]
   }
 }
