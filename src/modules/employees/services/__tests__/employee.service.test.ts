@@ -302,7 +302,7 @@ describe('employeeService.getContracts', () => {
     expect(contractRepository.getContractsByEmployeeId).toHaveBeenCalledWith(1)
     expect(result).toHaveLength(1)
     expect(result[0].id).toBe(10)
-    expect(result[0].contractType).toBe('INDEFINITE')
+    expect(result[0].contractType).toEqual({ id: 2, name: 'INDEFINITE' })
   })
 
   it('G2 error de negocio: repo lanza → propaga', async () => {

@@ -8,6 +8,8 @@ import {
 
 const roundUp = (v: number) => Math.ceil(v);
 
+const MAX_DECLARED_VALUE_USD = 200;
+
 class CotizacionCalculatorService {
   // ── Config ────────────────────────────────────────────────────────
 
@@ -64,6 +66,12 @@ class CotizacionCalculatorService {
   async calculate(
     input: CalcularCotizacionDto,
   ): Promise<CotizacionBreakdownDto> {
+    if (input.declaredValueUsd > MAX_DECLARED_VALUE_USD) {
+      throw new Error(
+        `El valor declarado no puede superar los ${MAX_DECLARED_VALUE_USD} USD`,
+      );
+    }
+
     const cfg = await this.getConfig();
 
     const divisor = (cfg["divisor"] as number) || 153;

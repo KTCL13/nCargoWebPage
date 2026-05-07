@@ -174,10 +174,17 @@ export default function CotizacionesPage() {
         body: JSON.stringify(body),
       })
       const data = await res.json()
-      if (!res.ok) { setError(data.message ?? 'Error al calcular'); return }
+      if (!res.ok) {
+        setResult(null)
+        setQuotationId(null)
+        setError(data.message ?? 'Error al calcular')
+        return
+      }
       setQuotationId(data.quotationId ?? null)
       setResult(data as Breakdown)
     } catch {
+      setResult(null)
+      setQuotationId(null)
       setError('Error de conexión')
     } finally {
       setLoading(false)
@@ -367,7 +374,7 @@ export default function CotizacionesPage() {
             </div>
             <div className="flex flex-col gap-1">
               <label className="font-subtitles text-xs font-semibold text-[var(--color-nc-dark)]/60">💵 Valor declarado (USD)</label>
-              <input type="number" value={valor} onChange={e => setValor(e.target.value)} placeholder="ej. 100" min="0" className={inp} />
+              <input type="number" value={valor} onChange={e => setValor(e.target.value)} placeholder="ej. 100" min="0" max="200" className={inp} />
             </div>
           </div>
 
@@ -389,7 +396,29 @@ export default function CotizacionesPage() {
 
           {/* Validation error */}
           {error && (
-            <p className="font-subtitles text-xs font-semibold text-red-500">{error}</p>
+            <div
+              role="alert"
+              aria-live="polite"
+              className="flex items-start gap-3 rounded-xl border border-red-300 bg-red-50 px-4 py-3 shadow-sm"
+            >
+              <span aria-hidden="true" className="text-lg leading-none">⚠️</span>
+              <div className="flex-1">
+                <p className="font-subtitles text-xs font-bold uppercase tracking-wide text-red-700">
+                  No se pudo calcular
+                </p>
+                <p className="font-subtitles text-sm font-semibold text-red-700 mt-0.5">
+                  {error}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setError('')}
+                className="text-red-400 hover:text-red-600 text-lg leading-none"
+                aria-label="Cerrar mensaje"
+              >
+                ×
+              </button>
+            </div>
           )}
 
           {/* Result card */}

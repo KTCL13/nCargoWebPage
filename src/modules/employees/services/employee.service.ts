@@ -55,7 +55,7 @@ class EmployeeService {
         return {
             id: contract.id,
             job: job ?? { id: contract.jobId, title: '—', description: null },
-            contractType: contractType?.name ?? '—',
+            contractType: contractType ?? { id: contract.contractTypeId, name: '—' },
             salary: Number(contract.salary),
             hourlyRate: Number(contract.hourlyRate),
             startDate: contract.startDate,
@@ -117,6 +117,18 @@ class EmployeeService {
         const { roleIds, ...rest } = data
         const updatedEmployee = await employeeRepository.updateEmployee(id, rest)
 
+        if (rest.status === 'INACTIVE') {
+            const today = new Date()
+            await prisma.contract.updateMany({
+                where: { employeeId: id, isActive: true },
+                data: { isActive: false, endDate: today },
+            })
+            await prisma.jobHistory.updateMany({
+                where: { employeeId: id, endDate: null },
+                data: { endDate: today },
+            })
+        }
+
         if (roleIds) {
             await prisma.employeeRole.deleteMany({ where: { employeeId: id } })
             for (const roleId of roleIds) {
@@ -128,6 +140,17 @@ class EmployeeService {
     }
 
     async remove(id: number): Promise<void> {
+        const today = new Date()
+        await prisma.$transaction([
+            prisma.contract.updateMany({
+                where: { employeeId: id, isActive: true },
+                data: { isActive: false, endDate: today },
+            }),
+            prisma.jobHistory.updateMany({
+                where: { employeeId: id, endDate: null },
+                data: { endDate: today },
+            }),
+        ])
         await employeeRepository.deleteEmployee(id)
     }
 
@@ -156,7 +179,7 @@ class EmployeeService {
 
             await tx.contract.updateMany({
                 where: { employeeId, isActive: true },
-                data: { isActive: false },
+                data: { isActive: false, endDate: previousEndDate },
             })
 
             const newContract = await tx.contract.create({
@@ -167,7 +190,7 @@ class EmployeeService {
                     salary: data.salary,
                     hourlyRate: data.hourlyRate,
                     startDate: newStartDate,
-                    endDate: data.endDate,
+                    endDate: data.endDate ? new Date(data.endDate) : null,
                     isActive: true,
                 },
             })
