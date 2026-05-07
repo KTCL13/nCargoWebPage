@@ -262,22 +262,26 @@ model ShippingRate {
 // =======================
 model Quotation {
   id                  Int             @id @default(autoincrement())
-  employeeId          Int             @map("employee_id")
+  employeeId          Int?            @map("employee_id")
   odooCustomerId      Int?            @map("odoo_customer_id")
-  originOfficeId      Int             @map("origin_office_id")
+  odooOrderId         Int?            @map("odoo_order_id")
+  odooOrderName       String?         @map("odoo_order_name") @db.VarChar(100)
+  originOfficeId      Int?            @map("origin_office_id")
   pickupDistanceMiles Decimal?        @map("pickup_distance_miles") @db.Decimal(10, 2)
-  destinationLocationId Int           @map("destination_location_id")
+  destinationLocationId Int?          @map("destination_location_id")
   shippingRateId      Int?            @map("shipping_rate_id")
   weightLbs           Decimal         @map("weight_lbs") @db.Decimal(8, 2)
   volume              Decimal         @db.Decimal(10, 4)
   declaredValue       Decimal         @map("declared_value") @db.Decimal(12, 2)
   totalPrice          Decimal         @map("total_price") @db.Decimal(12, 2)
+  country             String?         @db.VarChar(2)
+  source              String          @default("INTERNAL") @db.VarChar(10)
   status              QuotationStatus @default(DRAFT)
   createdAt           DateTime        @default(now()) @map("created_at")
 
-  employee            Employee      @relation(fields: [employeeId], references: [id])
-  originOffice        Office        @relation(fields: [originOfficeId], references: [id])
-  destinationLocation Location      @relation(fields: [destinationLocationId], references: [id])
+  employee            Employee?     @relation(fields: [employeeId], references: [id])
+  originOffice        Office?       @relation(fields: [originOfficeId], references: [id])
+  destinationLocation Location?     @relation(fields: [destinationLocationId], references: [id])
   shippingRate        ShippingRate? @relation(fields: [shippingRateId], references: [id])
   shipments           Shipment[]
 

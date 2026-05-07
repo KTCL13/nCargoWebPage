@@ -57,6 +57,7 @@ export default function CotizacionesPage() {
   const [valor, setValor] = useState('')
   const [millas, setMillas] = useState('0')
   const [result, setResult] = useState<Breakdown | null>(null)
+  const [quotationId, setQuotationId] = useState<number | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [shipments, setShipments] = useState<ShipmentOption[]>([])
@@ -132,6 +133,7 @@ export default function CotizacionesPage() {
   useEffect(() => {
     setCitiesLoading(true)
     setResult(null)
+    setQuotationId(null)
     setError('')
     setDept('')
     setCityId('')
@@ -173,6 +175,7 @@ export default function CotizacionesPage() {
       })
       const data = await res.json()
       if (!res.ok) { setError(data.message ?? 'Error al calcular'); return }
+      setQuotationId(data.quotationId ?? null)
       setResult(data as Breakdown)
     } catch {
       setError('Error de conexión')
@@ -225,6 +228,7 @@ export default function CotizacionesPage() {
           customerId: selectedCustomer.id,
           quotationData: result,
           country,
+          quotationId,
         })
       })
       const data = await res.json()
@@ -271,7 +275,7 @@ export default function CotizacionesPage() {
             {(['CO', 'MX'] as Country[]).map(c => (
               <button
                 key={c}
-                onClick={() => { setCountry(c); setResult(null); setError('') }}
+                onClick={() => { setCountry(c); setResult(null); setQuotationId(null); setError('') }}
                 className={`py-2 px-3 rounded-lg text-xs font-subtitles font-semibold transition-all text-center ${country === c
                     ? 'bg-[var(--color-nc-dark)] text-white shadow-md'
                     : 'text-[var(--color-nc-dark)]/60 hover:bg-white/60'

@@ -12,6 +12,7 @@ export interface CalcularCotizacionDto {
 }
 
 export interface CotizacionBreakdownDto {
+  quotationId: number
   transport: number
   volumetricSurcharge: number
   insurance: number

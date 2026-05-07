@@ -140,25 +140,26 @@ class CotizacionCalculatorService {
       cityDelivery +
       pickup;
 
-    const breakdown: CotizacionBreakdownDto = {
-      transport,
-      volumetricSurcharge,
-      insurance,
-      customs,
-      cityDelivery,
-      pickup,
-      total,
-      detail: {
-        actualWeightLb: input.actualWeightLb,
-        volumetricWeightLb: volumetricLb,
-        chargeableWeightLb: Math.max(input.actualWeightLb, volumetricLb),
-        divisorUsed: divisor,
-        flatRateApplied: flatEnabled,
-        cityName,
-      },
-    };
+    const chargeableWeightLb = Math.max(input.actualWeightLb, volumetricLb);
+    const volume = (input.heightIn * input.widthIn * input.lengthIn) / 1728;
+    const source = input.employeeId ? 'EMPLOYEE' : 'PUBLIC';
 
-    // Fire-and-forget: never delay the HTTP response for a save failure.
+    // Save to Quotation table (awaited to capture the ID for Odoo linking).
+    const quotation = await prisma.quotation.create({
+      data: {
+        employeeId: input.employeeId ?? null,
+        destinationLocationId: input.destinationCityId ?? null,
+        weightLbs: chargeableWeightLb,
+        volume,
+        declaredValue: input.declaredValueUsd,
+        totalPrice: total,
+        country: input.country,
+        source,
+        status: 'DRAFT',
+      },
+    });
+
+    // Fire-and-forget detailed record — never blocks the response.
     prisma.cotizacionRecord
       .create({
         data: {
@@ -169,7 +170,7 @@ class CotizacionCalculatorService {
           lengthIn: input.lengthIn,
           actualWeightLb: input.actualWeightLb,
           volumetricWeightLb: volumetricLb,
-          chargeableWeightLb: Math.max(input.actualWeightLb, volumetricLb),
+          chargeableWeightLb,
           declaredValueUsd: input.declaredValueUsd,
           pickupMiles: input.pickupMiles ?? null,
           transport,
@@ -180,12 +181,31 @@ class CotizacionCalculatorService {
           pickup,
           total,
           flatRateApplied: flatEnabled,
-          source: input.employeeId ? 'EMPLOYEE' : 'PUBLIC',
+          source,
           employeeId: input.employeeId ?? null,
           shipmentId: input.shipmentId ?? null,
         },
       })
       .catch((err) => console.error("[CotizacionRecord] save failed:", err));
+
+    const breakdown: CotizacionBreakdownDto = {
+      quotationId: quotation.id,
+      transport,
+      volumetricSurcharge,
+      insurance,
+      customs,
+      cityDelivery,
+      pickup,
+      total,
+      detail: {
+        actualWeightLb: input.actualWeightLb,
+        volumetricWeightLb: volumetricLb,
+        chargeableWeightLb,
+        divisorUsed: divisor,
+        flatRateApplied: flatEnabled,
+        cityName,
+      },
+    };
 
     return breakdown;
   }

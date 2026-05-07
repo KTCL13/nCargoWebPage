@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { Prisma, Quotation, QuotationStatus } from "@prisma/client";
+import { Quotation, QuotationStatus } from "@prisma/client";
 
 export type CreateSimpleQuotationData = {
   employeeId: number;
@@ -12,6 +12,12 @@ export type CreateSimpleQuotationData = {
   totalPrice: number;
   originOfficeId: number;
 };
+
+export type UpdateOdooInfoData = {
+  odooCustomerId: number
+  odooOrderId: number
+  odooOrderName: string
+}
 
 class QuotationRepository {
   async createSimple(data: CreateSimpleQuotationData): Promise<Quotation> {
@@ -26,6 +32,18 @@ class QuotationRepository {
         declaredValue: data.declaredValue,
         totalPrice: data.totalPrice,
         originOfficeId: data.originOfficeId,
+      },
+    });
+  }
+
+  async updateOdooInfo(id: number, data: UpdateOdooInfoData): Promise<Quotation> {
+    return prisma.quotation.update({
+      where: { id },
+      data: {
+        odooCustomerId: data.odooCustomerId,
+        odooOrderId: data.odooOrderId,
+        odooOrderName: data.odooOrderName,
+        status: 'SENT',
       },
     });
   }
