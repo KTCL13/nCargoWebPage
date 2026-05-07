@@ -8,23 +8,42 @@ import { auditLog } from '@/lib/audit-logger'
 import { sendPasswordResetEmail } from '@/lib/email'
 import { AuthResponseDto, ForgotPasswordDto, LoginDto, RegisterDto, ResetPasswordDto, RoleType } from '../dtos/auth.types'
 
+const DEFAULT_ID_TYPE_CODE = 'CC'
+
 class AuthService {
     async register(data: RegisterDto): Promise<AuthResponseDto> {
-        const name = data.name?.trim()
-        const email = data.email?.trim().toLowerCase()
-        const password = data.password?.trim()
-        const roleName = data.role
+        const firstName = data.firstName?.trim()
+        const lastName  = data.lastName?.trim()
+        const email     = data.email?.trim().toLowerCase()
+        const password  = data.password?.trim()
+        const roleName  = data.role
 
-        if (!name) throw new Error('El nombre es obligatorio')
-        if (!email) throw new Error('El email es obligatorio')
-        if (!password) throw new Error('La contraseña es obligatoria')
-        if (!roleName) throw new Error('El rol es obligatorio')
+        if (!firstName) throw new Error('El nombre es obligatorio')
+        if (!lastName)  throw new Error('El apellido es obligatorio')
+        if (!email)     throw new Error('El email es obligatorio')
+        if (!password)  throw new Error('La contraseña es obligatoria')
+        if (!roleName)  throw new Error('El rol es obligatorio')
 
         const existingUser = await userRepository.findByEmail(email)
         if (existingUser) throw new Error('Ya existe un usuario con ese email')
 
+        // Resolve identification type
+        let identificationTypeId = data.identificationTypeId
+        if (!identificationTypeId) {
+            const defaultType = await roleRepository.findIdentificationTypeByCode(DEFAULT_ID_TYPE_CODE)
+            if (!defaultType) throw new Error('Tipo de identificación por defecto no encontrado')
+            identificationTypeId = defaultType.id
+        }
+
         const passwordHash = await hashService.hash(password)
-        const employee = await userRepository.create({ name, email, passwordHash })
+        const employee = await userRepository.create({
+            firstName,
+            lastName,
+            identificationNumber: data.identificationNumber ?? '',
+            identificationTypeId,
+            email,
+            passwordHash,
+        })
 
         const role = await roleRepository.findByName(roleName)
         if (!role) throw new Error('El rol no existe')
@@ -32,15 +51,16 @@ class AuthService {
         await roleRepository.assignRoleToEmployee(employee.id, role.id)
 
         const accessToken = jwtService.sign({ id: employee.id, email: employee.email, role: role.name })
+        const name = `${employee.firstName} ${employee.lastName}`.trim()
 
-        return { accessToken, role: role.name as RoleType, email: employee.email, name: employee.name }
+        return { accessToken, role: role.name as RoleType, email: employee.email, name }
     }
 
     async login(data: LoginDto, ip: string, userAgent?: string): Promise<AuthResponseDto> {
-        const email = data.email?.trim().toLowerCase()
+        const email    = data.email?.trim().toLowerCase()
         const password = data.password?.trim()
 
-        if (!email) throw new Error('El email es obligatorio')
+        if (!email)    throw new Error('El email es obligatorio')
         if (!password) throw new Error('La contraseña es obligatoria')
 
         const employee = await userRepository.findByEmail(email)
@@ -67,8 +87,9 @@ class AuthService {
         })
 
         const accessToken = jwtService.sign({ id: employee.id, email: employee.email, role: role.name })
+        const name = `${employee.firstName} ${employee.lastName}`.trim()
 
-        return { accessToken, role: role.name as RoleType, email: employee.email, name: employee.name }
+        return { accessToken, role: role.name as RoleType, email: employee.email, name }
     }
 
     async logout(employeeId: number): Promise<void> {
@@ -98,7 +119,7 @@ class AuthService {
     }
 
     async resetPassword(data: ResetPasswordDto): Promise<void> {
-        if (!data.token) throw new Error('Token inválido')
+        if (!data.token)    throw new Error('Token inválido')
         if (!data.password) throw new Error('La contraseña es obligatoria')
 
         const record = await passwordResetRepository.findValid(data.token)

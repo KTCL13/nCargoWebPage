@@ -1,5 +1,5 @@
-// src/modules/tasks/services/task.service.ts
 import '../notifications'
+import { fullName } from '@/modules/employees/services/employee.service'
 import { taskRepository } from '../repositories/task.repository'
 import { taskStatusRepository } from '../repositories/taskStatus.repository'
 import { employeeRepository } from '@/modules/employees/repositories/employee.repository'
@@ -106,7 +106,7 @@ class TaskService {
                 taskId: task.id,
                 taskTitle: task.title,
                 employeeId: employee.id,
-                employeeName: employee.name,
+                employeeName: fullName(employee),
                 employeeEmail: employee.email,
                 adminId,
             })
@@ -133,7 +133,7 @@ class TaskService {
                 taskTitle: task.title,
                 previousEmployeeId: existing.employeeId,
                 newEmployeeId: newEmployee.id,
-                newEmployeeName: newEmployee.name,
+                newEmployeeName: fullName(newEmployee),
                 newEmployeeEmail: newEmployee.email,
                 adminId,
             })
@@ -227,7 +227,7 @@ class TaskService {
                         taskId: task.id,
                         taskTitle: task.title,
                         employeeId: employee.id,
-                        employeeName: employee.name,
+                        employeeName: fullName(employee),
                         employeeEmail: employee.email,
                         adminId,
                     })
@@ -263,11 +263,11 @@ class TaskService {
                         taskId: task.id,
                         taskTitle: task.title,
                         employeeId: employee.id,
-                        employeeName: employee.name,
+                        employeeName: fullName(employee),
                         employeeEmail: employee.email,
                         adminId: admin.id,
                         adminEmail: admin.email,
-                        adminName: admin.name,
+                        adminName: fullName(admin),
                     })
                 }
             }),

@@ -139,7 +139,7 @@ describe('employeeController.findOne (GET /employees?id=X)', () => {
 // POST /employees — create
 // =====================================================================
 describe('employeeController.create (POST /employees)', () => {
-  const validBody = { name: 'Alice', email: 'a@b.c', password: 'pw', status: 'ACTIVE', roleIds: [1] }
+  const validBody = { firstName: 'Alice', lastName: 'Smith', identificationNumber: '123456', identificationTypeId: 1, email: 'a@b.c', password: 'pw', status: 'ACTIVE', roleIds: [1] }
 
   it('G1 happy path: retorna 201 con el empleado creado', async () => {
     const created = { id: 10, name: 'Alice', email: 'a@b.c', status: 'ACTIVE', roles: ['ADMIN'], activeContract: null, createdAt: new Date() }
@@ -182,18 +182,18 @@ describe('employeeController.update (PUT /employees?id=X)', () => {
     mocked(employeeService.update).mockResolvedValue(updated)
 
     const res: any = await employeeController.update(
-      makeReq({ url: 'http://localhost/api/employees?id=3', body: { name: 'New Name' } }),
+      makeReq({ url: 'http://localhost/api/employees?id=3', body: { firstName: 'New', lastName: 'Name' } }),
     )
 
     expect(res.status).toBe(200)
-    expect(employeeService.update).toHaveBeenCalledWith(3, { name: 'New Name' })
+    expect(employeeService.update).toHaveBeenCalledWith(3, { firstName: 'New', lastName: 'Name' })
   })
 
   it('G2 error de negocio: id no existe → 400 con mensaje', async () => {
     mocked(employeeService.update).mockRejectedValue(new Error('Record to update not found'))
 
     const res: any = await employeeController.update(
-      makeReq({ url: 'http://localhost/api/employees?id=999', body: {} }),
+      makeReq({ url: 'http://localhost/api/employees?id=999', body: { firstName: 'x' } }),
     )
 
     expect(res.status).toBe(400)
@@ -205,7 +205,7 @@ describe('employeeController.update (PUT /employees?id=X)', () => {
     mocked(employeeService.update).mockRejectedValue(new Error('Invalid `id`'))
 
     const res: any = await employeeController.update(
-      makeReq({ url: 'http://localhost/api/employees', body: {} }),
+      makeReq({ url: 'http://localhost/api/employees', body: { firstName: 'x' } }),
     )
 
     expect(res.status).toBe(400)

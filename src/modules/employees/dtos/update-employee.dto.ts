@@ -1,6 +1,8 @@
-// src/modules/employees/dtos/update-employee.dto.ts
 export type UpdateEmployeeDto = {
-    name?: string
+    firstName?: string
+    lastName?: string
+    identificationNumber?: string
+    identificationTypeId?: number
     email?: string
     status?: 'ACTIVE' | 'INACTIVE'
     roleIds?: number[]

@@ -10,16 +10,32 @@ datasource db {
 // =======================
 // Employee Domain
 // =======================
+model IdentificationType {
+  id        Int        @id @default(autoincrement())
+  code      String     @unique @db.VarChar(20)
+  name      String     @db.VarChar(100)
+  createdAt DateTime   @default(now()) @map("created_at")
+  updatedAt DateTime   @updatedAt @map("updated_at")
+  employees Employee[]
+
+  @@map("identification_types")
+}
+
 model Employee {
-  id             Int                 @id @default(autoincrement())
-  name           String              @db.VarChar(150)
-  email          String              @unique @db.VarChar(255)
-  status         EmployeeStatus      @default(ACTIVE)
-  timezone       String              @default("America/Bogota")
-  metadata       Json?
-  createdAt      DateTime            @default(now()) @map("created_at")
-  updatedAt      DateTime            @updatedAt @map("updated_at")
-  passwordHash   String?             @map("password_hash") @db.VarChar(255)
+  id                   Int                 @id @default(autoincrement())
+  firstName            String              @map("first_name") @db.VarChar(100)
+  lastName             String              @map("last_name") @db.VarChar(100)
+  identificationNumber String              @map("identification_number") @db.VarChar(50)
+  identificationTypeId Int                 @map("identification_type_id")
+  email                String              @unique @db.VarChar(255)
+  status               EmployeeStatus      @default(ACTIVE)
+  timezone             String              @default("America/Bogota")
+  metadata             Json?
+  createdAt            DateTime            @default(now()) @map("created_at")
+  updatedAt            DateTime            @updatedAt @map("updated_at")
+  passwordHash         String?             @map("password_hash") @db.VarChar(255)
+
+  identificationType   IdentificationType  @relation(fields: [identificationTypeId], references: [id])
   attendances         Attendance[]
   tasks               Task[]              @relation("EmployeeTasks")
   assignedTasks       Task[]              @relation("AssignedByEmployee")

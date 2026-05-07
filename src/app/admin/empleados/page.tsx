@@ -8,9 +8,15 @@ import { Pagination } from '@/components/ui/Pagination'
 
 const LIMIT = 10
 
+type IdentificationType = { id: number; code: string; name: string }
+
 type Employee = {
   id: number
+  firstName: string
+  lastName: string
   name: string
+  identificationNumber: string
+  identificationType: IdentificationType
   email: string
   status: 'ACTIVE' | 'INACTIVE'
   roles: string[]
@@ -21,6 +27,7 @@ type Employee = {
 type Role = { id: number; name: string }
 type Job = { id: number; title: string }
 type ContractType = { id: number; name: string }
+// IdentificationType already declared above
 
 function initials(name: string) {
   return name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()
@@ -60,12 +67,14 @@ export default function EmpleadosPage() {
   const [roles, setRoles] = useState<Role[]>([])
   const [jobs, setJobs] = useState<Job[]>([])
   const [contractTypes, setContractTypes] = useState<ContractType[]>([])
+  const [identificationTypes, setIdentificationTypes] = useState<IdentificationType[]>([])
   const [modalLoading, setModalLoading] = useState(false)
   const [modalError, setModalError] = useState('')
   const [editingId, setEditingId] = useState<number | null>(null)
   const [isViewOnly, setIsViewOnly] = useState(false)
   const [form, setForm] = useState({
-    firstName: '', lastName: '', identification: '', email: '', password: '', phone: '',
+    firstName: '', lastName: '', identificationNumber: '', identificationTypeId: '',
+    email: '', password: '', phone: '',
     roleId: '', status: 'ACTIVE' as 'ACTIVE' | 'INACTIVE',
     jobId: '', contractTypeId: '',
     salary: '', hourlyRate: '', startDate: '', endDate: '',
@@ -106,10 +115,12 @@ export default function EmpleadosPage() {
       fetch('/api/roles').then(x => x.json()),
       fetch('/api/jobs').then(x => x.json()),
       fetch('/api/contract-types').then(x => x.json()),
-    ]).then(([r, j, ct]) => {
+      fetch('/api/identification-types').then(x => x.json()),
+    ]).then(([r, j, ct, it]) => {
       setRoles(r)
       setJobs(j)
       setContractTypes(ct)
+      setIdentificationTypes(it)
     }).catch(err => console.error('Error fetching dependencies:', err))
   }, [])
 
@@ -130,24 +141,13 @@ export default function EmpleadosPage() {
     setIsViewOnly(view)
 
     const emptyForm = {
-      firstName: '', lastName: '', identification: '', email: '', password: '', phone: '',
+      firstName: '', lastName: '', identificationNumber: '', identificationTypeId: '',
+      email: '', password: '', phone: '',
       roleId: '', status: 'ACTIVE' as 'ACTIVE' | 'INACTIVE',
       jobId: '', contractTypeId: '',
       salary: '', hourlyRate: '', startDate: '', endDate: '',
     }
     setForm(emptyForm)
-
-    // Load dependencies if not already loaded (though they should be from mount)
-    if (roles.length === 0) {
-      const [r, j, ct] = await Promise.all([
-        fetch('/api/roles').then(x => x.json()),
-        fetch('/api/jobs').then(x => x.json()),
-        fetch('/api/contract-types').then(x => x.json()),
-      ])
-      setRoles(r)
-      setJobs(j)
-      setContractTypes(ct)
-    }
 
     // If editing or viewing, fetch full employee details and populate form
     if (emp) {
@@ -157,20 +157,18 @@ export default function EmpleadosPage() {
         if (!res.ok) throw new Error('Error al cargar datos')
         const fullData = await res.json()
 
-        // Map roles: if fullData.roles is objects, get id, else find in roles list
-        const roleId = fullData.roles?.[0]?.id?.toString() ||
-          roles.find((role: Role) => role.name === fullData.roles?.[0])?.id?.toString() || '';
+        const roleId = roles.find((role: Role) => role.name === fullData.roles?.[0])?.id?.toString() || ''
 
-        const [firstName, ...lastNames] = (fullData.name || '').split(' ')
         setForm({
           ...emptyForm,
-          firstName: firstName || '',
-          lastName: lastNames.join(' ') || '',
-          identification: fullData.metadata?.identification || '',
+          firstName: fullData.firstName || '',
+          lastName: fullData.lastName || '',
+          identificationNumber: fullData.identificationNumber || '',
+          identificationTypeId: fullData.identificationType?.id?.toString() || '',
           email: fullData.email || '',
           status: fullData.status || 'ACTIVE',
           phone: fullData.metadata?.phone || '',
-          roleId: roleId,
+          roleId,
           jobId: fullData.activeContract?.job?.id?.toString() || '',
           contractTypeId: fullData.activeContract?.contractTypeId?.toString() || '',
           salary: fullData.activeContract?.salary?.toString() || '',
@@ -197,14 +195,14 @@ export default function EmpleadosPage() {
       const method = isEditing ? 'PUT' : 'POST'
 
       const body: any = {
-        name: `${form.firstName} ${form.lastName}`.trim(),
+        firstName: form.firstName.trim(),
+        lastName: form.lastName.trim(),
+        identificationNumber: form.identificationNumber.trim(),
+        identificationTypeId: Number(form.identificationTypeId),
         email: form.email,
         status: form.status,
         roleIds: [Number(form.roleId)],
-        metadata: {
-          phone: form.phone,
-          identification: form.identification,
-        },
+        metadata: { phone: form.phone },
       }
 
       // Only include password if creating or if provided during edit
@@ -604,12 +602,27 @@ export default function EmpleadosPage() {
                       className="form-input disabled:bg-gray-50 disabled:text-gray-500"
                     />
                   </div>
-                  <div className="sm:col-span-2">
-                    <label className="block text-xs font-subtitles font-semibold text-gray-600 mb-1">Identificación <span className="text-red-500">*</span></label>
-                    <input
-                      type="text" required placeholder="C.C. / DNI / Pasaporte"
+                  <div>
+                    <label className="block text-xs font-subtitles font-semibold text-gray-600 mb-1">Tipo de identificación <span className="text-red-500">*</span></label>
+                    <select
+                      required
                       disabled={isViewOnly}
-                      value={form.identification} onChange={e => setForm(f => ({ ...f, identification: e.target.value }))}
+                      value={form.identificationTypeId}
+                      onChange={e => setForm(f => ({ ...f, identificationTypeId: e.target.value }))}
+                      className="form-input bg-white disabled:bg-gray-50 disabled:text-gray-500"
+                    >
+                      <option value="">Seleccionar...</option>
+                      {identificationTypes.map(it => (
+                        <option key={it.id} value={it.id}>{it.code} — {it.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-subtitles font-semibold text-gray-600 mb-1">Número de identificación <span className="text-red-500">*</span></label>
+                    <input
+                      type="text" required placeholder="Ej: 1234567890"
+                      disabled={isViewOnly}
+                      value={form.identificationNumber} onChange={e => setForm(f => ({ ...f, identificationNumber: e.target.value }))}
                       className="form-input disabled:bg-gray-50 disabled:text-gray-500"
                     />
                   </div>

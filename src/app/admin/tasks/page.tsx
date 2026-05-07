@@ -11,6 +11,8 @@ export type TaskStatus = 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED' |
 
 interface Employee {
   id: number
+  firstName: string
+  lastName: string
   name: string
   email: string
 }

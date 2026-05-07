@@ -12,6 +12,7 @@ jest.mock('../../repositories/role.repository', () => ({
   roleRepository: {
     findByName: jest.fn(),
     assignRoleToEmployee: jest.fn(),
+    findIdentificationTypeByCode: jest.fn(),
   },
 }))
 
@@ -64,12 +65,12 @@ import { auditLog } from '@/lib/audit-logger'
 const mocked = <T extends (...args: any) => any>(fn: T) => fn as unknown as jest.Mock
 
 describe('authService.register', () => {
-  const baseData = { name: 'Alice', email: 'Alice@Example.COM', password: 'secret123', role: 'ADMIN' as const }
+  const baseData = { firstName: 'Alice', lastName: 'Smith', identificationTypeId: 1, email: 'Alice@Example.COM', password: 'secret123', role: 'ADMIN' as const }
 
   it('happy path: creates user, assigns role, returns DTO with JWT', async () => {
     mocked(userRepository.findByEmail).mockResolvedValue(null)
     mocked(hashService.hash).mockResolvedValue('hashed')
-    mocked(userRepository.create).mockResolvedValue({ id: 1, name: 'Alice', email: 'alice@example.com' })
+    mocked(userRepository.create).mockResolvedValue({ id: 1, firstName: 'Alice', lastName: 'Smith', email: 'alice@example.com' })
     mocked(roleRepository.findByName).mockResolvedValue({ id: 2, name: 'ADMIN' })
     mocked(roleRepository.assignRoleToEmployee).mockResolvedValue({ employeeId: 1, roleId: 2 })
     mocked(jwtService.sign).mockReturnValue('jwt-token')
@@ -79,18 +80,21 @@ describe('authService.register', () => {
     expect(userRepository.findByEmail).toHaveBeenCalledWith('alice@example.com')
     expect(hashService.hash).toHaveBeenCalledWith('secret123')
     expect(userRepository.create).toHaveBeenCalledWith({
-      name: 'Alice',
+      firstName: 'Alice',
+      lastName: 'Smith',
+      identificationNumber: '',
+      identificationTypeId: 1,
       email: 'alice@example.com',
       passwordHash: 'hashed',
     })
     expect(roleRepository.findByName).toHaveBeenCalledWith('ADMIN')
     expect(roleRepository.assignRoleToEmployee).toHaveBeenCalledWith(1, 2)
     expect(jwtService.sign).toHaveBeenCalledWith({ id: 1, email: 'alice@example.com', role: 'ADMIN' })
-    expect(result).toEqual({ accessToken: 'jwt-token', role: 'ADMIN', email: 'alice@example.com', name: 'Alice' })
+    expect(result).toEqual({ accessToken: 'jwt-token', role: 'ADMIN', email: 'alice@example.com', name: 'Alice Smith' })
   })
 
-  it('rejects with "El nombre es obligatorio" when name is blank', async () => {
-    await expect(authService.register({ ...baseData, name: '   ' })).rejects.toThrow('El nombre es obligatorio')
+  it('rejects with "El nombre es obligatorio" when firstName is blank', async () => {
+    await expect(authService.register({ ...baseData, firstName: '   ' })).rejects.toThrow('El nombre es obligatorio')
     expect(userRepository.findByEmail).not.toHaveBeenCalled()
     expect(hashService.hash).not.toHaveBeenCalled()
   })
@@ -117,7 +121,7 @@ describe('authService.register', () => {
   it('rejects when role does not exist', async () => {
     mocked(userRepository.findByEmail).mockResolvedValue(null)
     mocked(hashService.hash).mockResolvedValue('hashed')
-    mocked(userRepository.create).mockResolvedValue({ id: 1, name: 'Alice', email: 'alice@example.com' })
+    mocked(userRepository.create).mockResolvedValue({ id: 1, firstName: 'Alice', lastName: 'Smith', email: 'alice@example.com' })
     mocked(roleRepository.findByName).mockResolvedValue(null)
 
     await expect(authService.register(baseData)).rejects.toThrow('El rol no existe')
@@ -130,7 +134,8 @@ describe('authService.login', () => {
   const baseData = { email: 'Alice@Example.COM', password: 'secret123' }
   const employee = {
     id: 1,
-    name: 'Alice',
+    firstName: 'Alice',
+    lastName: 'Smith',
     email: 'alice@example.com',
     passwordHash: 'stored-hash',
     employeeRoles: [{ role: { id: 2, name: 'ADMIN' } }],
@@ -159,7 +164,7 @@ describe('authService.login', () => {
       performedBy: 1,
       newValues: { ip: '1.1.1.1' },
     })
-    expect(result).toEqual({ accessToken: 'jwt-token', role: 'ADMIN', email: 'alice@example.com', name: 'Alice' })
+    expect(result).toEqual({ accessToken: 'jwt-token', role: 'ADMIN', email: 'alice@example.com', name: 'Alice Smith' })
   })
 
   it('passes deviceInfo=undefined when no userAgent is provided', async () => {

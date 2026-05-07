@@ -70,11 +70,16 @@ const mocked = <T extends (...args: any) => any>(fn: T) => fn as unknown as jest
 
 const fakeEmployee = {
   id: 1,
-  name: 'Alice',
+  firstName: 'Alice',
+  lastName: 'Smith',
+  identificationNumber: '123456',
+  identificationTypeId: 1,
+  identificationType: { id: 1, code: 'CC', name: 'Cédula de ciudadanía', createdAt: new Date(), updatedAt: new Date() },
   email: 'a@b.c',
   status: 'ACTIVE',
   metadata: null,
   passwordHash: 'hash',
+  timezone: 'America/Bogota',
   createdAt: new Date('2026-01-01'),
   updatedAt: new Date('2026-01-01'),
 }
@@ -169,7 +174,10 @@ describe('employeeService.findOne', () => {
 // =====================================================================
 describe('employeeService.create', () => {
   const validData = {
-    name: 'Alice',
+    firstName: 'Alice',
+    lastName: 'Smith',
+    identificationNumber: '123456',
+    identificationTypeId: 1,
     email: 'a@b.c',
     password: 'pw',
     status: 'ACTIVE' as const,
@@ -186,7 +194,10 @@ describe('employeeService.create', () => {
 
     expect(hashService.hash).toHaveBeenCalledWith('pw')
     expect(employeeRepository.create).toHaveBeenCalledWith({
-      name: 'Alice',
+      firstName: 'Alice',
+      lastName: 'Smith',
+      identificationNumber: '123456',
+      identificationTypeId: 1,
       email: 'a@b.c',
       passwordHash: 'hashed-pw',
       status: 'ACTIVE',
@@ -225,18 +236,18 @@ describe('employeeService.create', () => {
 describe('employeeService.update', () => {
   it('G1 happy path: actualiza y retorna DTO', async () => {
     primeResponseDtoMocks()
-    mocked(employeeRepository.updateEmployee).mockResolvedValue({ ...fakeEmployee, name: 'Alice 2' })
+    mocked(employeeRepository.updateEmployee).mockResolvedValue({ ...fakeEmployee, lastName: 'Smith 2' })
 
-    const result = await employeeService.update(1, { name: 'Alice 2' })
+    const result = await employeeService.update(1, { lastName: 'Smith 2' })
 
-    expect(employeeRepository.updateEmployee).toHaveBeenCalledWith(1, { name: 'Alice 2' })
-    expect(result.name).toBe('Alice 2')
+    expect(employeeRepository.updateEmployee).toHaveBeenCalledWith(1, { lastName: 'Smith 2' })
+    expect(result.name).toBe('Alice Smith 2')
   })
 
   it('G2 error de negocio: registro no encontrado → propaga', async () => {
     mocked(employeeRepository.updateEmployee).mockRejectedValue(new Error('Record to update not found'))
 
-    await expect(employeeService.update(999, { name: 'x' })).rejects.toThrow('Record to update not found')
+    await expect(employeeService.update(999, { firstName: 'x' })).rejects.toThrow('Record to update not found')
   })
 
   it('G3 caso inválido controlado: data vacía {} → repo recibe {} sin crash', async () => {

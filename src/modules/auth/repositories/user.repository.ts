@@ -5,6 +5,7 @@ class UserRepository {
         return prisma.employee.findUnique({
             where: { email },
             include: {
+                identificationType: true,
                 employeeRoles: {
                     include: {
                         role: true,
@@ -15,15 +16,24 @@ class UserRepository {
     }
 
     async create(data: {
-        name: string
+        firstName: string
+        lastName: string
+        identificationNumber: string
+        identificationTypeId: number
         email: string
         passwordHash: string
     }) {
         return prisma.employee.create({
             data: {
-                name: data.name,
+                firstName: data.firstName,
+                lastName: data.lastName,
+                identificationNumber: data.identificationNumber,
+                identificationTypeId: data.identificationTypeId,
                 email: data.email,
                 passwordHash: data.passwordHash,
+            },
+            include: {
+                identificationType: true,
             },
         })
     }
