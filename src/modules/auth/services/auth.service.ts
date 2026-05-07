@@ -69,6 +69,10 @@ class AuthService {
         const isValidPassword = await hashService.compare(password, employee.passwordHash)
         if (!isValidPassword) throw new Error('Credenciales inválidas')
 
+        if (employee.status === 'INACTIVE') {
+            throw new Error('Tu cuenta está inactiva. Contacta al administrador.')
+        }
+
         const role = employee.employeeRoles[0]?.role
         if (!role) throw new Error('El usuario no tiene rol asignado')
 
