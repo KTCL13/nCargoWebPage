@@ -45,7 +45,7 @@ export const NAV_ITEMS: NavItem[] = [
     label: 'Envíos',
     href: '/admin/envios',
     icon: <span aria-hidden="true">📦</span>,
-    roles: ['ADMIN', 'EMPLOYEE'],
+    roles: ['ADMIN'],
   },
   {
     label: 'Cotizaciones',
