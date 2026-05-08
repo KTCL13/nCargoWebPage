@@ -25,7 +25,7 @@ type Quotation = {
   tax_amount: number
   total: number
   created_at: string
-  employee?: { name: string }
+  employee?: { firstName: string; lastName: string }
   status?: { name: string; color?: string }
 }
 

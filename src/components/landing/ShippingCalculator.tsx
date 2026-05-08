@@ -5,19 +5,19 @@ type Country = 'CO' | 'MX'
 type City = { id: number; city: string; department: string | null }
 
 export function Calculator() {
-  const [country,       setCountry]       = useState<Country>('CO')
-  const [allCities,     setAllCities]     = useState<City[]>([])
-  const [flatRate,      setFlatRate]      = useState<{ enabled: boolean; price: number }>({ enabled: false, price: 0 })
+  const [country, setCountry] = useState<Country>('CO')
+  const [allCities, setAllCities] = useState<City[]>([])
+  const [flatRate, setFlatRate] = useState<{ enabled: boolean; price: number }>({ enabled: false, price: 0 })
   const [citiesLoading, setCitiesLoading] = useState(false)
-  const [dept,          setDept]          = useState('')
-  const [cityId,        setCityId]        = useState('')
-  const [dims,          setDims]          = useState({ h: '', w: '', l: '' })
-  const [weight,        setWeight]        = useState('')
-  const [declared,      setDeclared]      = useState('')
-  const [pickup,        setPickup]        = useState('0')
-  const [total,         setTotal]         = useState<number | null>(null)
-  const [loading,       setLoading]       = useState(false)
-  const [error,         setError]         = useState('')
+  const [dept, setDept] = useState('')
+  const [cityId, setCityId] = useState('')
+  const [dims, setDims] = useState({ h: '', w: '', l: '' })
+  const [weight, setWeight] = useState('')
+  const [declared, setDeclared] = useState('')
+  const [pickup, setPickup] = useState('0')
+  const [total, setTotal] = useState<number | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
 
   const parse = (v: string) => parseFloat(v.replace(',', '.')) || 0
   const volWeight = Math.ceil((parse(dims.h) * parse(dims.w) * parse(dims.l)) / 153)
@@ -35,7 +35,7 @@ export function Calculator() {
         setAllCities(data.data ?? [])
         setFlatRate({ enabled: Boolean(data.flatRateEnabled), price: Number(data.flatRatePrice) })
       })
-      .catch(() => {})
+      .catch(() => { })
       .finally(() => setCitiesLoading(false))
   }, [country])
 
@@ -70,12 +70,12 @@ export function Calculator() {
     try {
       const body: Record<string, unknown> = {
         country,
-        actualWeightLb:   parse(weight),
-        heightIn:         parse(dims.h),
-        lengthIn:         parse(dims.l),
-        widthIn:          parse(dims.w),
+        actualWeightLb: parse(weight),
+        heightIn: parse(dims.h),
+        lengthIn: parse(dims.l),
+        widthIn: parse(dims.w),
         declaredValueUsd: parse(declared),
-        pickupMiles:      parse(pickup),
+        pickupMiles: parse(pickup),
       }
       if (!flatRate.enabled && cityId) body.destinationCityId = Number(cityId)
 
@@ -185,9 +185,8 @@ export function Calculator() {
               })}
             </div>
           </div>
-
           <div className={sec}>
-            <div className="grid grid-cols-2 gap-1">
+            <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className={lbl}>Peso (lb)</label>
                 <input
@@ -196,15 +195,6 @@ export function Calculator() {
                   className={inp}
                 />
               </div>
-              <div className="bg-slate-50 rounded-[var(--radius-md)] flex flex-col justify-center items-center text-xs">
-                <span className="text-[8px] text-slate-500">Vol (lb)</span>
-                <span className="font-black text-[var(--color-secondary)]">{volWeight}</span>
-              </div>
-            </div>
-          </div>
-
-          <div className={sec}>
-            <div className="grid grid-cols-2 gap-1">
               <div>
                 <label className={lbl}>Valor declarado (USD)</label>
                 <input
@@ -218,18 +208,13 @@ export function Calculator() {
                   step="1"
                 />
               </div>
-              <div>
-                <label className={lbl}>Millas recogida</label>
-                <input
-                  type="number"
-                  value={pickup}
-                  onChange={e => setPickup(e.target.value)}
-                  className={inp}
-                  placeholder="0"
-                  min="0"
-                  step="0.1"
-                />
-              </div>
+
+            </div>
+          </div>
+          <div className={sec}>
+            <div className="bg-slate-50 rounded-[var(--radius-md)] flex flex-col justify-center items-center text-xs">
+              <span className="text-[8px] text-slate-500">Vol (lb)</span>
+              <span className="font-black text-[var(--color-secondary)]">{volWeight}</span>
             </div>
           </div>
 

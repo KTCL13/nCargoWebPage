@@ -5,6 +5,7 @@ import { DashboardLayout } from '@/components/layout/DashboardLayout'
 import { NAV_ITEMS } from '@/components/layout/nav-config'
 import { Pagination } from '@/components/ui/Pagination'
 import { useAuth } from '@/context/AuthContext'
+import { EmployeeSearch } from '@/components/ui/EmployeeSearch'
 
 // ── Types from OpenAPI spec (simplified) ──────────────────────────────
 export type TaskStatus = 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED' | 'NOT_DONE'
@@ -295,17 +296,12 @@ export default function GestionTareasPage() {
                 ))}
               </select>
             </div>
-            <div className="flex-1 min-w-[200px]">
-              <select
-                value={employeeFilter}
-                onChange={e => { setEmployeeFilter(e.target.value); setPage(0) }}
-                className="form-input w-full bg-white"
-              >
-                <option value="">Todos los empleados</option>
-                {employees.map(emp => (
-                  <option key={emp.id} value={emp.id}>{emp.name}</option>
-                ))}
-              </select>
+            <div className="flex-1 min-w-[300px]">
+              <EmployeeSearch
+                onSelect={emp => { setEmployeeFilter(emp ? String(emp.id) : ''); setPage(0) }}
+                placeholder="Filtrar por empleado (Nombre o ID)..."
+                className="bg-white"
+              />
             </div>
           </div>
 
@@ -442,38 +438,22 @@ export default function GestionTareasPage() {
 
               {/* Employee Selector(s) */}
               {isBulk ? (
-                <div>
-                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Empleados (Ctrl + clic para varios)</label>
-                  <select
-                    multiple
-                    required
-                    value={form.employeeIds}
-                    onChange={e => {
-                      const options = Array.from(e.target.selectedOptions).map(o => o.value)
-                      setForm(f => ({ ...f, employeeIds: options }))
-                    }}
-                    className="form-input w-full h-32"
-                  >
-                    {employees.map(emp => (
-                      <option key={emp.id} value={emp.id}>{emp.name}</option>
-                    ))}
-                  </select>
-                </div>
+                <EmployeeSearch
+                  multi
+                  label="Empleados Responsables"
+                  onMultiSelect={emps => {
+                    setForm(f => ({ ...f, employeeIds: emps.map(e => String(e.id)) }))
+                  }}
+                  placeholder="Escribe para buscar y añadir empleados..."
+                />
               ) : (
-                <div>
-                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Empleado Responsable</label>
-                  <select
-                    required
-                    value={form.employeeId}
-                    onChange={e => setForm(f => ({ ...f, employeeId: e.target.value }))}
-                    className="form-input w-full"
-                  >
-                    <option value="">Seleccionar...</option>
-                    {employees.map(emp => (
-                      <option key={emp.id} value={emp.id}>{emp.name}</option>
-                    ))}
-                  </select>
-                </div>
+                <EmployeeSearch
+                  label="Empleado Responsable"
+                  onSelect={emp => {
+                    setForm(f => ({ ...f, employeeId: emp ? String(emp.id) : '' }))
+                  }}
+                  placeholder="Escribe nombre o identificación..."
+                />
               )}
 
               <div className="grid grid-cols-2 gap-3">
@@ -528,20 +508,11 @@ export default function GestionTareasPage() {
             </p>
 
             <div className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Nuevo Responsable</label>
-                <select
-                  required
-                  value={newEmployeeId}
-                  onChange={e => setNewEmployeeId(e.target.value)}
-                  className="form-input w-full"
-                >
-                  <option value="">Seleccionar empleado...</option>
-                  {employees.filter(e => e.id !== reassignTask.employeeId).map(emp => (
-                    <option key={emp.id} value={emp.id}>{emp.name}</option>
-                  ))}
-                </select>
-              </div>
+              <EmployeeSearch
+                label="Nuevo Responsable"
+                onSelect={emp => setNewEmployeeId(emp ? String(emp.id) : '')}
+                placeholder="Buscar nuevo responsable..."
+              />
 
               <div className="flex gap-3 pt-2">
                 <button

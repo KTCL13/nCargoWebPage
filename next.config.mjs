@@ -2,7 +2,7 @@
 const nextConfig = {
   reactStrictMode: true,
 
-  serverExternalPackages: ["@prisma/client", "prisma"],
+  serverExternalPackages: ["@prisma/client", "prisma", "pdfkit", "exceljs"],
 
   images: {
     remotePatterns: [
@@ -13,6 +13,20 @@ const nextConfig = {
         pathname: "/uploads/**",
       },
     ],
+  },
+  async redirects() {
+    return [
+      {
+        source: '/employee',
+        destination: '/employee/dashboard',
+        permanent: true,
+      },
+      {
+        source: '/admin',
+        destination: '/admin/dashboard',
+        permanent: true,
+      },
+    ];
   },
 };
 

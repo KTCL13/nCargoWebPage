@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/prisma'
-import { AttendanceEvent, AttendanceEventType } from '@prisma/client'
-import { InputJsonValue } from '@prisma/client/runtime/library'
+import { AttendanceEvent, AttendanceEventType, Prisma } from '@prisma/client'
+
 
 class AttendanceEventRepository {
     async create(data: {
@@ -13,7 +13,7 @@ class AttendanceEventRepository {
             data: {
                 attendanceId: data.attendanceId,
                 type: data.type,
-                locationMetadata: data.locationMetadata as InputJsonValue | undefined,
+                locationMetadata: data.locationMetadata as Prisma.InputJsonValue | undefined,
                 timestamp: data.timestamp,
             },
         })

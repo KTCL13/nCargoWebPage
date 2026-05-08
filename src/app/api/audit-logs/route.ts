@@ -8,7 +8,7 @@ export async function GET(req: NextRequest) {
   const entityType = searchParams.get('entity') ?? undefined
 
   const where = entityType ? { entityType } : {}
-  const include = { employee: { select: { id: true, name: true } } }
+  const include = { employee: { select: { id: true, firstName: true, lastName: true } } }
 
   if (pageSize > 0) {
     const [data, total] = await Promise.all([

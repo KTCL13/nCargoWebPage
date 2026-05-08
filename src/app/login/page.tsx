@@ -70,12 +70,13 @@ export default function LoginPage() {
     showPass: false,
     loading: false,
     error: "",
-    assets: { logo: "", bg: "" } as Assets,
+    assets: { logo: "", bg: "/images/website/55.PNG" } as Assets,
   });
 
   /* ── Cargar assets (logo / fondo) ───────────────────────────── */
   useEffect(() => {
-    const url = process.env.NEXT_PUBLIC_STRAPI_URL ?? "http://localhost:1337";
+    const url = process.env.NEXT_PUBLIC_STRAPI_URL;
+    if (!url) return;
 
     fetch(`${url}/api/login-page?populate=*`)
       .then((r) => r.json())
@@ -91,7 +92,7 @@ export default function LoginPage() {
           },
         }));
       })
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
   /* ── Login Profesional ───────────────────────────────────────── */
@@ -136,12 +137,12 @@ export default function LoginPage() {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({ timezone: detectedTz }),
-        }).catch(() => {});
+        }).catch(() => { });
       }
 
       // Redirección por rol
       router.push(
-        json.role === "ADMIN" ? "/admin/dashboard" : "/employee/dashboard",
+        json.role === "ADMIN" ? "/admin/dashboard" : "/employee/jornada",
       );
     } catch (err) {
       setUi((p) => ({
@@ -162,11 +163,11 @@ export default function LoginPage() {
         <div className="absolute inset-0 bg-gradient-to-br from-[#040626]/85 via-[#0C1E8C]/55 to-[#E8002E]/35" />
 
         <div className="relative z-10 text-center max-w-lg space-y-8 px-12">
-          <h1 className="font-extrabold text-white leading-tight">
+          <h1 className="font-extrabold text-white leading-tight text-4xl" style={{ fontFamily: FONTS.title }}>
             Conectando Familias
             <br />a Través de Fronteras
           </h1>
-          <p className="text-white/80 text-lg">
+          <p className="text-white/80 text-lg" style={{ fontFamily: FONTS.body }}>
             Gestiona envíos con <strong>N-Cargo</strong>.
           </p>
         </div>
@@ -175,26 +176,27 @@ export default function LoginPage() {
       {/* Panel Derecho */}
       <main className="flex-1 flex items-center justify-center bg-[#F9FAFB] px-6 py-10">
         <div className="w-full max-w-[400px]">
-          <h2 className="mb-8 text-center font-black text-[#040626] text-2xl">
+          <h2 className="mb-8 text-center font-black text-[#040626] text-2xl uppercase tracking-tight" style={{ fontFamily: FONTS.title }}>
             LOGIN
           </h2>
 
           <form onSubmit={handleLogin} className="flex flex-col gap-4">
             {/* Email */}
             <div>
-              <label className={CLASSES.label}>Correo</label>
+              <label className={CLASSES.label} style={{ fontFamily: FONTS.body }}>Email</label>
               <input
                 type="email"
                 value={data.email}
                 onChange={(e) => setData({ ...data, email: e.target.value })}
                 className={CLASSES.input}
+                style={{ fontFamily: FONTS.body }}
                 required
               />
             </div>
 
             {/* Password */}
             <div>
-              <label className={CLASSES.label}>Contraseña</label>
+              <label className={CLASSES.label} style={{ fontFamily: FONTS.body }}>Contraseña</label>
               <div className="relative">
                 <input
                   type={ui.showPass ? "text" : "password"}
@@ -203,6 +205,7 @@ export default function LoginPage() {
                     setData({ ...data, password: e.target.value })
                   }
                   className={CLASSES.input}
+                  style={{ fontFamily: FONTS.body }}
                   required
                 />
                 <button
@@ -218,13 +221,14 @@ export default function LoginPage() {
             </div>
 
             {/* Error */}
-            {ui.error && <div className="text-red-500 text-sm">{ui.error}</div>}
+            {ui.error && <div className="text-red-500 text-sm" style={{ fontFamily: FONTS.body }}>{ui.error}</div>}
 
             {/* Forgot password */}
             <div className="text-right -mt-2">
               <Link
                 href="/forgot-password"
                 className="text-xs text-gray-500 hover:text-[#FF003B] transition-colors"
+                style={{ fontFamily: FONTS.body }}
               >
                 ¿Olvidaste tu contraseña?
               </Link>
@@ -235,6 +239,7 @@ export default function LoginPage() {
               type="submit"
               disabled={ui.loading}
               className="py-3 rounded-xl font-bold text-white bg-gradient-to-r from-[#040626] to-[#FF003B]"
+              style={{ fontFamily: FONTS.title }}
             >
               {ui.loading ? "Cargando..." : "Iniciar sesión"}
             </button>
