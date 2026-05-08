@@ -35,6 +35,18 @@ class LocationRepository {
     });
   }
 
+  findCitiesByCountryCode(countryCode: string) {
+    const countryName = countryCode.toUpperCase() === 'CO' ? 'Colombia' : 'Mexico'
+    return prisma.location.findMany({
+      where: {
+        type: 'CITY',
+        parent: { type: 'DEPARTMENT', parent: { type: 'COUNTRY', name: countryName } },
+      },
+      include: { parent: true },
+      orderBy: { name: 'asc' },
+    })
+  }
+
   findById(id: number) {
     return prisma.location.findUnique({ where: { id } });
   }

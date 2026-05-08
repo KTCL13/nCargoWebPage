@@ -1,15 +1,15 @@
 export interface ShippingRateResponseDto {
   id: number;
   providerId: number;
-  locationId: number;
-  price: number;
+  destination: { id: number; city: string; region: string | null; country: string };
+  basePrice: number;
 }
 
 export interface CreateShippingRateDto {
-  locationId: number;
-  price: number;
+  destinationId: number;
+  basePrice: number;
 }
 
 export interface UpdateShippingRateDto {
-  price?: number;
+  basePrice?: number;
 }

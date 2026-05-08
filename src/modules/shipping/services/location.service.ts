@@ -39,22 +39,16 @@ class LocationService {
     }));
   }
 
-  async findByCountry(country: string): Promise<LocationResponseDto[]> {
-    const nameMap: Record<string, string> = {
-      CO: "Colombia",
-      MX: "Mexico",
-      US: "United States",
-    };
-    const countryName =
-      nameMap[country.toUpperCase()] ??
-      country.charAt(0).toUpperCase() + country.slice(1).toLowerCase();
-
-    const countries = await locationRepository.findCountries();
-    const match = countries.find(
-      (c) => c.name.toLowerCase() === countryName.toLowerCase(),
-    );
-    if (!match) return [];
-    return this.findDepartmentsByCountry(match.id);
+  async findByCountry(country: string): Promise<{ id: number; city: string; region: string | null; country: string }[]> {
+    const code = country.toUpperCase()
+    if (!['CO', 'MX'].includes(code)) return []
+    const cities = await locationRepository.findCitiesByCountryCode(code)
+    return cities.map(l => ({
+      id: l.id,
+      city: l.name,
+      region: l.parent?.name ?? null,
+      country: code,
+    }))
   }
 }
 
