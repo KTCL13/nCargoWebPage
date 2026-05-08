@@ -8,4 +8,12 @@ export type CreateEmployeeDto = {
     status: 'ACTIVE' | 'INACTIVE'
     roleIds: number[]
     metadata?: Record<string, any>
+    initialContract?: {
+        jobId: number
+        contractTypeId: number
+        salary: number
+        hourlyRate: number
+        startDate: Date | string
+        endDate?: Date | string
+    }
 }

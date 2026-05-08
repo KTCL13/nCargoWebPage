@@ -55,6 +55,7 @@ model Employee {
   passwordResetTokens PasswordResetToken[]
   cotizacionRecords   CotizacionRecord[]
 
+  @@unique([identificationTypeId, identificationNumber], name: "uq_employee_identification")
   @@map("employees")
 }
 

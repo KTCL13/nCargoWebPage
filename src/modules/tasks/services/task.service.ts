@@ -159,17 +159,22 @@ class TaskService {
             const statusId = await this.resolveStatusId(dto.status)
             data.status = { connect: { id: statusId } }
 
+            const isSelfUpdate = dto.actorId === existing.employeeId
+            const emp = await employeeRepository.getEmployeeById(existing.employeeId)
+            const timezone = emp?.timezone ?? 'America/Bogota'
+            const activeAttendance = await attendanceRepository.findActiveByEmployee(existing.employeeId, timezone)
+
+            // Employees can only change their own task status while their attendance session is open or paused
+            if (isSelfUpdate && !activeAttendance) {
+                throw new Error('Debes iniciar tu jornada laboral antes de actualizar el estado de una tarea')
+            }
+
             if (dto.status === 'COMPLETED' && !dto.endTime) {
                 data.endTime = new Date()
             }
 
-            if (dto.status === 'IN_PROGRESS' && !existing.attendanceId) {
-                const emp = await employeeRepository.getEmployeeById(existing.employeeId)
-                const timezone = emp?.timezone ?? 'America/Bogota'
-                const activeAttendance = await attendanceRepository.findActiveByEmployee(existing.employeeId, timezone)
-                if (activeAttendance) {
-                    data.attendance = { connect: { id: activeAttendance.id } }
-                }
+            if (dto.status === 'IN_PROGRESS' && !existing.attendanceId && activeAttendance) {
+                data.attendance = { connect: { id: activeAttendance.id } }
             }
         }
 
