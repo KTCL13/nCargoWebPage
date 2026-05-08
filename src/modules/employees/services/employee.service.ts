@@ -64,6 +64,29 @@ class EmployeeService {
         }
     }
 
+    // Validates salary/hourlyRate against SystemConfig thresholds based on contract type.
+    // Monthly contracts check salary against SMLV; hourly contracts check hourlyRate against min_hourly_rate.
+    private async validateContractRates(contractTypeId: number, salary: number, hourlyRate: number): Promise<void> {
+        const [smlvCfg, minHourlyCfg, contractType] = await Promise.all([
+            prisma.systemConfig.findUnique({ where: { key: 'smlv' } }),
+            prisma.systemConfig.findUnique({ where: { key: 'min_hourly_rate' } }),
+            prisma.contractType.findUnique({ where: { id: contractTypeId } }),
+        ])
+
+        const isHourly = contractType?.name?.toUpperCase().includes('HORA') ?? false
+
+        if (!isHourly && smlvCfg) {
+            const smlv = Number(smlvCfg.value)
+            if (salary < smlv)
+                throw new Error(`El salario no puede ser menor al SMLV ($${smlv.toLocaleString('es-CO')})`)
+        }
+        if (isHourly && minHourlyCfg) {
+            const minRate = Number(minHourlyCfg.value)
+            if (hourlyRate < minRate)
+                throw new Error(`La tarifa por hora no puede ser menor al mínimo legal ($${minRate.toLocaleString('es-CO')}/h)`)
+        }
+    }
+
     async findAll(filter: FilterEmployeeDto): Promise<PaginatedResponseDto> {
         const { employees, total } = await employeeRepository.getEmployees(filter)
         const employeeDtos = await Promise.all(employees.map(emp => this.toEmployeeResponseDto(emp)))
@@ -85,30 +108,94 @@ class EmployeeService {
         return this.toEmployeeResponseDto(employee)
     }
 
+    async checkDuplicates(email: string, phone: string, excludeId?: number): Promise<{ emailOwner?: string; phoneOwner?: string }> {
+        const [emailEmp, phoneEmp] = await Promise.all([
+            email ? employeeRepository.findByEmailExcluding(email, excludeId) : null,
+            phone ? employeeRepository.findByPhone(phone, excludeId) : null,
+        ])
+        return {
+            emailOwner: emailEmp ? fullName(emailEmp) : undefined,
+            phoneOwner: phoneEmp ? fullName(phoneEmp) : undefined,
+        }
+    }
+
     async create(data: CreateEmployeeDto) {
-        const { firstName, lastName, identificationNumber, identificationTypeId, email, password, status, roleIds, metadata } = data
+        const { firstName, lastName, identificationNumber, identificationTypeId, email, password, status, roleIds, metadata, initialContract } = data
 
         if (!firstName?.trim()) throw new Error('El nombre es obligatorio')
         if (!lastName?.trim()) throw new Error('El apellido es obligatorio')
         if (!identificationNumber?.trim()) throw new Error('El número de identificación es obligatorio')
         if (!identificationTypeId) throw new Error('El tipo de identificación es obligatorio')
 
+        const existing = await employeeRepository.findByIdentification(identificationTypeId, identificationNumber.trim())
+        if (existing) {
+            const idType = existing.identificationType?.name ?? 'documento'
+            throw new Error(`Ya existe un empleado con el mismo número de ${idType}: ${identificationNumber.trim()}`)
+        }
+
+        const emailExists = await employeeRepository.findByEmailExcluding(email)
+        if (emailExists) {
+            throw new Error(`El correo electrónico "${email}" ya está registrado por otro empleado`)
+        }
+
+        if (!password || password.length < 8 || !/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/[0-9]/.test(password))
+            throw new Error('La contraseña debe tener al menos 8 caracteres, una mayúscula, una minúscula y un número')
+
+        // Validate contract rates BEFORE any DB write so we fail early with no side effects
+        if (initialContract) {
+            await this.validateContractRates(initialContract.contractTypeId, initialContract.salary, initialContract.hourlyRate)
+        }
+
         const passwordHash = await hashService.hash(password)
 
-        const employee = await employeeRepository.create({
-            firstName: firstName.trim(),
-            lastName: lastName.trim(),
-            identificationNumber: identificationNumber.trim(),
-            identificationTypeId,
-            email,
-            passwordHash,
-            status,
-            metadata: metadata || {},
-        })
+        // Create employee + roles + initial contract in a single transaction
+        const employee = await prisma.$transaction(async (tx) => {
+            const emp = await tx.employee.create({
+                data: {
+                    firstName: firstName.trim(),
+                    lastName: lastName.trim(),
+                    identificationNumber: identificationNumber.trim(),
+                    identificationTypeId,
+                    email,
+                    passwordHash,
+                    status,
+                    metadata: metadata ?? {},
+                },
+                include: { identificationType: true },
+            })
 
-        for (const roleId of roleIds) {
-            await roleRepository.assignRoleToEmployee(employee.id, roleId)
-        }
+            for (const roleId of roleIds) {
+                await tx.employeeRole.create({ data: { employeeId: emp.id, roleId } })
+            }
+
+            if (initialContract) {
+                const startDate = new Date(initialContract.startDate)
+                const newContract = await tx.contract.create({
+                    data: {
+                        employeeId: emp.id,
+                        jobId: initialContract.jobId,
+                        contractTypeId: initialContract.contractTypeId,
+                        salary: initialContract.salary,
+                        hourlyRate: initialContract.hourlyRate,
+                        startDate,
+                        endDate: initialContract.endDate ? new Date(initialContract.endDate) : null,
+                        isActive: true,
+                    },
+                })
+
+                await tx.jobHistory.create({
+                    data: {
+                        employeeId: emp.id,
+                        contractId: newContract.id,
+                        jobId: newContract.jobId,
+                        startDate: newContract.startDate,
+                        endDate: null,
+                    },
+                })
+            }
+
+            return emp
+        })
 
         return this.toEmployeeResponseDto(employee)
     }
@@ -166,21 +253,7 @@ class EmployeeService {
     }
 
     async createContract(employeeId: number, data: CreateContractDto): Promise<ContractResponseDto> {
-        const [smlvCfg, minHourlyCfg] = await Promise.all([
-            prisma.systemConfig.findUnique({ where: { key: 'smlv' } }),
-            prisma.systemConfig.findUnique({ where: { key: 'min_hourly_rate' } }),
-        ])
-
-        if (smlvCfg) {
-            const smlv = Number(smlvCfg.value)
-            if (data.salary < smlv)
-                throw new Error(`Debes ingresar un salario legal. El mínimo es el SMLV ($${smlv.toLocaleString('es-CO')})`)
-        }
-        if (minHourlyCfg) {
-            const minRate = Number(minHourlyCfg.value)
-            if (data.hourlyRate < minRate)
-                throw new Error(`La tarifa por hora no puede ser menor al mínimo legal ($${minRate.toLocaleString('es-CO')}/h)`)
-        }
+        await this.validateContractRates(data.contractTypeId, data.salary, data.hourlyRate)
 
         const newStartDate = new Date(data.startDate)
 

@@ -165,6 +165,28 @@ class EmployeeController {
         }
     }
 
+    // Verificar duplicados de email/teléfono antes de guardar
+    async checkDuplicates(req: NextRequest) {
+        const url = new URL(req.url)
+        const email = url.searchParams.get('email') ?? ''
+        const phone = url.searchParams.get('phone') ?? ''
+        const excludeId = url.searchParams.get('excludeId')
+
+        try {
+            const result = await employeeService.checkDuplicates(
+                email,
+                phone,
+                excludeId ? Number(excludeId) : undefined,
+            )
+            return NextResponse.json(result, { status: 200 })
+        } catch (error: unknown) {
+            return NextResponse.json(
+                { message: error instanceof Error ? error.message : 'Error interno del servidor' },
+                { status: 400 }
+            )
+        }
+    }
+
     // Asignar roles a un empleado
     async assignRoles(req: NextRequest) {
         const url = new URL(req.url)
