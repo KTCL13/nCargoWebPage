@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation'
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
 import { NAV_ITEMS } from '@/components/layout/nav-config'
 import { Pagination } from '@/components/ui/Pagination'
+import { ContractExportButtons } from '@/components/contracts/ContractExportButtons'
+import { useAuth } from '@/context/AuthContext'
 
 const LIMIT = 10
 
@@ -27,6 +29,7 @@ function fmt(date: string | null) {
 
 export default function ContratosPage() {
   const router = useRouter()
+  const { user: auth_user, token: auth_token } = useAuth()
 
   const [contracts, setContracts] = useState<Contract[]>([])
   const [total, setTotal] = useState(0)
@@ -42,6 +45,7 @@ export default function ContratosPage() {
   const [historyList, setHistoryList] = useState<Contract[]>([])
   const [historyLoading, setHistoryLoading] = useState(false)
   const [historyEmpName, setHistoryEmpName] = useState('')
+  const [historyEmpId, setHistoryEmpId] = useState<number | null>(null)
 
   // ── Fetch ────────────────────────────────────────────────────────────
   const fetchContracts = useCallback(async () => {
@@ -90,6 +94,7 @@ export default function ContratosPage() {
   async function openHistory(empId: number, empName: string) {
     setHistoryOpen(true)
     setHistoryEmpName(empName)
+    setHistoryEmpId(empId)
     setHistoryLoading(true)
     setHistoryList([])
     try {
@@ -331,7 +336,7 @@ export default function ContratosPage() {
       {historyOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
           <div className="bg-white rounded-[var(--radius-xl)] shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
-            <div className="px-6 py-5 border-b border-gray-100 flex justify-between items-center">
+            <div className="px-6 py-5 border-b border-gray-100 flex flex-wrap justify-between items-start gap-3">
               <div>
                 <h2 className="font-titles text-xl font-extrabold text-[var(--color-foreground)]">
                   Historial de Contratos
@@ -340,9 +345,19 @@ export default function ContratosPage() {
                   Empleado: {historyEmpName}
                 </p>
               </div>
-              <button onClick={() => setHistoryOpen(false)} className="text-gray-400 hover:text-gray-600 text-xl font-bold">
-                ×
-              </button>
+              <div className="flex items-center gap-3">
+                {historyEmpId != null && auth_token && auth_user?.id && (
+                  <ContractExportButtons
+                    employeeId={historyEmpId}
+                    employeeName={historyEmpName}
+                    generatedBy={auth_user.id}
+                    token={auth_token}
+                  />
+                )}
+                <button onClick={() => setHistoryOpen(false)} className="text-gray-400 hover:text-gray-600 text-xl font-bold">
+                  ×
+                </button>
+              </div>
             </div>
 
             <div className="overflow-y-auto p-6 flex-1">
