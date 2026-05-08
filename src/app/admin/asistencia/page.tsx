@@ -9,7 +9,8 @@ import { EmployeeSearch } from "@/components/ui/EmployeeSearch";
 
 interface Employee {
   id: number;
-  name: string;
+  firstName: string;
+  lastName: string;
 }
 
 interface AttendanceRegistry {
@@ -255,7 +256,7 @@ export default function AsistenciaAdminPage() {
                       className="hover:bg-gray-50/50 transition-colors"
                     >
                       <td className="px-5 py-4 font-bold text-[var(--color-foreground)]">
-                        {r.employee?.name || `ID: ${r.employeeId}`}
+                        {r.employee ? `${r.employee.firstName} ${r.employee.lastName}` : `ID: ${r.employeeId}`}
                       </td>
                       <td className="px-5 py-4 text-gray-500">
                         {fmtDate(r.startedAt)}
