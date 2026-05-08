@@ -1,12 +1,38 @@
 'use client'
 
 import { useState } from 'react'
+import Image from "next/image";
+import Link from "next/link";
+
+/* ── Tipos y Constantes ───────────────────────────────────────────── */
+const FONTS = {
+  title: "'League Spartan', sans-serif",
+  body: "'Poppins', sans-serif",
+} as const;
+
+const CLASSES = {
+  input:
+    "w-full px-4 py-3 rounded-xl border border-gray-200 bg-[#F9FAFB] text-sm text-[#040626] outline-none focus:border-[#FF003B] focus:ring-2 focus:ring-[#FF003B]/25 transition-all",
+  label:
+    "text-xs font-semibold text-gray-700 uppercase tracking-widest mb-1 block",
+};
+
+/* ── Helpers ─────────────────────────────────────────────────────── */
+const SafeImage = ({ src, fill, ...props }: any) =>
+  src ? (
+    <Image src={src} fill={fill} {...props} />
+  ) : (
+    <div
+      {...props}
+      className={`bg-gradient-to-br from-[#040626] to-[#FF003B] ${props.className || ""}`}
+    />
+  );
 
 export default function ForgotPasswordPage() {
-  const [email, setEmail]     = useState('')
+  const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
-  const [error, setError]     = useState('')
-  const [sent, setSent]       = useState(false)
+  const [error, setError] = useState('')
+  const [sent, setSent] = useState(false)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -35,108 +61,91 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <div className="flex min-h-screen" style={{ fontFamily: "'Montserrat', sans-serif" }}>
-      <div className="hidden md:block md:w-[45%] relative flex-shrink-0 bg-[#FF003B]">
-        <div
-          className="absolute inset-0 opacity-20"
-          style={{
-            backgroundImage:
-              'repeating-linear-gradient(45deg,#fff 0,#fff 1px,transparent 0,transparent 50%)',
-            backgroundSize: '20px 20px',
-          }}
-        />
+    <div className="min-h-screen flex">
+      {/* Panel Izquierdo */}
+      <div className="hidden lg:flex lg:w-[52%] xl:w-[55%] relative flex-col justify-center items-center overflow-hidden">
+        <SafeImage src="/images/website/55.PNG" alt="" fill className="object-cover" />
+        <div className="absolute inset-0 bg-gradient-to-br from-[#040626]/85 via-[#0C1E8C]/55 to-[#E8002E]/35" />
+
+        <div className="relative z-10 text-center max-w-lg space-y-8 px-12">
+          <h1 className="font-extrabold text-white leading-tight text-4xl" style={{ fontFamily: FONTS.title }}>
+            Conectando Familias
+            <br />a Través de Fronteras
+          </h1>
+          <p className="text-white/80 text-lg" style={{ fontFamily: FONTS.body }}>
+            Gestiona envíos con <strong>N-Cargo</strong>.
+          </p>
+        </div>
       </div>
 
-      <div className="flex-1 bg-[#EBEBEB] flex flex-col items-center justify-center px-6 py-10 sm:px-10">
-        <div className="w-full max-w-sm">
-
-          <h1
-            className="text-2xl sm:text-3xl font-extrabold text-[#040626] text-center tracking-tight mb-2"
-            style={{ fontFamily: "'League Spartan', sans-serif" }}
-          >
-            Recuperar contraseña
-          </h1>
-
-          <p
-            className="text-sm text-gray-500 text-center mb-7"
-            style={{ fontFamily: "'Poppins', sans-serif" }}
-          >
+      {/* Panel Derecho */}
+      <main className="flex-1 flex items-center justify-center bg-[#F9FAFB] px-6 py-10">
+        <div className="w-full max-w-[400px]">
+          <h2 className="mb-2 text-center font-black text-[#040626] text-2xl uppercase tracking-tight" style={{ fontFamily: FONTS.title }}>
+            RECUPERAR CONTRASEÑA
+          </h2>
+          
+          <p className="text-sm text-gray-500 text-center mb-8" style={{ fontFamily: FONTS.body }}>
             Ingresa tu email y te enviaremos un enlace para crear una nueva contraseña.
           </p>
 
           {sent ? (
-            <div className="text-center">
-              <p
-                className="text-sm text-[#040626] px-4 py-3 rounded-xl bg-white border border-black/10 mb-5"
-                style={{ fontFamily: "'Poppins', sans-serif" }}
-              >
+            <div className="text-center space-y-6">
+              <div className="p-4 rounded-xl bg-green-50 border border-green-100 text-sm text-green-800" style={{ fontFamily: FONTS.body }}>
                 Si el email está registrado, recibirás un enlace en tu bandeja de entrada.
-              </p>
-              <a
+              </div>
+              <Link
                 href="/login"
-                className="text-sm font-bold text-[#040626] no-underline hover:text-[#FF003B] transition-colors"
-                style={{ fontFamily: "'Poppins', sans-serif" }}
+                className="inline-block text-sm font-bold text-[#040626] hover:text-[#FF003B] transition-colors"
+                style={{ fontFamily: FONTS.body }}
               >
                 ← Volver al login
-              </a>
+              </Link>
             </div>
           ) : (
-            <form onSubmit={handleSubmit} className="flex flex-col gap-3.5">
-              <input
-                type="email"
-                placeholder="email"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                required
-                className="
-                  w-full py-3.5 pl-4 pr-4 rounded-xl
-                  border border-black/10 bg-[#F5F5F5]
-                  text-sm text-[#040626]
-                  outline-none transition-colors duration-150
-                  focus:border-[#FF003B]
-                "
-                style={{ fontFamily: "'Poppins', sans-serif" }}
-              />
+            <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+              <div>
+                <label className={CLASSES.label}>Email</label>
+                <input
+                  type="email"
+                  placeholder="ejemplo@correo.com"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  required
+                  className={CLASSES.input}
+                  style={{ fontFamily: FONTS.body }}
+                />
+              </div>
 
               {error && (
-                <p
-                  className="text-xs text-[#FF003B] text-center px-3 py-2 rounded-lg bg-[#FF003B]/[0.08] border border-[#FF003B]/20"
-                  style={{ fontFamily: "'Poppins', sans-serif" }}
-                >
+                <div className="text-red-500 text-sm" style={{ fontFamily: FONTS.body }}>
                   {error}
-                </p>
+                </div>
               )}
 
               <button
                 type="submit"
                 disabled={loading}
-                className={`
-                  w-full py-3.5 rounded-xl border-none
-                  font-bold text-base tracking-wide
-                  shadow-[0_2px_12px_rgba(4,6,38,0.12)]
-                  transition-all duration-200
-                  ${loading
-                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                    : 'bg-white text-[#040626] cursor-pointer hover:bg-[#FF003B] hover:text-white hover:shadow-[0_4px_20px_rgba(255,0,59,0.35)]'
-                  }
-                `}
-                style={{ fontFamily: "'League Spartan', sans-serif" }}
+                className="py-3 mt-2 rounded-xl font-bold text-white bg-gradient-to-r from-[#040626] to-[#FF003B] transition-all hover:opacity-90 disabled:opacity-50"
+                style={{ fontFamily: FONTS.title }}
               >
                 {loading ? 'Enviando...' : 'Enviar enlace'}
               </button>
 
-              <p
-                className="text-xs text-gray-400 text-center mt-1"
-                style={{ fontFamily: "'Poppins', sans-serif" }}
-              >
-                <a href="/login" className="text-[#040626] font-bold no-underline hover:text-[#FF003B] transition-colors">
+              <div className="text-center mt-4">
+                <Link 
+                  href="/login" 
+                  className="text-xs text-gray-500 hover:text-[#FF003B] font-semibold transition-colors uppercase tracking-wider"
+                  style={{ fontFamily: FONTS.body }}
+                >
                   ← Volver al login
-                </a>
-              </p>
+                </Link>
+              </div>
             </form>
           )}
         </div>
-      </div>
+      </main>
     </div>
   )
 }
+

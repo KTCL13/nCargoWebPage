@@ -1,6 +1,5 @@
 import { prisma } from '@/lib/prisma'
 import { Task, Prisma } from '@prisma/client'
-import { InputJsonValue } from '@prisma/client/runtime/library'
 import { FilterTaskDto } from '../dtos/filter-task.dto'
 
 class TaskRepository {
@@ -69,7 +68,7 @@ class TaskRepository {
         statusId: number
         startTime?: Date
         endTime?: Date
-        metadata?: InputJsonValue
+        metadata?: Prisma.InputJsonValue
     }): Promise<Task> {
         return prisma.task.create({
             data: {
