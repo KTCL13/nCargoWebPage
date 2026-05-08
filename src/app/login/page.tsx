@@ -75,7 +75,8 @@ export default function LoginPage() {
 
   /* ── Cargar assets (logo / fondo) ───────────────────────────── */
   useEffect(() => {
-    const url = process.env.NEXT_PUBLIC_STRAPI_URL ?? "http://localhost:1337";
+    const url = process.env.NEXT_PUBLIC_STRAPI_URL;
+    if (!url) return;
 
     fetch(`${url}/api/login-page?populate=*`)
       .then((r) => r.json())
@@ -141,7 +142,7 @@ export default function LoginPage() {
 
       // Redirección por rol
       router.push(
-        json.role === "ADMIN" ? "/admin/dashboard" : "/employee/dashboard",
+        json.role === "ADMIN" ? "/admin/dashboard" : "/employee/jornada",
       );
     } catch (err) {
       setUi((p) => ({

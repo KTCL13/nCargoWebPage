@@ -9,7 +9,14 @@ export const NAV_ITEMS: NavItem[] = [
     label: 'Dashboard',
     href: '/admin/dashboard',
     icon: <span aria-hidden="true">🏠</span>,
-    roles: ['ADMIN', 'EMPLOYEE'],
+    roles: ['ADMIN'],
+  },
+  {
+    label: 'Mi Perfil',
+    href: '/employee/perfil',
+    icon: <span aria-hidden="true">👤</span>,
+    roles: ['EMPLOYEE'],
+    section: 'Usuario',
   },
   {
     label: 'Gestión de empleados',

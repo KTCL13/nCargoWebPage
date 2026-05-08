@@ -23,7 +23,7 @@ export function proxy(req: NextRequest) {
   if (!payload) return redirect(req, '/login')
 
   if (pathname.startsWith('/admin') && payload.role !== 'ADMIN') {
-    return redirect(req, '/employee/dashboard')
+    return redirect(req, '/employee/jornada')
   }
 
   if (pathname.startsWith('/employee') && payload.role !== 'EMPLOYEE') {

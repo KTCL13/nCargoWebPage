@@ -5,6 +5,7 @@ import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { NAV_ITEMS } from "@/components/layout/nav-config";
 import { Pagination } from "@/components/ui/Pagination";
 import { useAuth } from "@/context/AuthContext";
+import { EmployeeSearch } from "@/components/ui/EmployeeSearch";
 
 interface Employee {
   id: number;
@@ -169,22 +170,15 @@ export default function AsistenciaAdminPage() {
               className="form-input w-full"
             />
           </div>
-          <div className="flex-1 min-w-[200px]">
+          <div className="flex-[2] min-w-[300px]">
             <label className="text-[10px] font-bold text-gray-400 uppercase mb-1 block ml-1">
               Empleado
             </label>
-            <select
-              value={employeeFilter}
-              onChange={(e) => setEmployeeFilter(e.target.value)}
-              className="form-input w-full"
-            >
-              <option value="">Todos los empleados</option>
-              {employees.map((e) => (
-                <option key={e.id} value={e.id}>
-                  {e.name}
-                </option>
-              ))}
-            </select>
+            <EmployeeSearch
+              onSelect={emp => setEmployeeFilter(emp ? String(emp.id) : "")}
+              placeholder="Nombre o identificación..."
+              className="w-full"
+            />
           </div>
           <div className="flex-1 min-w-[150px]">
             <label className="text-[10px] font-bold text-gray-400 uppercase mb-1 block ml-1">
