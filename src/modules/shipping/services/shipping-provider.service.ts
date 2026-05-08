@@ -12,20 +12,13 @@ type ShippingRateSource = {
   id: number;
   providerId: number;
   price: number | Decimal;
+  countryCode: string | null;
   location: {
     id: number;
     name: string;
-    parent: { name: string; parent: { name: string } | null } | null;
+    parent: { id: number; name: string } | null;
   };
 };
-
-function countryCode(countryName: string | undefined): string {
-  if (!countryName) return ''
-  const n = countryName.toLowerCase()
-  if (n === 'colombia') return 'CO'
-  if (n.startsWith('mex')) return 'MX'
-  return countryName
-}
 
 function toRateDto(r: ShippingRateSource): ShippingRateResponseDto {
   return {
@@ -35,7 +28,8 @@ function toRateDto(r: ShippingRateSource): ShippingRateResponseDto {
       id: r.location.id,
       city: r.location.name,
       region: r.location.parent?.name ?? null,
-      country: countryCode(r.location.parent?.parent?.name),
+      regionId: r.location.parent?.id ?? null,
+      country: r.countryCode ?? '',
     },
     basePrice: Number(r.price),
   };

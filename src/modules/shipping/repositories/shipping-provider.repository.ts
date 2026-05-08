@@ -16,7 +16,7 @@ class ShippingProviderRepository {
   getRates(providerId: number) {
     return prisma.shippingRate.findMany({
       where: { providerId },
-      include: { location: { include: { parent: { include: { parent: true } } } } },
+      include: { location: { include: { parent: true } } },
       orderBy: { location: { name: "asc" } },
     });
   }
@@ -27,8 +27,9 @@ class ShippingProviderRepository {
         providerId,
         locationId: dto.destinationId,
         price: dto.basePrice,
+        countryCode: dto.countryCode ?? null,
       },
-      include: { location: { include: { parent: { include: { parent: true } } } } },
+      include: { location: { include: { parent: true } } },
     });
   }
 
@@ -38,7 +39,7 @@ class ShippingProviderRepository {
       data: {
         ...(dto.basePrice !== undefined && { price: dto.basePrice }),
       },
-      include: { location: { include: { parent: { include: { parent: true } } } } },
+      include: { location: { include: { parent: true } } },
     });
   }
 

@@ -1,11 +1,16 @@
 import { prisma } from "@/lib/prisma";
 
 class LocationRepository {
-  // Find all countries (top-level locations)
   findCountries() {
     return prisma.location.findMany({
       where: { type: "COUNTRY", parentId: null },
       orderBy: { name: "asc" },
+    });
+  }
+
+  createCountry(name: string, code: string) {
+    return prisma.location.create({
+      data: { name, type: "COUNTRY", code: code.toUpperCase() },
     });
   }
 
@@ -36,11 +41,10 @@ class LocationRepository {
   }
 
   findCitiesByCountryCode(countryCode: string) {
-    const countryName = countryCode.toUpperCase() === 'CO' ? 'Colombia' : 'Mexico'
     return prisma.location.findMany({
       where: {
         type: 'CITY',
-        parent: { type: 'DEPARTMENT', parent: { type: 'COUNTRY', name: countryName } },
+        parent: { type: 'DEPARTMENT', parent: { type: 'COUNTRY', code: countryCode.toUpperCase() } },
       },
       include: { parent: true },
       orderBy: { name: 'asc' },
@@ -49,6 +53,10 @@ class LocationRepository {
 
   findById(id: number) {
     return prisma.location.findUnique({ where: { id } });
+  }
+
+  updateLocation(id: number, name: string) {
+    return prisma.location.update({ where: { id }, data: { name } });
   }
 }
 

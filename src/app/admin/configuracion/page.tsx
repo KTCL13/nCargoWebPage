@@ -7,12 +7,18 @@ import { useAuth } from '@/context/AuthContext'
 
 type Rate = {
   id: number
-  destination: { id: number; city: string; region: string | null; country: string }
+  destination: { id: number; city: string; region: string | null; regionId: number | null; country: string }
   basePrice: number
-  pricePerLb: number
 }
 type Location = { id: number; city: string; region: string | null; country: string }
+type Country = { id: number; name: string; code: string }
 type ConfigEntry = { key: string; value: unknown; description: string | null }
+
+function flagEmoji(code: string) {
+  return code.toUpperCase().replace(/./g, c =>
+    String.fromCodePoint(c.codePointAt(0)! + 127397)
+  )
+}
 
 const CLS = {
   card: 'bg-white rounded-xl p-5 mb-6 shadow',
@@ -159,12 +165,15 @@ function buildPageRange(current: number, total: number): (number | '...')[] {
   return items
 }
 
+type RowEdit = { price?: string; city?: string; region?: string }
+
 function RatesTable({
   rates,
   locations,
   newRate,
   onNewRateChange,
   onSaveRate,
+  onSaveLocation,
   onDeleteRate,
   onAddRate,
   addSaving,
@@ -174,6 +183,7 @@ function RatesTable({
   newRate: { destId: string; price: string }
   onNewRateChange: (r: { destId: string; price: string }) => void
   onSaveRate: (id: number, price: number) => Promise<void>
+  onSaveLocation: (locationId: number, name: string) => Promise<void>
   onDeleteRate: (id: number) => void
   onAddRate: () => void
   addSaving: boolean
@@ -183,7 +193,7 @@ function RatesTable({
   const [page,      setPage]      = useState(0)
   const [search,    setSearch]    = useState('')
   const [deptFilter, setDeptFilter] = useState('')
-  const [editing,   setEditing]   = useState<Record<number, string>>({})
+  const [editing,   setEditing]   = useState<Record<number, RowEdit>>({})
   const [saved,     setSaved]     = useState<Set<number>>(new Set())
   const [savingRow, setSavingRow] = useState<number | null>(null)
 
@@ -226,11 +236,24 @@ function RatesTable({
   }
 
   async function handleSave(rateId: number) {
-    const price = Number(editing[rateId])
-    if (isNaN(price)) return
+    const edit = editing[rateId]
+    if (!edit) return
+    const rate = rates.find(r => r.id === rateId)
+    if (!rate) return
     setSavingRow(rateId)
     try {
-      await onSaveRate(rateId, price)
+      const saves: Promise<void>[] = []
+      if (edit.price !== undefined) {
+        const price = Number(edit.price)
+        if (!isNaN(price)) saves.push(onSaveRate(rateId, price))
+      }
+      if (edit.city !== undefined && edit.city.trim()) {
+        saves.push(onSaveLocation(rate.destination.id, edit.city.trim()))
+      }
+      if (edit.region !== undefined && edit.region.trim() && rate.destination.regionId != null) {
+        saves.push(onSaveLocation(rate.destination.regionId, edit.region.trim()))
+      }
+      await Promise.all(saves)
       setEditing(prev => { const next = { ...prev }; delete next[rateId]; return next })
       setSaved(prev => new Set(prev).add(rateId))
       setTimeout(() => setSaved(prev => { const next = new Set(prev); next.delete(rateId); return next }), 2000)
@@ -247,6 +270,7 @@ function RatesTable({
   const arrow  = (f: string) => sortField === f ? (sortDir === 'asc' ? ' ↑' : ' ↓') : ' ↕'
   const pageBtnCls = 'px-2 py-1 text-xs rounded bg-[#21262d] text-[#8b949e] hover:bg-[#30363d] hover:text-[#c9d1d9] disabled:opacity-30 disabled:pointer-events-none transition-colors'
   const numInputCls = 'w-20 px-2 py-1 text-sm font-mono rounded bg-[#0d1117] border border-[#30363d] text-[#3fb950] outline-none focus:border-[#1f6feb] transition-colors [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none'
+  const txtInputCls = 'w-full px-2 py-1 text-sm rounded bg-[#0d1117] border border-[#30363d] text-[#c9d1d9] outline-none focus:border-[#1f6feb] transition-colors'
 
   return (
     <div className="rounded-xl border border-[#30363d] bg-[#0d1117] overflow-hidden">
@@ -331,11 +355,28 @@ function RatesTable({
                   <td className="px-3 py-2 text-center text-[11px] text-[#484f58] tabular-nums">
                     {page * TABLE_PAGE_SIZE + idx + 1}
                   </td>
-                  <td className="px-3 py-2 font-semibold text-[#c9d1d9]">
-                    {rate.destination.city}
+                  <td className="px-3 py-2">
+                    <input
+                      type="text"
+                      value={editing[rate.id]?.city ?? rate.destination.city}
+                      onChange={e => setEditing(prev => ({
+                        ...prev,
+                        [rate.id]: { ...prev[rate.id], city: e.target.value },
+                      }))}
+                      className={`${txtInputCls} font-semibold`}
+                    />
                   </td>
-                  <td className="px-3 py-2 text-[#8b949e]">
-                    {rate.destination.region ?? '—'}
+                  <td className="px-3 py-2">
+                    <input
+                      type="text"
+                      value={editing[rate.id]?.region ?? (rate.destination.region ?? '')}
+                      onChange={e => setEditing(prev => ({
+                        ...prev,
+                        [rate.id]: { ...prev[rate.id], region: e.target.value },
+                      }))}
+                      placeholder="—"
+                      className={txtInputCls}
+                    />
                   </td>
                   <td className="px-3 py-2">
                     <div className="flex items-center gap-1">
@@ -343,8 +384,11 @@ function RatesTable({
                       <input
                         type="number"
                         step="0.5"
-                        value={isDirty ? editing[rate.id] : String(rate.basePrice)}
-                        onChange={e => setEditing(prev => ({ ...prev, [rate.id]: e.target.value }))}
+                        value={editing[rate.id]?.price ?? String(rate.basePrice)}
+                        onChange={e => setEditing(prev => ({
+                          ...prev,
+                          [rate.id]: { ...prev[rate.id], price: e.target.value },
+                        }))}
                         className={numInputCls}
                       />
                     </div>
@@ -470,44 +514,46 @@ export default function ConfiguracionPage() {
 
   const [activeTab, setActiveTab] = useState<'cotizaciones' | 'contratos'>('cotizaciones')
 
-  const [providers,     setProviders]     = useState<{ id: number; name: string }[]>([])
-  const [coRates,       setCoRates]       = useState<Rate[]>([])
-  const [mxRates,       setMxRates]       = useState<Rate[]>([])
-  const [coLocations,   setCoLocations]   = useState<Location[]>([])
-  const [mxLocations,   setMxLocations]   = useState<Location[]>([])
-  const [configs,       setConfigs]       = useState<ConfigEntry[]>([])
-  const [coFlatEnabled, setCoFlatEnabled] = useState(false)
-  const [coFlatPrice,   setCoFlatPrice]   = useState('0')
-  const [mxFlatEnabled, setMxFlatEnabled] = useState(true)
-  const [mxFlatPrice,   setMxFlatPrice]   = useState('5')
-  const [loading,       setLoading]       = useState(true)
-  const [ratesLoading,  setRatesLoading]  = useState(false)
-  const [saving,        setSaving]        = useState<string | null>(null)
-  const [newRate,       setNewRate]       = useState({ co: { destId: '', price: '' }, mx: { destId: '', price: '' } })
-  const [providerId,    setProviderId]    = useState<number | null>(null)
-  const [contractCfg,   setContractCfg]   = useState<Record<string, string>>({})
-  const [savingCfgKey,  setSavingCfgKey]  = useState<string | null>(null)
+  const [providers,        setProviders]        = useState<{ id: number; name: string }[]>([])
+  const [countries,        setCountries]        = useState<Country[]>([])
+  const [ratesByCountry,   setRatesByCountry]   = useState<Record<string, Rate[]>>({})
+  const [locsByCountry,    setLocsByCountry]    = useState<Record<string, Location[]>>({})
+  const [flatByCountry,    setFlatByCountry]    = useState<Record<string, { enabled: boolean; price: string }>>({})
+  const [newRateByCountry, setNewRateByCountry] = useState<Record<string, { destId: string; price: string }>>({})
+  const [configs,          setConfigs]          = useState<ConfigEntry[]>([])
+  const [loading,          setLoading]          = useState(true)
+  const [ratesLoading,     setRatesLoading]     = useState(false)
+  const [saving,           setSaving]           = useState<string | null>(null)
+  const [providerId,       setProviderId]       = useState<number | null>(null)
+  const [contractCfg,      setContractCfg]      = useState<Record<string, string>>({})
+  const [savingCfgKey,     setSavingCfgKey]     = useState<string | null>(null)
+  const [showAddCountry,   setShowAddCountry]   = useState(false)
+  const [newCountry,       setNewCountry]       = useState({ name: '', code: '' })
+  const [addingCountry,    setAddingCountry]    = useState(false)
 
-  const loadRates = useCallback(async (pid: number) => {
+  const loadRates = useCallback(async (pid: number, countryList: Country[]) => {
     setRatesLoading(true)
     try {
-      const [rateRes, coLocRes, mxLocRes] = await Promise.all([
+      const [rateRes, ...locResponses] = await Promise.all([
         fetch(`/api/shipping-providers/${pid}/rates`, { headers: authHeader }).then(r => r.json()),
-        fetch('/api/locations?country=CO', { headers: authHeader }).then(r => r.json()),
-        fetch('/api/locations?country=MX', { headers: authHeader }).then(r => r.json()),
+        ...countryList.map(c => fetch(`/api/locations?country=${c.code}`, { headers: authHeader }).then(r => r.json())),
       ])
 
       const all: Rate[] = rateRes.data ?? []
-      const co = all.filter(r => r.destination.country === 'CO')
-      const mx = all.filter(r => r.destination.country === 'MX')
-      setCoRates(co)
-      setMxRates(mx)
+      const byCountry: Record<string, Rate[]> = {}
+      for (const c of countryList) byCountry[c.code] = all.filter(r => r.destination.country === c.code)
+      setRatesByCountry(byCountry)
 
-      const coRateDestIds = new Set(co.map(r => r.destination.id))
-      const mxRateDestIds = new Set(mx.map(r => r.destination.id))
-      setCoLocations((coLocRes.data ?? []).filter((l: Location) => !coRateDestIds.has(l.id)))
-      setMxLocations((mxLocRes.data ?? []).filter((l: Location) => !mxRateDestIds.has(l.id)))
-      setNewRate({ co: { destId: '', price: '' }, mx: { destId: '', price: '' } })
+      const byLoc: Record<string, Location[]> = {}
+      countryList.forEach((c, i) => {
+        const rateDestIds = new Set(byCountry[c.code].map(r => r.destination.id))
+        byLoc[c.code] = (locResponses[i].data ?? []).filter((l: Location) => !rateDestIds.has(l.id))
+      })
+      setLocsByCountry(byLoc)
+
+      const newRateInit: Record<string, { destId: string; price: string }> = {}
+      for (const c of countryList) newRateInit[c.code] = { destId: '', price: '' }
+      setNewRateByCountry(newRateInit)
     } finally {
       setRatesLoading(false)
     }
@@ -516,23 +562,32 @@ export default function ConfiguracionPage() {
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const [provRes, cfgRes] = await Promise.all([
+      const [provRes, cfgRes, countryRes] = await Promise.all([
         fetch('/api/shipping-providers', { headers: authHeader }).then(r => r.json()),
         fetch('/api/system-config').then(r => r.json()),
+        fetch('/api/locations', { headers: authHeader }).then(r => r.json()),
       ])
 
       const provList: { id: number; name: string }[] = provRes.data ?? []
       setProviders(provList)
-
       const pid: number | null = provList[0]?.id ?? null
       setProviderId(pid)
 
+      const allCountries: Country[] = (countryRes.data ?? []).filter((c: Country & { code: string | null }) => c.code)
+      setCountries(allCountries)
+
       const cfgMap: Record<string, unknown> = {}
       for (const { key, value } of cfgRes.data ?? []) cfgMap[key] = value
-      setCoFlatEnabled(Boolean(cfgMap['co_flat_rate_enabled']))
-      setCoFlatPrice(String(cfgMap['co_flat_rate_price'] ?? '0'))
-      setMxFlatEnabled(Boolean(cfgMap['mx_flat_rate_enabled']))
-      setMxFlatPrice(String(cfgMap['mx_flat_rate_price'] ?? '5'))
+
+      const flatInit: Record<string, { enabled: boolean; price: string }> = {}
+      for (const c of allCountries) {
+        const k = c.code.toLowerCase()
+        flatInit[c.code] = {
+          enabled: Boolean(cfgMap[`${k}_flat_rate_enabled`]),
+          price: String(cfgMap[`${k}_flat_rate_price`] ?? '0'),
+        }
+      }
+      setFlatByCountry(flatInit)
 
       const globals = (cfgRes.data ?? []).filter(
         (e: ConfigEntry) => CONFIG_LABELS[e.key as string] && !FLAT_RATE_KEYS.has(e.key as string),
@@ -546,7 +601,7 @@ export default function ConfiguracionPage() {
       }
       setContractCfg(contractMap)
 
-      if (pid) await loadRates(pid)
+      if (pid) await loadRates(pid, allCountries)
     } finally {
       setLoading(false)
     }
@@ -556,7 +611,25 @@ export default function ConfiguracionPage() {
 
   const handleProviderChange = async (pid: number) => {
     setProviderId(pid)
-    await loadRates(pid)
+    await loadRates(pid, countries)
+  }
+
+  const handleAddCountry = async () => {
+    if (!newCountry.name.trim() || !newCountry.code.trim()) return
+    setAddingCountry(true)
+    try {
+      const res = await fetch('/api/locations', {
+        method: 'POST',
+        headers: authHeader,
+        body: JSON.stringify({ name: newCountry.name.trim(), code: newCountry.code.trim().toUpperCase() }),
+      })
+      if (!res.ok) { const e = await res.json(); alert(e.message); return }
+      setShowAddCountry(false)
+      setNewCountry({ name: '', code: '' })
+      load()
+    } finally {
+      setAddingCountry(false)
+    }
   }
 
   const patchConfig = async (key: string, value: unknown) => {
@@ -567,14 +640,15 @@ export default function ConfiguracionPage() {
     })
   }
 
-  const saveFlatRate = async (country: 'co' | 'mx') => {
-    const enabled = country === 'co' ? coFlatEnabled : mxFlatEnabled
-    const price   = country === 'co' ? coFlatPrice   : mxFlatPrice
-    setSaving(`flat-${country}`)
+  const saveFlatRate = async (countryCode: string) => {
+    const flat = flatByCountry[countryCode]
+    if (!flat) return
+    const k = countryCode.toLowerCase()
+    setSaving(`flat-${countryCode}`)
     try {
-      await patchConfig(`${country}_flat_rate_enabled`, enabled)
-      await patchConfig(`${country}_flat_rate_price`, Number(price))
-      alert(`Tarifa plana ${country.toUpperCase()} guardada`)
+      await patchConfig(`${k}_flat_rate_enabled`, flat.enabled)
+      await patchConfig(`${k}_flat_rate_price`, Number(flat.price))
+      alert(`Tarifa plana ${countryCode} guardada`)
     } catch { alert('Error al guardar') }
     finally { setSaving(null) }
   }
@@ -588,27 +662,36 @@ export default function ConfiguracionPage() {
     })
   }
 
+  const saveLocation = async (locationId: number, name: string) => {
+    await fetch(`/api/locations/${locationId}`, {
+      method: 'PATCH',
+      headers: authHeader,
+      body: JSON.stringify({ name }),
+    })
+    if (providerId) await loadRates(providerId, countries)
+  }
+
   const deleteRate = async (rateId: number) => {
     if (!providerId || !confirm('¿Eliminar esta tarifa?')) return
     await fetch(`/api/shipping-providers/${providerId}/rates/${rateId}`, {
       method: 'DELETE',
       headers: authHeader,
     })
-    if (providerId) loadRates(providerId)
+    loadRates(providerId, countries)
   }
 
-  const addRate = async (country: 'co' | 'mx') => {
+  const addRate = async (countryCode: string) => {
     if (!providerId) return
-    const { destId, price } = newRate[country]
-    if (!destId || !price) return
-    setSaving(`add-${country}`)
+    const nr = newRateByCountry[countryCode]
+    if (!nr?.destId || !nr?.price) return
+    setSaving(`add-${countryCode}`)
     try {
       await fetch(`/api/shipping-providers/${providerId}/rates`, {
         method: 'POST',
         headers: authHeader,
-        body: JSON.stringify({ destinationId: Number(destId), basePrice: Number(price) }),
+        body: JSON.stringify({ destinationId: Number(nr.destId), basePrice: Number(nr.price), countryCode }),
       })
-      loadRates(providerId)
+      loadRates(providerId, countries)
     } finally { setSaving(null) }
   }
 
@@ -632,78 +715,67 @@ export default function ConfiguracionPage() {
     finally { setSavingCfgKey(null) }
   }
 
-  const RatesSection = ({
-    country,
-    rates,
-    locations,
-    flatEnabled,
-    flatPrice,
-    setFlat,
-    setFlatPrice,
-  }: {
-    country: 'co' | 'mx'
-    rates: Rate[]
-    locations: Location[]
-    flatEnabled: boolean
-    flatPrice: string
-    setFlat: (v: boolean) => void
-    setFlatPrice: (v: string) => void
-  }) => (
-    <div className={`${CLS.card} !p-0 overflow-hidden`}>
-      {/* Card header */}
-      <div className="flex items-center justify-between px-5 py-4 border-b">
-        <h3 className="font-bold">
-          {country === 'co' ? '🇨🇴 Tarifas USA → Colombia' : '🇲🇽 Tarifas USA → México'}
-        </h3>
-      </div>
-
-      {/* Flat rate toggle */}
-      <div className="flex items-center gap-3 px-5 py-3 bg-gray-50 border-b">
-        <label className="flex items-center gap-2 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={flatEnabled}
-            onChange={e => setFlat(e.target.checked)}
-            className="w-4 h-4"
-          />
-          <span className="text-sm font-semibold">Tarifa plana</span>
-        </label>
-        {flatEnabled && (
-          <input
-            type="number"
-            value={flatPrice}
-            onChange={e => setFlatPrice(e.target.value)}
-            className={`${CLS.input} w-28`}
-            placeholder="USD"
-            step="0.01"
-          />
-        )}
-        <button
-          onClick={() => saveFlatRate(country)}
-          disabled={saving === `flat-${country}`}
-          className={`${CLS.btn} bg-green-600 disabled:opacity-50`}
-        >
-          {saving === `flat-${country}` ? '...' : '💾 Guardar'}
-        </button>
-      </div>
-
-      {/* City rates table */}
-      {!flatEnabled && (
-        <div className="p-4">
-          <RatesTable
-            rates={rates}
-            locations={locations}
-            newRate={newRate[country]}
-            onNewRateChange={r => setNewRate(p => ({ ...p, [country]: r }))}
-            onSaveRate={saveRate}
-            onDeleteRate={id => deleteRate(id)}
-            onAddRate={() => addRate(country)}
-            addSaving={saving === `add-${country}`}
-          />
+  const RatesSection = ({ c }: { c: Country }) => {
+    const flat = flatByCountry[c.code] ?? { enabled: false, price: '0' }
+    const rates = ratesByCountry[c.code] ?? []
+    const locations = locsByCountry[c.code] ?? []
+    const nr = newRateByCountry[c.code] ?? { destId: '', price: '' }
+    return (
+      <div className={`${CLS.card} !p-0 overflow-hidden`}>
+        <div className="flex items-center justify-between px-5 py-4 border-b">
+          <h3 className="font-bold">
+            {flagEmoji(c.code)} Tarifas USA → {c.name}
+          </h3>
+          <span className="text-xs text-gray-400 font-mono">{c.code}</span>
         </div>
-      )}
-    </div>
-  )
+
+        <div className="flex items-center gap-3 px-5 py-3 bg-gray-50 border-b">
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={flat.enabled}
+              onChange={e => setFlatByCountry(prev => ({ ...prev, [c.code]: { ...flat, enabled: e.target.checked } }))}
+              className="w-4 h-4"
+            />
+            <span className="text-sm font-semibold">Tarifa plana</span>
+          </label>
+          {flat.enabled && (
+            <input
+              type="number"
+              value={flat.price}
+              onChange={e => setFlatByCountry(prev => ({ ...prev, [c.code]: { ...flat, price: e.target.value } }))}
+              className={`${CLS.input} w-28`}
+              placeholder="USD"
+              step="0.01"
+            />
+          )}
+          <button
+            onClick={() => saveFlatRate(c.code)}
+            disabled={saving === `flat-${c.code}`}
+            className={`${CLS.btn} bg-green-600 disabled:opacity-50`}
+          >
+            {saving === `flat-${c.code}` ? '...' : '💾 Guardar'}
+          </button>
+        </div>
+
+        {!flat.enabled && (
+          <div className="p-4">
+            <RatesTable
+              rates={rates}
+              locations={locations}
+              newRate={nr}
+              onNewRateChange={r => setNewRateByCountry(prev => ({ ...prev, [c.code]: r }))}
+              onSaveRate={saveRate}
+              onSaveLocation={saveLocation}
+              onDeleteRate={id => deleteRate(id)}
+              onAddRate={() => addRate(c.code)}
+              addSaving={saving === `add-${c.code}`}
+            />
+          </div>
+        )}
+      </div>
+    )
+  }
 
   if (loading) {
     return (
@@ -739,7 +811,7 @@ export default function ConfiguracionPage() {
       {activeTab === 'cotizaciones' && (
         <>
           {/* Provider selector */}
-          <div className="flex items-center gap-3 mb-5">
+          <div className="flex items-center gap-3 mb-5 flex-wrap">
             <label className="text-sm font-semibold text-gray-600 whitespace-nowrap">Proveedor de envío:</label>
             <div className="flex gap-2 flex-wrap">
               {providers.map(p => (
@@ -760,25 +832,8 @@ export default function ConfiguracionPage() {
             {ratesLoading && <span className="text-xs text-gray-400 animate-pulse">Cargando tarifas...</span>}
           </div>
 
-          <RatesSection
-            country="co"
-            rates={coRates}
-            locations={coLocations}
-            flatEnabled={coFlatEnabled}
-            flatPrice={coFlatPrice}
-            setFlat={setCoFlatEnabled}
-            setFlatPrice={setCoFlatPrice}
-          />
-
-          <RatesSection
-            country="mx"
-            rates={mxRates}
-            locations={mxLocations}
-            flatEnabled={mxFlatEnabled}
-            flatPrice={mxFlatPrice}
-            setFlat={setMxFlatEnabled}
-            setFlatPrice={setMxFlatPrice}
-          />
+          {/* Dynamic country sections */}
+          {countries.map(c => <RatesSection key={c.code} c={c} />)}
 
           <div className={CLS.card}>
             <h3 className="font-bold mb-4">⚙️ Constantes Globales</h3>
@@ -809,7 +864,70 @@ export default function ConfiguracionPage() {
               ))}
             </div>
           </div>
+
+          {/* Add Country */}
+          <div className="mb-6">
+            <button
+              onClick={() => setShowAddCountry(true)}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg border-2 border-dashed border-gray-300 text-gray-500 hover:border-[var(--color-primary)] hover:text-[var(--color-primary)] text-sm font-semibold transition-all"
+            >
+              + Agregar nuevo país de destino
+            </button>
+          </div>
         </>
+      )}
+
+      {/* Add Country Modal */}
+      {showAddCountry && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm p-6">
+            <h2 className="font-bold text-lg mb-4">Agregar nuevo país de destino</h2>
+            <p className="text-xs text-gray-500 mb-4">
+              Crea el país en el sistema para poder agregar tarifas de envío hacia ese destino.
+            </p>
+            <div className="flex flex-col gap-3">
+              <div>
+                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Nombre del país</label>
+                <input
+                  type="text"
+                  placeholder="Ej: Guatemala"
+                  value={newCountry.name}
+                  onChange={e => setNewCountry(p => ({ ...p, name: e.target.value }))}
+                  className="form-input w-full"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Código ISO (2 letras)</label>
+                <input
+                  type="text"
+                  placeholder="Ej: GT"
+                  maxLength={2}
+                  value={newCountry.code}
+                  onChange={e => setNewCountry(p => ({ ...p, code: e.target.value.toUpperCase() }))}
+                  className="form-input w-full font-mono uppercase"
+                />
+              </div>
+              {newCountry.code.length === 2 && (
+                <p className="text-2xl text-center">{flagEmoji(newCountry.code)} {newCountry.name}</p>
+              )}
+            </div>
+            <div className="flex gap-3 mt-5">
+              <button
+                onClick={() => { setShowAddCountry(false); setNewCountry({ name: '', code: '' }) }}
+                className="flex-1 py-2 rounded-lg border border-gray-200 text-sm font-bold text-gray-500 hover:bg-gray-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleAddCountry}
+                disabled={addingCountry || !newCountry.name.trim() || newCountry.code.length !== 2}
+                className="flex-1 py-2 rounded-lg bg-[var(--color-primary)] text-white text-sm font-bold hover:opacity-90 disabled:opacity-50"
+              >
+                {addingCountry ? 'Creando...' : 'Crear país'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* ── Contratos tab ── */}

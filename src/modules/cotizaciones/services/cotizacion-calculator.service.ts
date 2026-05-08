@@ -236,17 +236,8 @@ class CotizacionCalculatorService {
       };
     }
 
-    const countryName = country.toUpperCase() === "CO" ? "Colombia" : "Mexico";
     const rates = await prisma.shippingRate.findMany({
-      where: {
-        location: {
-          type: "CITY",
-          parent: {
-            type: "DEPARTMENT",
-            parent: { type: "COUNTRY", name: countryName },
-          },
-        },
-      },
+      where: { countryCode: country.toUpperCase(), location: { type: "CITY" } },
       include: { location: { include: { parent: true } } },
       orderBy: { location: { name: "asc" } },
     });

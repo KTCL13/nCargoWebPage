@@ -2,14 +2,20 @@ import { locationRepository } from "../repositories/location.repository";
 import { LocationResponseDto } from "../dtos/location.dto";
 
 class LocationService {
-  async findCountries(): Promise<LocationResponseDto[]> {
+  async findCountries(): Promise<(LocationResponseDto & { code: string | null })[]> {
     const locations = await locationRepository.findCountries();
     return locations.map((l) => ({
       id: l.id,
       name: l.name,
       type: l.type,
+      code: l.code ?? null,
       zipCode: l.zipCode ?? undefined,
     }));
+  }
+
+  async createCountry(name: string, code: string): Promise<LocationResponseDto & { code: string | null }> {
+    const location = await locationRepository.createCountry(name, code)
+    return { id: location.id, name: location.name, type: location.type, code: location.code ?? null }
   }
 
   async findDepartmentsByCountry(
@@ -37,6 +43,10 @@ class LocationService {
       zipCode: l.zipCode ?? undefined,
       parentId: l.parentId ?? undefined,
     }));
+  }
+
+  async updateLocation(id: number, name: string): Promise<void> {
+    await locationRepository.updateLocation(id, name);
   }
 
   async findByCountry(country: string): Promise<{ id: number; city: string; region: string | null; country: string }[]> {

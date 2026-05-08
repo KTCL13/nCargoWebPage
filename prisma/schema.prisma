@@ -217,6 +217,7 @@ model Location {
   id        Int        @id @default(autoincrement())
   name      String     @db.VarChar(100)
   type      String     @db.VarChar(20)  // 'COUNTRY', 'DEPARTMENT', 'CITY'
+  code      String?    @db.VarChar(10)  // ISO country code for COUNTRY rows
   zipCode   String?    @map("zip_code") @db.VarChar(20)
   parentId  Int?       @map("parent_id")
   parent    Location?  @relation("LocationHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
@@ -261,13 +262,14 @@ model ShippingProvider {
 }
 
 model ShippingRate {
-  id         Int              @id @default(autoincrement())
-  providerId Int              @map("provider_id")
-  locationId Int              @map("location_id")
-  price      Decimal          @db.Decimal(10, 2)
-  provider   ShippingProvider @relation(fields: [providerId], references: [id])
-  location   Location         @relation(fields: [locationId], references: [id])
-  quotations Quotation[]
+  id          Int              @id @default(autoincrement())
+  providerId  Int              @map("provider_id")
+  locationId  Int              @map("location_id")
+  price       Decimal          @db.Decimal(10, 2)
+  countryCode String?          @map("country_code") @db.VarChar(10)
+  provider    ShippingProvider @relation(fields: [providerId], references: [id])
+  location    Location         @relation(fields: [locationId], references: [id])
+  quotations  Quotation[]
 
   @@unique([providerId, locationId])
   @@map("shipping_rates")
