@@ -192,6 +192,7 @@ class CotizacionCalculatorService {
           source,
           employeeId: input.employeeId ?? null,
           shipmentId: input.shipmentId ?? null,
+          quotationId: quotation.id,
         },
       })
       .catch((err) => console.error("[CotizacionRecord] save failed:", err));

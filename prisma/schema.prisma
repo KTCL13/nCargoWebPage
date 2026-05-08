@@ -298,8 +298,9 @@ model Quotation {
   employee            Employee?     @relation(fields: [employeeId], references: [id])
   originOffice        Office?       @relation(fields: [originOfficeId], references: [id])
   destinationLocation Location?     @relation(fields: [destinationLocationId], references: [id])
-  shippingRate        ShippingRate? @relation(fields: [shippingRateId], references: [id])
+  shippingRate        ShippingRate?      @relation(fields: [shippingRateId], references: [id])
   shipments           Shipment[]
+  cotizacionRecords   CotizacionRecord[]
 
   @@map("quotations")
 }
@@ -540,11 +541,13 @@ model CotizacionRecord {
   source              String    @default("PUBLIC") @map("source") @db.VarChar(10)
   employeeId          Int?      @map("employee_id")
   shipmentId          Int?      @map("shipment_id")
+  quotationId         Int?      @map("quotation_id")
   createdAt           DateTime  @default(now()) @map("created_at")
 
   destinationLocation Location?  @relation(fields: [destinationLocationId], references: [id])
   employee            Employee?  @relation(fields: [employeeId], references: [id])
   shipment            Shipment?  @relation(fields: [shipmentId], references: [id])
+  quotation           Quotation? @relation(fields: [quotationId], references: [id])
 
   @@map("cotizacion_records")
 }
