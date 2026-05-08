@@ -453,6 +453,13 @@ function RatesTable({
 
 // ── ConfiguracionPage ─────────────────────────────────────────────────────────
 
+const CONTRACT_CONFIG_KEYS = [
+  { key: 'smlv',                   label: 'SMLV – Salario Mínimo Legal Vigente',        hint: 'Salario mensual mínimo legal. Los contratos no pueden tener un salario inferior.',  step: '1',    prefix: '$' },
+  { key: 'min_hourly_rate',        label: 'Tarifa mínima por hora',                      hint: 'Valor mínimo permitido para la tarifa horaria en cualquier contrato.',              step: '0.01', prefix: '$' },
+  { key: 'daily_hours',            label: 'Jornada diaria legal (horas)',                 hint: 'Número de horas que constituyen la jornada laboral ordinaria. Ej: 8.',             step: '0.5',  prefix: ''  },
+  { key: 'extra_hour_multiplier',  label: 'Multiplicador hora extra',                    hint: 'Factor que se aplica sobre la tarifa hora al calcular horas extras. Ej: 1.5.',     step: '0.01', prefix: ''  },
+]
+
 export default function ConfiguracionPage() {
   const { token } = useAuth()
 
@@ -460,6 +467,8 @@ export default function ConfiguracionPage() {
     Authorization: `Bearer ${token ?? ''}`,
     'Content-Type': 'application/json',
   }
+
+  const [activeTab, setActiveTab] = useState<'cotizaciones' | 'contratos'>('cotizaciones')
 
   const [coRates,       setCoRates]       = useState<Rate[]>([])
   const [mxRates,       setMxRates]       = useState<Rate[]>([])
@@ -474,6 +483,8 @@ export default function ConfiguracionPage() {
   const [saving,        setSaving]        = useState<string | null>(null)
   const [newRate,       setNewRate]       = useState({ co: { destId: '', price: '' }, mx: { destId: '', price: '' } })
   const [providerId,    setProviderId]    = useState<number | null>(null)
+  const [contractCfg,   setContractCfg]   = useState<Record<string, string>>({})
+  const [savingCfgKey,  setSavingCfgKey]  = useState<string | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -497,6 +508,13 @@ export default function ConfiguracionPage() {
         (e: ConfigEntry) => CONFIG_LABELS[e.key as string] && !FLAT_RATE_KEYS.has(e.key as string),
       )
       setConfigs(globals)
+
+      const contractKeys = new Set(CONTRACT_CONFIG_KEYS.map(c => c.key))
+      const contractMap: Record<string, string> = {}
+      for (const { key, value } of cfgRes.data ?? []) {
+        if (contractKeys.has(key as string)) contractMap[key as string] = String(value)
+      }
+      setContractCfg(contractMap)
 
       if (pid) {
         const [rateRes, coLocRes, mxLocRes] = await Promise.all([
@@ -586,6 +604,17 @@ export default function ConfiguracionPage() {
     finally { setSaving(null) }
   }
 
+  const saveContractCfg = async (key: string) => {
+    const val = contractCfg[key]
+    if (val === undefined || val === '') return
+    setSavingCfgKey(key)
+    try {
+      await patchConfig(key, Number(val))
+      alert('Guardado correctamente')
+    } catch { alert('Error al guardar') }
+    finally { setSavingCfgKey(null) }
+  }
+
   const RatesSection = ({
     country,
     rates,
@@ -670,59 +699,117 @@ export default function ConfiguracionPage() {
   return (
     <DashboardLayout pageTitle="Configuración" navItems={NAV_ITEMS} onReload={load}>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold">Configuración de Cotizaciones</h1>
-        <p className="text-gray-500 text-sm">Gestión de tarifas, ciudades y constantes globales</p>
+        <h1 className="text-2xl font-bold">Configuración</h1>
+        <p className="text-gray-500 text-sm">Gestión de tarifas, variables de contratos y constantes globales</p>
       </div>
 
-      <RatesSection
-        country="co"
-        rates={coRates}
-        locations={coLocations}
-        flatEnabled={coFlatEnabled}
-        flatPrice={coFlatPrice}
-        setFlat={setCoFlatEnabled}
-        setFlatPrice={setCoFlatPrice}
-      />
+      {/* Tabs */}
+      <div className="flex gap-1 bg-gray-100 p-1 rounded-xl w-fit mb-6">
+        {([['cotizaciones', '📦 Cotizaciones'], ['contratos', '📄 Variables de Contratos']] as const).map(([t, label]) => (
+          <button
+            key={t}
+            onClick={() => setActiveTab(t)}
+            className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
+              activeTab === t ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
 
-      <RatesSection
-        country="mx"
-        rates={mxRates}
-        locations={mxLocations}
-        flatEnabled={mxFlatEnabled}
-        flatPrice={mxFlatPrice}
-        setFlat={setMxFlatEnabled}
-        setFlatPrice={setMxFlatPrice}
-      />
+      {/* ── Cotizaciones tab ── */}
+      {activeTab === 'cotizaciones' && (
+        <>
+          <RatesSection
+            country="co"
+            rates={coRates}
+            locations={coLocations}
+            flatEnabled={coFlatEnabled}
+            flatPrice={coFlatPrice}
+            setFlat={setCoFlatEnabled}
+            setFlatPrice={setCoFlatPrice}
+          />
 
-      <div className={CLS.card}>
-        <h3 className="font-bold mb-4">⚙️ Constantes Globales</h3>
-        <div className={CLS.grid}>
-          {configs.map(({ key, value }) => (
-            <div key={key as string} className="flex flex-col gap-1">
-              <label className={CLS.label}>{CONFIG_LABELS[key as string]}</label>
-              <div className="flex gap-1">
-                <input
-                  className={`${CLS.input} flex-1`}
-                  type="number"
-                  step="any"
-                  defaultValue={String(value)}
-                  id={`cfg-${key}`}
-                />
-                <button
-                  onClick={() => {
-                    const el = document.getElementById(`cfg-${key}`) as HTMLInputElement
-                    if (el) saveConfig(key as string, el.value)
-                  }}
-                  disabled={saving === `cfg-${key}`}
-                  className={`${CLS.btn} bg-green-600 disabled:opacity-50`}
-                >
-                  {saving === `cfg-${key}` ? '...' : '✓'}
-                </button>
-              </div>
+          <RatesSection
+            country="mx"
+            rates={mxRates}
+            locations={mxLocations}
+            flatEnabled={mxFlatEnabled}
+            flatPrice={mxFlatPrice}
+            setFlat={setMxFlatEnabled}
+            setFlatPrice={setMxFlatPrice}
+          />
+
+          <div className={CLS.card}>
+            <h3 className="font-bold mb-4">⚙️ Constantes Globales</h3>
+            <div className={CLS.grid}>
+              {configs.map(({ key, value }) => (
+                <div key={key as string} className="flex flex-col gap-1">
+                  <label className={CLS.label}>{CONFIG_LABELS[key as string]}</label>
+                  <div className="flex gap-1">
+                    <input
+                      className={`${CLS.input} flex-1`}
+                      type="number"
+                      step="any"
+                      defaultValue={String(value)}
+                      id={`cfg-${key}`}
+                    />
+                    <button
+                      onClick={() => {
+                        const el = document.getElementById(`cfg-${key}`) as HTMLInputElement
+                        if (el) saveConfig(key as string, el.value)
+                      }}
+                      disabled={saving === `cfg-${key}`}
+                      className={`${CLS.btn} bg-green-600 disabled:opacity-50`}
+                    >
+                      {saving === `cfg-${key}` ? '...' : '✓'}
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
-          ))}
+          </div>
+        </>
+      )}
+
+      {/* ── Contratos tab ── */}
+      {activeTab === 'contratos' && (
+        <div className={CLS.card}>
+          <h3 className="font-bold mb-1">📄 Variables de Contratos</h3>
+          <p className="text-sm text-gray-500 mb-6">
+            Estos valores se usan para validar los contratos al momento de crearlos. Si un contrato no cumple con el mínimo, el sistema lo rechazará.
+          </p>
+
+          <div className="flex flex-col gap-6">
+            {CONTRACT_CONFIG_KEYS.map(({ key, label, hint, step, prefix }) => (
+              <div key={key} className="flex flex-col gap-1.5 max-w-sm">
+                <label className="text-sm font-semibold text-gray-700">{label}</label>
+                <p className="text-xs text-gray-400">{hint}</p>
+                <div className="flex gap-2 items-center mt-1">
+                  {prefix && <span className="text-gray-500 font-mono font-bold">{prefix}</span>}
+                  <input
+                    type="number"
+                    step={step}
+                    min="0"
+                    value={contractCfg[key] ?? ''}
+                    placeholder="Sin configurar"
+                    onChange={e => setContractCfg(prev => ({ ...prev, [key]: e.target.value }))}
+                    className={`${CLS.input} flex-1`}
+                  />
+                  <button
+                    onClick={() => saveContractCfg(key)}
+                    disabled={savingCfgKey === key || !contractCfg[key]}
+                    className={`${CLS.btn} bg-green-600 disabled:opacity-50 whitespace-nowrap`}
+                  >
+                    {savingCfgKey === key ? '...' : '💾 Guardar'}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
     </DashboardLayout>
   )
 }

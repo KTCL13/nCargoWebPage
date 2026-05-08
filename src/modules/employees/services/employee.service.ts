@@ -166,6 +166,22 @@ class EmployeeService {
     }
 
     async createContract(employeeId: number, data: CreateContractDto): Promise<ContractResponseDto> {
+        const [smlvCfg, minHourlyCfg] = await Promise.all([
+            prisma.systemConfig.findUnique({ where: { key: 'smlv' } }),
+            prisma.systemConfig.findUnique({ where: { key: 'min_hourly_rate' } }),
+        ])
+
+        if (smlvCfg) {
+            const smlv = Number(smlvCfg.value)
+            if (data.salary < smlv)
+                throw new Error(`Debes ingresar un salario legal. El mínimo es el SMLV ($${smlv.toLocaleString('es-CO')})`)
+        }
+        if (minHourlyCfg) {
+            const minRate = Number(minHourlyCfg.value)
+            if (data.hourlyRate < minRate)
+                throw new Error(`La tarifa por hora no puede ser menor al mínimo legal ($${minRate.toLocaleString('es-CO')}/h)`)
+        }
+
         const newStartDate = new Date(data.startDate)
 
         const contract = await prisma.$transaction(async (tx) => {
