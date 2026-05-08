@@ -32,7 +32,7 @@ interface Task {
   createdAt: string
 }
 
-const LIMIT = 10
+const DEFAULT_LIMIT = 10
 
 const STATUS_LABELS: Record<TaskStatus, string> = {
   PENDING: 'Pendiente',
@@ -60,6 +60,7 @@ export default function GestionTareasPage() {
   const [employees, setEmployees] = useState<Employee[]>([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(0)
+  const [pageSize, setPageSize] = useState(DEFAULT_LIMIT)
   const [loading, setLoading] = useState(false)
 
   // Filters
@@ -100,7 +101,7 @@ export default function GestionTareasPage() {
     try {
       const taskParams = new URLSearchParams({
         page: String(page + 1),
-        limit: String(LIMIT),
+        limit: String(pageSize),
         ...(statusFilter && { status: statusFilter }),
         ...(employeeFilter && { employeeId: employeeFilter }),
       })
@@ -129,7 +130,7 @@ export default function GestionTareasPage() {
     } finally {
       setLoading(false)
     }
-  }, [page, statusFilter, employeeFilter])
+  }, [page, pageSize, statusFilter, employeeFilter, token])
 
   useEffect(() => { fetchData() }, [fetchData])
 
@@ -237,8 +238,6 @@ export default function GestionTareasPage() {
       inProgress: tasks.filter(t => t.status === 'IN_PROGRESS').length,
     }
   }, [total, tasks])
-
-  const pageCount = Math.ceil(total / LIMIT)
 
   return (
     <>
@@ -372,15 +371,13 @@ export default function GestionTareasPage() {
             </table>
           </div>
 
-          {/* Footer / Pagination */}
-          <div className="px-5 py-4 border-t border-gray-100 flex items-center justify-between">
-            <p className="text-xs text-gray-400 font-subtitles">
-              Mostrando {tasks.length} de {total} tareas
-            </p>
+          <div className="px-5 py-4 border-t border-gray-100">
             <Pagination
               page={page}
-              pageCount={pageCount}
+              pageSize={pageSize}
+              totalItems={total}
               onPageChange={setPage}
+              onPageSizeChange={setPageSize}
             />
           </div>
         </div>

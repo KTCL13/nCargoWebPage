@@ -22,7 +22,7 @@ interface AttendanceRegistry {
   workedHours: number | null;
 }
 
-const LIMIT = 10;
+const DEFAULT_LIMIT = 10;
 
 const STATUS_LABELS: Record<string, string> = {
   OPEN: "Abierta",
@@ -42,6 +42,7 @@ export default function AsistenciaAdminPage() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(DEFAULT_LIMIT);
   const [loading, setLoading] = useState(false);
 
   // Filters
@@ -55,7 +56,7 @@ export default function AsistenciaAdminPage() {
     try {
       const params = new URLSearchParams({
         page: String(page + 1),
-        limit: String(LIMIT),
+        limit: String(pageSize),
         ...(dateFilter && { date: dateFilter }),
         ...(employeeFilter && { employeeId: employeeFilter }),
         ...(statusFilter && { status: statusFilter }),
@@ -85,7 +86,7 @@ export default function AsistenciaAdminPage() {
     } finally {
       setLoading(false);
     }
-  }, [token, page, dateFilter, employeeFilter, statusFilter]);
+  }, [token, page, pageSize, dateFilter, employeeFilter, statusFilter]);
 
   useEffect(() => {
     fetchAttendance();
@@ -129,7 +130,6 @@ export default function AsistenciaAdminPage() {
     () => registries.filter((r) => r.status === "OPEN").length,
     [registries],
   );
-  const pageCount = Math.ceil(total / LIMIT);
 
   return (
     <DashboardLayout
@@ -293,15 +293,13 @@ export default function AsistenciaAdminPage() {
             </table>
           </div>
 
-          {/* Footer */}
-          <div className="px-5 py-4 border-t border-gray-100 flex items-center justify-between">
-            <p className="text-xs text-gray-400 font-subtitles">
-              Total de registros: {total}
-            </p>
+          <div className="px-5 py-4 border-t border-gray-100">
             <Pagination
               page={page}
-              pageCount={pageCount}
+              pageSize={pageSize}
+              totalItems={total}
               onPageChange={setPage}
+              onPageSizeChange={setPageSize}
             />
           </div>
         </div>

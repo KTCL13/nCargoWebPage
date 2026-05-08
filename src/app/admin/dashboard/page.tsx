@@ -206,7 +206,7 @@ export default function DashboardPage() {
             {pieData.length === 0 ? (
               <p className="text-center text-gray-400 text-sm py-6">Sin datos de rendimiento</p>
             ) : (
-              <ResponsiveContainer width="100%" height={260}>
+              <ResponsiveContainer width="100%" height={260} minWidth={0}>
                 <PieChart>
                   <Pie
                     data={pieData}

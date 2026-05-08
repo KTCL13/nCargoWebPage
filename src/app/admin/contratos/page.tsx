@@ -6,7 +6,7 @@ import { DashboardLayout } from '@/components/layout/DashboardLayout'
 import { NAV_ITEMS } from '@/components/layout/nav-config'
 import { Pagination } from '@/components/ui/Pagination'
 
-const LIMIT = 10
+const DEFAULT_LIMIT = 10
 
 type Contract = {
   id: number
@@ -32,6 +32,7 @@ export default function ContratosPage() {
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(0)
   const [search, setSearch] = useState('')
+  const [pageSize, setPageSize] = useState(DEFAULT_LIMIT)
   const [loading, setLoading] = useState(false)
 
   const [dirty, setDirty] = useState<Record<number, { isActive: boolean }>>({})
@@ -51,7 +52,7 @@ export default function ContratosPage() {
     try {
       const params = new URLSearchParams({
         page: String(page + 1),
-        limit: String(LIMIT),
+        limit: String(pageSize),
         ...(search && { search }),
       })
       const res = await fetch(`/api/contracts?${params}`)
@@ -71,7 +72,7 @@ export default function ContratosPage() {
     } finally {
       setLoading(false)
     }
-  }, [page, search])
+  }, [page, pageSize, search])
 
 
   useEffect(() => {
@@ -149,7 +150,6 @@ export default function ContratosPage() {
     setSelected(selected.size === contracts.length ? new Set() : new Set(contracts.map(c => c.id)))
   }
 
-  const pageCount = Math.ceil(total / LIMIT)
   const hasDirty = Object.keys(dirty).length > 0
 
   return (
@@ -303,26 +303,23 @@ export default function ContratosPage() {
           </table>
         </div>
 
-        {/* Footer */}
-        <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 border-t border-gray-100">
-          <button
-            onClick={saveAll}
-            disabled={!hasDirty}
-            className={`
-              text-sm px-4 py-2 rounded-[var(--radius-lg)] font-semibold font-subtitles transition
-              ${hasDirty
-                ? 'bg-[var(--color-foreground)] text-white hover:opacity-80'
-                : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-              }
-            `}
-          >
-            Guardar todo {hasDirty ? `(${Object.keys(dirty).length})` : ''}
-          </button>
-
+        <div className="px-5 py-4 border-t border-gray-100 flex flex-col gap-4">
+          {hasDirty && (
+            <div className="flex justify-start">
+              <button
+                onClick={saveAll}
+                className="text-sm px-4 py-2 rounded-[var(--radius-lg)] font-semibold font-subtitles bg-[var(--color-foreground)] text-white hover:opacity-80 transition shadow-sm"
+              >
+                Guardar todo ({Object.keys(dirty).length})
+              </button>
+            </div>
+          )}
           <Pagination
             page={page}
-            pageCount={pageCount}
+            pageSize={pageSize}
+            totalItems={total}
             onPageChange={setPage}
+            onPageSizeChange={setPageSize}
           />
         </div>
       </div>

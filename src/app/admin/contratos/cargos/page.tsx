@@ -3,6 +3,9 @@
 import { useEffect, useState, useCallback } from 'react'
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
 import { NAV_ITEMS } from '@/components/layout/nav-config'
+import { Pagination } from '@/components/ui/Pagination'
+
+const DEFAULT_LIMIT = 10
 
 type Job = {
   id: number
@@ -12,6 +15,9 @@ type Job = {
 
 export default function CargosPage() {
   const [jobs, setJobs] = useState<Job[]>([])
+  const [total, setTotal] = useState(0)
+  const [page, setPage] = useState(0)
+  const [pageSize, setPageSize] = useState(DEFAULT_LIMIT)
   const [loading, setLoading] = useState(false)
   
   const [showModal, setShowModal] = useState(false)
@@ -25,9 +31,14 @@ export default function CargosPage() {
   const fetchJobs = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch('/api/jobs')
+      const params = new URLSearchParams({
+        page: String(page + 1),
+        limit: String(pageSize),
+      })
+      const res = await fetch(`/api/jobs?${params}`)
       const data = await res.json()
-      setJobs(Array.isArray(data) ? data : (data.data ?? []))
+      setJobs(data.data ?? [])
+      setTotal(data.total ?? 0)
     } catch (err) {
       console.error(err)
     } finally {
@@ -153,6 +164,15 @@ export default function CargosPage() {
               ))}
             </tbody>
           </table>
+        </div>
+        <div className="px-5 py-4 border-t border-gray-100">
+          <Pagination
+            page={page}
+            pageSize={pageSize}
+            totalItems={total}
+            onPageChange={setPage}
+            onPageSizeChange={setPageSize}
+          />
         </div>
       </div>
 

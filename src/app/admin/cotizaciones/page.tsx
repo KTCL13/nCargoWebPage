@@ -7,7 +7,7 @@ import { NAV_ITEMS } from '@/components/layout/nav-config'
 import { Pagination } from '@/components/ui/Pagination'
 import { useAuth } from '@/context/AuthContext'
 
-const LIMIT = 10
+const DEFAULT_LIMIT = 10
 
 type Quotation = {
   id: number
@@ -57,6 +57,7 @@ export default function CotizacionesPage() {
   const [totalItems, setTotalItems] = useState(0)
   const [page, setPage] = useState(0)
   const [search, setSearch] = useState('')
+  const [pageSize, setPageSize] = useState(DEFAULT_LIMIT)
   const [loadingQ, setLoadingQ] = useState(false)
 
   // ── Offices state ──
@@ -75,7 +76,7 @@ export default function CotizacionesPage() {
     try {
       const params = new URLSearchParams({
         page: String(page + 1),
-        limit: String(LIMIT),
+        limit: String(pageSize),
         ...(search && { search }),
       })
       const res = await fetch(`/api/quotations?${params}`)
@@ -85,7 +86,7 @@ export default function CotizacionesPage() {
     } catch { /* ignore */ } finally {
       setLoadingQ(false)
     }
-  }, [page, search])
+  }, [page, pageSize, search])
 
   useEffect(() => { fetchQuotations() }, [fetchQuotations])
 
@@ -187,7 +188,6 @@ export default function CotizacionesPage() {
     ? (quotations.reduce((a, c) => a + Number(c.weight_lbs), 0) / quotations.length).toFixed(1)
     : '0'
   const totalRevenue = quotations.reduce((a, c) => a + Number(c.total), 0)
-  const pageCount = Math.ceil(totalItems / LIMIT)
 
   return (
     <DashboardLayout pageTitle="Cotizaciones" navItems={NAV_ITEMS} onReload={fetchQuotations}>
@@ -298,8 +298,14 @@ export default function CotizacionesPage() {
                   </tbody>
                 </table>
               </div>
-              <div className="p-4 border-t border-gray-50">
-                <Pagination page={page} pageCount={pageCount} onPageChange={setPage} />
+              <div className="p-4 border-t border-gray-100">
+                <Pagination
+                  page={page}
+                  pageSize={pageSize}
+                  totalItems={totalItems}
+                  onPageChange={setPage}
+                  onPageSizeChange={setPageSize}
+                />
               </div>
             </div>
           </>

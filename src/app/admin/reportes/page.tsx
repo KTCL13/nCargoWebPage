@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useMemo } from 'react'
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
 import { NAV_ITEMS } from '@/components/layout/nav-config'
 import { useAuth } from '@/context/AuthContext'
+import { Pagination } from '@/components/ui/Pagination'
 import {
   PieChart, Pie, Cell, ResponsiveContainer, Tooltip as ReTooltip, Legend,
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer as RespCont
@@ -221,11 +222,9 @@ export default function ReportesPage() {
     sortBy(alerts, alertSort, alertSort.startsWith('severity') ? SEVERITY_ORDER : undefined),
     [alerts, alertSort])
   const pagedAlerts = useMemo(() => paged(sortedAlerts, alertPage), [sortedAlerts, alertPage])
-  const alertPageCount = Math.ceil(sortedAlerts.length / PAGE_SIZE)
 
   const sortedWorkload = useMemo(() => sortBy(workload, workloadSort), [workload, workloadSort])
   const pagedWorkload = useMemo(() => paged(sortedWorkload, workloadPage), [sortedWorkload, workloadPage])
-  const workloadPageCount = Math.ceil(sortedWorkload.length / PAGE_SIZE)
 
   // minutesSpent can be null — special null-safe sort
   const sortedCompletion = useMemo(() => {
@@ -242,7 +241,6 @@ export default function ReportesPage() {
     return sortBy(completion, completionSort)
   }, [completion, completionSort])
   const pagedCompletion = useMemo(() => paged(sortedCompletion, completionPage), [sortedCompletion, completionPage])
-  const completionPageCount = Math.ceil(sortedCompletion.length / PAGE_SIZE)
 
   // Performance: client-side sort of the current server page
   const sortedPerformance = useMemo(() => sortBy(performance, perfSort), [performance, perfSort])
@@ -279,7 +277,6 @@ export default function ReportesPage() {
 
   // ── Counters ───────────────────────────────────────────────────────────
   const highAlerts = alerts.filter(a => a.severity === 'high').length
-  const perfPageCount = Math.ceil(perfTotal / PERF_LIMIT)
   const perfStart = perfTotal === 0 ? 0 : perfPage * PERF_LIMIT + 1
   const perfEnd = Math.min((perfPage + 1) * PERF_LIMIT, perfTotal)
 
@@ -375,7 +372,7 @@ export default function ReportesPage() {
           <Section title="📊 Distribución Global de Estado">
             <div className="h-[300px] w-full">
               {loading.workload ? <LoadingSkeleton rows={1} /> : pieData.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                   <PieChart>
                     <Pie data={pieData} innerRadius={60} outerRadius={100} paddingAngle={5} dataKey="value">
                       {pieData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
@@ -392,7 +389,7 @@ export default function ReportesPage() {
           <Section title="🏆 Top Rendimiento (Tareas vs Horas)">
             <div className="h-[240px] w-full">
               {loading.performance ? <LoadingSkeleton rows={1} /> : barData.length > 0 ? (
-                <RespCont width="100%" height="100%">
+                <RespCont width="100%" height="100%" minWidth={0}>
                   <BarChart data={barData}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} />
                     <XAxis dataKey="name" fontSize={10} tickLine={false} axisLine={false} />
@@ -406,25 +403,6 @@ export default function ReportesPage() {
               ) : <EmptyState message="No hay datos de rendimiento disponibles." />}
             </div>
 
-            {/* Bar chart page navigation */}
-            {perfTotal > 0 && (
-              <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-50">
-                <p className="text-xs text-gray-400">
-                  Mostrando {perfStart}–{perfEnd} de {perfTotal} empleados
-                </p>
-                <div className="flex items-center gap-2">
-                  <NavBtn onClick={() => handlePerfPageChange(perfPage - 1)} disabled={loading.performance || perfPage === 0}>
-                    ← Anterior
-                  </NavBtn>
-                  <span className="text-xs text-gray-500 tabular-nums">
-                    {perfPage + 1} / {Math.max(perfPageCount, 1)}
-                  </span>
-                  <NavBtn onClick={() => handlePerfPageChange(perfPage + 1)} disabled={loading.performance || perfPage >= perfPageCount - 1}>
-                    Siguiente →
-                  </NavBtn>
-                </div>
-              </div>
-            )}
           </Section>
         </div>
 
@@ -463,13 +441,15 @@ export default function ReportesPage() {
                   </div>
                 ))}
               </div>
-              <PageFooter
-                page={alertPage} pageCount={alertPageCount}
-                total={sortedAlerts.length}
-                start={alertPage * PAGE_SIZE + 1}
-                end={Math.min((alertPage + 1) * PAGE_SIZE, sortedAlerts.length)}
-                onPageChange={setAlertPage} unit="alertas"
-              />
+              <div className="mt-4 pt-4 border-t border-gray-50">
+                <Pagination
+                  page={alertPage}
+                  pageSize={PAGE_SIZE}
+                  totalItems={sortedAlerts.length}
+                  onPageChange={setAlertPage}
+                  onPageSizeChange={() => {}}
+                />
+              </div>
             </>
           )}
         </Section>
@@ -525,11 +505,15 @@ export default function ReportesPage() {
                   </tbody>
                 </table>
               </div>
-              <PageFooter
-                page={perfPage} pageCount={perfPageCount}
-                total={perfTotal} start={perfStart} end={perfEnd}
-                onPageChange={handlePerfPageChange} unit="empleados"
-              />
+              <div className="mt-4 pt-4 border-t border-gray-50">
+                <Pagination
+                  page={perfPage}
+                  pageSize={PERF_LIMIT}
+                  totalItems={perfTotal}
+                  onPageChange={handlePerfPageChange}
+                  onPageSizeChange={() => {}}
+                />
+              </div>
             </>
           )}
         </Section>
@@ -587,13 +571,15 @@ export default function ReportesPage() {
                   </tbody>
                 </table>
               </div>
-              <PageFooter
-                page={workloadPage} pageCount={workloadPageCount}
-                total={sortedWorkload.length}
-                start={workloadPage * PAGE_SIZE + 1}
-                end={Math.min((workloadPage + 1) * PAGE_SIZE, sortedWorkload.length)}
-                onPageChange={setWorkloadPage} unit="empleados"
-              />
+              <div className="mt-4 pt-4 border-t border-gray-50">
+                <Pagination
+                  page={workloadPage}
+                  pageSize={PAGE_SIZE}
+                  totalItems={sortedWorkload.length}
+                  onPageChange={setWorkloadPage}
+                  onPageSizeChange={() => {}}
+                />
+              </div>
             </>
           )}
         </Section>
@@ -642,13 +628,15 @@ export default function ReportesPage() {
                   </tbody>
                 </table>
               </div>
-              <PageFooter
-                page={completionPage} pageCount={completionPageCount}
-                total={sortedCompletion.length}
-                start={completionPage * PAGE_SIZE + 1}
-                end={Math.min((completionPage + 1) * PAGE_SIZE, sortedCompletion.length)}
-                onPageChange={setCompletionPage} unit="tareas"
-              />
+              <div className="mt-4 pt-4 border-t border-gray-50">
+                <Pagination
+                  page={completionPage}
+                  pageSize={PAGE_SIZE}
+                  totalItems={sortedCompletion.length}
+                  onPageChange={setCompletionPage}
+                  onPageSizeChange={() => {}}
+                />
+              </div>
             </>
           )}
         </Section>
@@ -708,39 +696,6 @@ function SortSelect({ value, onChange, options }: {
   )
 }
 
-function PageFooter({ page, pageCount, total, start, end, onPageChange, unit }: {
-  page: number; pageCount: number; total: number; start: number; end: number
-  onPageChange: (p: number) => void; unit: string
-}) {
-  return (
-    <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-50">
-      <p className="text-xs text-gray-400">
-        Mostrando {total === 0 ? 0 : start}–{end} de {total} {unit}
-      </p>
-      <div className="flex items-center gap-2">
-        <NavBtn onClick={() => onPageChange(page - 1)} disabled={page === 0}>← Anterior</NavBtn>
-        <span className="text-xs text-gray-500 tabular-nums">
-          Pág. {Math.max(page + 1, 1)} / {Math.max(pageCount, 1)}
-        </span>
-        <NavBtn onClick={() => onPageChange(page + 1)} disabled={page >= pageCount - 1}>Siguiente →</NavBtn>
-      </div>
-    </div>
-  )
-}
-
-function NavBtn({ onClick, disabled, children }: {
-  onClick: () => void; disabled: boolean; children: React.ReactNode
-}) {
-  return (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      className="px-2.5 py-1 text-xs rounded-md border border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed transition"
-    >
-      {children}
-    </button>
-  )
-}
 
 function LoadingSkeleton({ rows = 4 }: { rows?: number }) {
   return (

@@ -4,6 +4,9 @@ import { useEffect, useState, useCallback, useRef } from 'react'
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
 import { NAV_ITEMS } from '@/components/layout/nav-config'
 import { useAuth } from '@/context/AuthContext'
+import { Pagination } from '@/components/ui/Pagination'
+
+const DEFAULT_LIMIT = 10
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -61,6 +64,9 @@ export default function EnviosPage() {
 
   // Lockers state
   const [lockers, setLockers] = useState<Locker[]>([])
+  const [lockersTotal, setLockersTotal] = useState(0)
+  const [lockersPage, setLockersPage] = useState(0)
+  const [lockersPageSize, setLockersPageSize] = useState(DEFAULT_LIMIT)
   const [lockersLoading, setLockersLoading] = useState(false)
   const [syncing, setSyncing] = useState(false)
   const [syncTerm, setSyncTerm] = useState('')
@@ -68,6 +74,9 @@ export default function EnviosPage() {
   // Selected locker + its envíos
   const [selectedLocker, setSelectedLocker] = useState<Locker | null>(null)
   const [envios, setEnvios] = useState<Envio[]>([])
+  const [enviosTotal, setEnviosTotal] = useState(0)
+  const [enviosPage, setEnviosPage] = useState(0)
+  const [enviosPageSize, setEnviosPageSize] = useState(DEFAULT_LIMIT)
   const [enviosLoading, setEnviosLoading] = useState(false)
   const [envioSearch, setEnvioSearch] = useState('')
   const [debouncedEnvioSearch, setDebouncedEnvioSearch] = useState('')
@@ -101,10 +110,15 @@ export default function EnviosPage() {
   const loadLockers = useCallback(async () => {
     setLockersLoading(true)
     try {
-      const res = await fetch('/api/lockers', { headers })
+      const p = new URLSearchParams({
+        page: String(lockersPage + 1),
+        limit: String(lockersPageSize),
+      })
+      const res = await fetch(`/api/lockers?${p}`, { headers })
       const json = await res.json()
       if (!res.ok) throw new Error(json.message)
-      setLockers(json.data ?? json)
+      setLockers(json.data ?? [])
+      setLockersTotal(json.total ?? 0)
     } catch (e) {
       showToast((e as Error).message, false)
     } finally {
@@ -112,19 +126,23 @@ export default function EnviosPage() {
     }
   }, [authToken]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => { loadLockers() }, [loadLockers])
+  useEffect(() => { loadLockers() }, [lockersPage, lockersPageSize, loadLockers])
 
   // ── Load envíos when locker selected or search changes ───────────────────
   const loadEnvios = useCallback(async () => {
     if (!selectedLocker) return
     setEnviosLoading(true)
     try {
-      const params = new URLSearchParams()
+      const params = new URLSearchParams({
+        page: String(enviosPage + 1),
+        limit: String(enviosPageSize),
+      })
       if (debouncedEnvioSearch) params.set('search', debouncedEnvioSearch)
       const res = await fetch(`/api/lockers/${selectedLocker.id}/shipments?${params}`, { headers })
       const json = await res.json()
       if (!res.ok) throw new Error(json.message)
-      setEnvios(json.data ?? json)
+      setEnvios(json.data ?? [])
+      setEnviosTotal(json.total ?? 0)
     } catch (e) {
       showToast((e as Error).message, false)
     } finally {
@@ -132,7 +150,7 @@ export default function EnviosPage() {
     }
   }, [selectedLocker, debouncedEnvioSearch, authToken]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => { loadEnvios() }, [loadEnvios])
+  useEffect(() => { loadEnvios() }, [enviosPage, enviosPageSize, loadEnvios])
 
   // ── Sync ─────────────────────────────────────────────────────────────────
   async function handleSync() {
@@ -163,6 +181,7 @@ export default function EnviosPage() {
     setSelectedLocker(locker)
     setEnvioSearch('')
     setDebouncedEnvioSearch('')
+    setEnviosPage(0)
     setEditId(null)
     setShowNewEnvio(false)
   }
@@ -252,7 +271,7 @@ export default function EnviosPage() {
           <div>
             <h2 className="font-titles text-2xl font-extrabold">Casilleros y Envíos</h2>
             <p className="text-gray-500 text-sm">
-              {lockers.length} casillero{lockers.length !== 1 ? 's' : ''} sincronizados
+              {lockersTotal} casillero{lockersTotal !== 1 ? 's' : ''} sincronizados
             </p>
           </div>
 
@@ -327,6 +346,15 @@ export default function EnviosPage() {
               ))}
             </tbody>
           </table>
+          <div className="px-5 py-4 border-t">
+            <Pagination
+              page={lockersPage}
+              pageSize={lockersPageSize}
+              totalItems={lockersTotal}
+              onPageChange={setLockersPage}
+              onPageSizeChange={setLockersPageSize}
+            />
+          </div>
         </section>
 
         {/* ── Envíos panel (visible when a locker is selected) ── */}
@@ -510,6 +538,15 @@ export default function EnviosPage() {
                   ))}
                 </tbody>
               </table>
+            </div>
+            <div className="px-5 py-4 border-t">
+              <Pagination
+                page={enviosPage}
+                pageSize={enviosPageSize}
+                totalItems={enviosTotal}
+                onPageChange={setEnviosPage}
+                onPageSizeChange={setEnviosPageSize}
+              />
             </div>
           </section>
         )}

@@ -6,7 +6,7 @@ import { NAV_ITEMS } from '@/components/layout/nav-config'
 import { Pagination } from '@/components/ui/Pagination'
 import { useAuth } from '@/context/AuthContext'
 
-const PAGE_SIZE = 10
+const DEFAULT_LIMIT = 10
 
 type Shipment = {
   id: number
@@ -26,8 +26,8 @@ export default function EmployeeEnviosPage() {
 
   const [shipments, setShipments] = useState<Shipment[]>([])
   const [total, setTotal] = useState(0)
-  const [totalPages, setTotalPages] = useState(0)
-  const [page, setPage] = useState(1)
+  const [page, setPage] = useState(0)
+  const [pageSize, setPageSize] = useState(DEFAULT_LIMIT)
   const [loading, setLoading] = useState(false)
 
   const [search, setSearch] = useState('')
@@ -45,7 +45,7 @@ export default function EmployeeEnviosPage() {
     if (searchRef.current) clearTimeout(searchRef.current)
     searchRef.current = setTimeout(() => {
       setDebouncedSearch(search)
-      setPage(1)
+      setPage(0)
     }, 400)
     return () => { if (searchRef.current) clearTimeout(searchRef.current) }
   }, [search])
@@ -54,8 +54,8 @@ export default function EmployeeEnviosPage() {
     setLoading(true)
     try {
       const params = new URLSearchParams({
-        page: String(page),
-        pageSize: String(PAGE_SIZE),
+        page: String(page + 1),
+        pageSize: String(pageSize),
         isLocker: 'true',
       })
       if (debouncedSearch) params.set('search', debouncedSearch)
@@ -66,13 +66,12 @@ export default function EmployeeEnviosPage() {
       const json = await res.json()
       setShipments(json.data ?? [])
       setTotal(json.total ?? 0)
-      setTotalPages(json.totalPages ?? 0)
     } catch {
       // silent
     } finally {
       setLoading(false)
     }
-  }, [page, debouncedSearch, authToken])
+  }, [page, pageSize, debouncedSearch, authToken])
 
   useEffect(() => { fetchShipments() }, [fetchShipments])
 
@@ -208,12 +207,13 @@ export default function EmployeeEnviosPage() {
             </table>
           </div>
 
-          <div className="px-4 py-3 border-t flex items-center justify-between text-sm text-gray-500 flex-wrap gap-2">
-            <span>{total} registro{total !== 1 ? 's' : ''} · página {page} de {totalPages || 1}</span>
+          <div className="px-4 py-3 border-t">
             <Pagination
-              page={page - 1}
-              pageCount={totalPages}
-              onPageChange={p => setPage(p + 1)}
+              page={page}
+              pageSize={pageSize}
+              totalItems={total}
+              onPageChange={setPage}
+              onPageSizeChange={setPageSize}
             />
           </div>
         </div>

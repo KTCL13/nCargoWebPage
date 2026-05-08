@@ -6,7 +6,7 @@ import { DashboardLayout } from '@/components/layout/DashboardLayout'
 import { NAV_ITEMS } from '@/components/layout/nav-config'
 import { Pagination } from '@/components/ui/Pagination'
 
-const LIMIT = 10
+const DEFAULT_LIMIT = 10
 
 type IdentificationType = { id: number; code: string; name: string }
 
@@ -55,6 +55,7 @@ export default function EmpleadosPage() {
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(0)
   const [search, setSearch] = useState('')
+  const [pageSize, setPageSize] = useState(DEFAULT_LIMIT)
   const [loading, setLoading] = useState(false)
 
   // Dirty rows: pending status changes not yet saved
@@ -110,7 +111,7 @@ export default function EmpleadosPage() {
     try {
       const params = new URLSearchParams({
         page: String(page + 1),
-        limit: String(LIMIT),
+        limit: String(pageSize),
         ...(search && { search }),
         ...(filterStatus && { status: filterStatus }),
         ...(filterRole && { roleId: filterRole }),
@@ -122,7 +123,7 @@ export default function EmpleadosPage() {
     } finally {
       setLoading(false)
     }
-  }, [page, search, filterStatus, filterRole])
+  }, [page, pageSize, search, filterStatus, filterRole])
 
   useEffect(() => { fetchEmployees() }, [fetchEmployees])
 
@@ -363,7 +364,6 @@ export default function EmpleadosPage() {
     }
   }
 
-  const pageCount = Math.ceil(total / LIMIT)
   const hasDirty = Object.keys(dirty).length > 0
 
   return (
@@ -595,30 +595,23 @@ export default function EmpleadosPage() {
           </table>
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 border-t border-gray-100">
-          <div className="flex items-center gap-4">
-            <button
-              onClick={saveAll}
-              disabled={!hasDirty}
-              className={`
-                text-sm px-4 py-2 rounded-[var(--radius-lg)] font-semibold font-subtitles transition
-                ${hasDirty
-                  ? 'bg-[var(--color-foreground)] text-white hover:opacity-80'
-                  : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                }
-              `}
-            >
-              Guardar todo {hasDirty ? `(${Object.keys(dirty).length})` : ''}
-            </button>
-            <p className="text-xs font-subtitles text-gray-500">
-              Mostrando <span className="font-bold text-gray-700">{employees.length > 0 ? page * LIMIT + 1 : 0}</span> - <span className="font-bold text-gray-700">{Math.min((page + 1) * LIMIT, total)}</span> de <span className="font-bold text-gray-700">{total}</span> empleados
-            </p>
-          </div>
-
+        <div className="px-5 py-4 border-t border-gray-100 flex flex-col gap-4">
+          {hasDirty && (
+            <div className="flex justify-start">
+              <button
+                onClick={saveAll}
+                className="text-sm px-4 py-2 rounded-[var(--radius-lg)] font-semibold font-subtitles bg-[var(--color-foreground)] text-white hover:opacity-80 transition shadow-sm"
+              >
+                Guardar todo ({Object.keys(dirty).length})
+              </button>
+            </div>
+          )}
           <Pagination
             page={page}
-            pageCount={pageCount}
+            pageSize={pageSize}
+            totalItems={total}
             onPageChange={setPage}
+            onPageSizeChange={setPageSize}
           />
         </div>
       </div>
