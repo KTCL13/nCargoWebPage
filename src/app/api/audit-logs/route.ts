@@ -8,16 +8,19 @@ export async function GET(req: NextRequest) {
   const entityType = searchParams.get('entity') ?? undefined
 
   const where = entityType ? { entityType } : {}
-  const include = { employee: { select: { id: true, name: true } } }
+  const include = { employee: { select: { id: true, firstName: true, lastName: true } } }
+
+  const toNamed = (raw: { employee: { id: number; firstName: string; lastName: string } | null; [k: string]: unknown }[]) =>
+    raw.map(r => ({ ...r, employee: r.employee ? { ...r.employee, name: `${r.employee.firstName} ${r.employee.lastName}`.trim() } : null }))
 
   if (pageSize > 0) {
-    const [data, total] = await Promise.all([
+    const [raw, total] = await Promise.all([
       prisma.auditLog.findMany({ skip: (page-1)*pageSize, take: pageSize, where, include, orderBy: { createdAt: 'desc' } }),
       prisma.auditLog.count({ where }),
     ])
-    return NextResponse.json({ data, total, page, pageSize, totalPages: Math.ceil(total/pageSize) })
+    return NextResponse.json({ data: toNamed(raw), total, page, pageSize, totalPages: Math.ceil(total/pageSize) })
   }
 
-  const data = await prisma.auditLog.findMany({ where, include, orderBy: { createdAt: 'desc' } })
-  return NextResponse.json({ data, total: data.length })
+  const raw = await prisma.auditLog.findMany({ where, include, orderBy: { createdAt: 'desc' } })
+  return NextResponse.json({ data: toNamed(raw), total: raw.length })
 }

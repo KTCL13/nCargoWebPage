@@ -8,7 +8,7 @@ export async function GET(req: NextRequest) {
 
   const include = {
     originOffice: true,
-    employee:     { select: { id: true, name: true, email: true } },
+    employee:     { select: { id: true, firstName: true, lastName: true, email: true } },
   }
 
   if (pageSize > 0) {
