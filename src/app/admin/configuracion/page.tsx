@@ -470,6 +470,7 @@ export default function ConfiguracionPage() {
 
   const [activeTab, setActiveTab] = useState<'cotizaciones' | 'contratos'>('cotizaciones')
 
+  const [providers,     setProviders]     = useState<{ id: number; name: string }[]>([])
   const [coRates,       setCoRates]       = useState<Rate[]>([])
   const [mxRates,       setMxRates]       = useState<Rate[]>([])
   const [coLocations,   setCoLocations]   = useState<Location[]>([])
@@ -480,11 +481,37 @@ export default function ConfiguracionPage() {
   const [mxFlatEnabled, setMxFlatEnabled] = useState(true)
   const [mxFlatPrice,   setMxFlatPrice]   = useState('5')
   const [loading,       setLoading]       = useState(true)
+  const [ratesLoading,  setRatesLoading]  = useState(false)
   const [saving,        setSaving]        = useState<string | null>(null)
   const [newRate,       setNewRate]       = useState({ co: { destId: '', price: '' }, mx: { destId: '', price: '' } })
   const [providerId,    setProviderId]    = useState<number | null>(null)
   const [contractCfg,   setContractCfg]   = useState<Record<string, string>>({})
   const [savingCfgKey,  setSavingCfgKey]  = useState<string | null>(null)
+
+  const loadRates = useCallback(async (pid: number) => {
+    setRatesLoading(true)
+    try {
+      const [rateRes, coLocRes, mxLocRes] = await Promise.all([
+        fetch(`/api/shipping-providers/${pid}/rates`, { headers: authHeader }).then(r => r.json()),
+        fetch('/api/locations?country=CO', { headers: authHeader }).then(r => r.json()),
+        fetch('/api/locations?country=MX', { headers: authHeader }).then(r => r.json()),
+      ])
+
+      const all: Rate[] = rateRes.data ?? []
+      const co = all.filter(r => r.destination.country === 'CO')
+      const mx = all.filter(r => r.destination.country === 'MX')
+      setCoRates(co)
+      setMxRates(mx)
+
+      const coRateDestIds = new Set(co.map(r => r.destination.id))
+      const mxRateDestIds = new Set(mx.map(r => r.destination.id))
+      setCoLocations((coLocRes.data ?? []).filter((l: Location) => !coRateDestIds.has(l.id)))
+      setMxLocations((mxLocRes.data ?? []).filter((l: Location) => !mxRateDestIds.has(l.id)))
+      setNewRate({ co: { destId: '', price: '' }, mx: { destId: '', price: '' } })
+    } finally {
+      setRatesLoading(false)
+    }
+  }, [token]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -494,7 +521,10 @@ export default function ConfiguracionPage() {
         fetch('/api/system-config').then(r => r.json()),
       ])
 
-      const pid: number | null = provRes.data?.[0]?.id ?? null
+      const provList: { id: number; name: string }[] = provRes.data ?? []
+      setProviders(provList)
+
+      const pid: number | null = provList[0]?.id ?? null
       setProviderId(pid)
 
       const cfgMap: Record<string, unknown> = {}
@@ -516,30 +546,18 @@ export default function ConfiguracionPage() {
       }
       setContractCfg(contractMap)
 
-      if (pid) {
-        const [rateRes, coLocRes, mxLocRes] = await Promise.all([
-          fetch(`/api/shipping-providers/${pid}/rates`, { headers: authHeader }).then(r => r.json()),
-          fetch('/api/locations?country=CO', { headers: authHeader }).then(r => r.json()),
-          fetch('/api/locations?country=MX', { headers: authHeader }).then(r => r.json()),
-        ])
-
-        const all: Rate[] = rateRes.data ?? []
-        const co = all.filter(r => r.destination.country === 'CO')
-        const mx = all.filter(r => r.destination.country === 'MX')
-        setCoRates(co)
-        setMxRates(mx)
-
-        const coRateDestIds = new Set(co.map(r => r.destination.id))
-        const mxRateDestIds = new Set(mx.map(r => r.destination.id))
-        setCoLocations((coLocRes.data ?? []).filter((l: Location) => !coRateDestIds.has(l.id)))
-        setMxLocations((mxLocRes.data ?? []).filter((l: Location) => !mxRateDestIds.has(l.id)))
-      }
+      if (pid) await loadRates(pid)
     } finally {
       setLoading(false)
     }
   }, [token]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { load() }, [load])
+
+  const handleProviderChange = async (pid: number) => {
+    setProviderId(pid)
+    await loadRates(pid)
+  }
 
   const patchConfig = async (key: string, value: unknown) => {
     await fetch(`/api/system-config/${key}`, {
@@ -576,7 +594,7 @@ export default function ConfiguracionPage() {
       method: 'DELETE',
       headers: authHeader,
     })
-    load()
+    if (providerId) loadRates(providerId)
   }
 
   const addRate = async (country: 'co' | 'mx') => {
@@ -590,8 +608,7 @@ export default function ConfiguracionPage() {
         headers: authHeader,
         body: JSON.stringify({ destinationId: Number(destId), basePrice: Number(price) }),
       })
-      setNewRate(p => ({ ...p, [country]: { destId: '', price: '' } }))
-      load()
+      loadRates(providerId)
     } finally { setSaving(null) }
   }
 
@@ -721,6 +738,28 @@ export default function ConfiguracionPage() {
       {/* ── Cotizaciones tab ── */}
       {activeTab === 'cotizaciones' && (
         <>
+          {/* Provider selector */}
+          <div className="flex items-center gap-3 mb-5">
+            <label className="text-sm font-semibold text-gray-600 whitespace-nowrap">Proveedor de envío:</label>
+            <div className="flex gap-2 flex-wrap">
+              {providers.map(p => (
+                <button
+                  key={p.id}
+                  onClick={() => handleProviderChange(p.id)}
+                  disabled={ratesLoading}
+                  className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition-all border ${
+                    providerId === p.id
+                      ? 'bg-[var(--color-primary)] text-white border-[var(--color-primary)]'
+                      : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400'
+                  } disabled:opacity-50`}
+                >
+                  {p.name}
+                </button>
+              ))}
+            </div>
+            {ratesLoading && <span className="text-xs text-gray-400 animate-pulse">Cargando tarifas...</span>}
+          </div>
+
           <RatesSection
             country="co"
             rates={coRates}
