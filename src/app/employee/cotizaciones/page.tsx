@@ -428,7 +428,7 @@ export default function CotizacionesPage() {
         </div>
 
         {/* ── Map panel ── */}
-        <div className="bg-white rounded-2xl border border-black/5 shadow-sm overflow-hidden flex flex-col">
+        <div className="bg-white rounded-2xl border border-black/5 shadow-sm overflow-hidden flex flex-col relative z-0 h-full min-h-[500px]">
           {/* Office selector */}
           <div className="px-4 pt-4 pb-2 border-b border-black/5">
             <label className="font-subtitles text-xs font-semibold text-[var(--color-nc-dark)]/60 block mb-1">
