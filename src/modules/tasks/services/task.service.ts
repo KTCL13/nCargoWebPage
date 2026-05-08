@@ -184,6 +184,19 @@ class TaskService {
                 oldValues: { status: (await taskStatusRepository.findById(existing.statusId))?.name },
                 newValues: { status: dto.status },
             })
+
+            if (dto.status === 'COMPLETED' && dto.actorId) {
+                const employee = await employeeRepository.getEmployeeById(existing.employeeId)
+                if (employee) {
+                    await eventBus.publish('task.completed', {
+                        taskId: id,
+                        taskTitle: existing.title,
+                        employeeId: existing.employeeId,
+                        employeeName: fullName(employee),
+                        adminId: existing.createdBy,
+                    })
+                }
+            }
         }
 
         return this.toTaskResponseDto(task)

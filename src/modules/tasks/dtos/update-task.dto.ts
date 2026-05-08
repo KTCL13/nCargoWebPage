@@ -6,4 +6,5 @@ export type UpdateTaskDto = {
     minutesSpent?: number
     endTime?: Date
     status?: TaskStatusName
+    actorId?: number
 }

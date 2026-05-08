@@ -84,11 +84,12 @@ class TaskController {
 
     async update(req: NextRequest) {
         try {
+            const actor = getAuthEmployee(req)
             const url = new URL(req.url)
             const id = Number(url.searchParams.get('id'))
             const body: UpdateTaskDto = await req.json()
 
-            const result = await taskService.update(id, body)
+            const result = await taskService.update(id, { ...body, actorId: actor.id })
             return NextResponse.json(result, { status: 200 })
         } catch (error: unknown) {
             return NextResponse.json(
