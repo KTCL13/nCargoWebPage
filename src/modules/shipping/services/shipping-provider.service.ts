@@ -11,19 +11,27 @@ type Decimal = Prisma.Decimal;
 type ShippingRateSource = {
   id: number;
   providerId: number;
-  locationId: number;
   price: number | Decimal;
+  countryCode: string | null;
+  location: {
+    id: number;
+    name: string;
+    parent: { id: number; name: string } | null;
+  };
 };
 
 function toRateDto(r: ShippingRateSource): ShippingRateResponseDto {
-  const locationId = "locationId" in r ? r.locationId : 0;
-  const price = "price" in r ? Number(r.price) : 0;
-
   return {
     id: r.id,
     providerId: r.providerId,
-    locationId,
-    price,
+    destination: {
+      id: r.location.id,
+      city: r.location.name,
+      region: r.location.parent?.name ?? null,
+      regionId: r.location.parent?.id ?? null,
+      country: r.countryCode ?? '',
+    },
+    basePrice: Number(r.price),
   };
 }
 
