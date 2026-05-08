@@ -35,6 +35,10 @@ jest.mock('../../services/task.service', () => ({
   },
 }))
 
+jest.mock('@/lib/auth-guard', () => ({
+  getAuthEmployee: jest.fn().mockReturnValue({ id: 1, email: 'admin@ncargo.com', role: 'ADMIN' }),
+}))
+
 import { taskController } from '../task.controller'
 import { taskService } from '../../services/task.service'
 
@@ -185,7 +189,7 @@ describe('taskController.reassignTask (PUT /tasks/reassign?id=X)', () => {
     )
 
     expect(res.status).toBe(200)
-    expect(taskService.reassignTask).toHaveBeenCalledWith(5, { newEmployeeId: 9 })
+    expect(taskService.reassignTask).toHaveBeenCalledWith(5, { newEmployeeId: 9 }, 1)
   })
 
   it('G2 error de negocio: tarea no existe → 400 "Task no encontrada con id X"', async () => {

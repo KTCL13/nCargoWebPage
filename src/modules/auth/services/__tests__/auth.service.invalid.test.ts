@@ -21,6 +21,7 @@ jest.mock('../../repositories/role.repository', () => ({
   roleRepository: {
     findByName: jest.fn(),
     assignRoleToEmployee: jest.fn(),
+    findIdentificationTypeByCode: jest.fn(),
   },
 }))
 
@@ -59,10 +60,10 @@ import { hashService } from '../hash.service'
 const mocked = <T extends (...args: any) => any>(fn: T) => fn as unknown as jest.Mock
 
 describe('authService.register — escenarios inválidos', () => {
-  const base = { name: 'Alice', email: 'a@b.c', password: 'pw', role: 'ADMIN' as const }
+  const base = { firstName: 'Alice', lastName: 'Smith', identificationTypeId: 1, email: 'a@b.c', password: 'pw', role: 'ADMIN' as const }
 
   it('rechaza cuando el nombre solo tiene espacios', async () => {
-    await expect(authService.register({ ...base, name: '   ' })).rejects.toThrow('El nombre es obligatorio')
+    await expect(authService.register({ ...base, firstName: '   ' })).rejects.toThrow('El nombre es obligatorio')
   })
 
   it('rechaza cuando el email está vacío', async () => {
@@ -86,7 +87,7 @@ describe('authService.register — escenarios inválidos', () => {
   it('rechaza cuando el rol indicado no existe en la BD', async () => {
     mocked(userRepository.findByEmail).mockResolvedValue(null)
     mocked(hashService.hash).mockResolvedValue('h')
-    mocked(userRepository.create).mockResolvedValue({ id: 1, name: 'A', email: 'a@b.c' })
+    mocked(userRepository.create).mockResolvedValue({ id: 1, firstName: 'A', lastName: '', email: 'a@b.c' })
     mocked(roleRepository.findByName).mockResolvedValue(null)
 
     await expect(authService.register(base)).rejects.toThrow('El rol no existe')
@@ -97,7 +98,8 @@ describe('authService.register — escenarios inválidos', () => {
 describe('authService.login — escenarios inválidos', () => {
   const employee = {
     id: 1,
-    name: 'A',
+    firstName: 'A',
+    lastName: '',
     email: 'a@b.c',
     passwordHash: 'stored-hash',
     employeeRoles: [{ role: { id: 2, name: 'ADMIN' } }],

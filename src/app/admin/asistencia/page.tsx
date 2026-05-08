@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useMemo } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { NAV_ITEMS } from "@/components/layout/nav-config";
 import { Pagination } from "@/components/ui/Pagination";
+import { useAuth } from "@/context/AuthContext";
 
 interface Employee {
   id: number;
@@ -35,6 +36,7 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export default function AsistenciaAdminPage() {
+  const { token } = useAuth();
   const [registries, setRegistries] = useState<AttendanceRegistry[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [total, setTotal] = useState(0);
@@ -47,6 +49,7 @@ export default function AsistenciaAdminPage() {
   const [statusFilter, setStatusFilter] = useState("");
 
   const fetchAttendance = useCallback(async () => {
+    if (!token) return;
     setLoading(true);
     try {
       const params = new URLSearchParams({
@@ -57,9 +60,10 @@ export default function AsistenciaAdminPage() {
         ...(statusFilter && { status: statusFilter }),
       });
 
+      const auth = { Authorization: `Bearer ${token}` };
       const [res, empRes] = await Promise.all([
-        fetch(`/api/attendance?${params}`),
-        fetch("/api/employees?limit=100"),
+        fetch(`/api/attendance?${params}`, { headers: auth }),
+        fetch("/api/employees?limit=100", { headers: auth }),
       ]);
 
       const data = await res.json();
@@ -80,17 +84,19 @@ export default function AsistenciaAdminPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, dateFilter, employeeFilter, statusFilter]);
+  }, [token, page, dateFilter, employeeFilter, statusFilter]);
 
   useEffect(() => {
     fetchAttendance();
   }, [fetchAttendance]);
 
   const handleCloseJourney = async (id: number) => {
+    if (!token) return;
     if (!confirm("¿Seguro que deseas cerrar esta jornada manualmente?")) return;
     try {
       const res = await fetch(`/api/attendance/force-close?id=${id}`, {
         method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
         fetchAttendance();

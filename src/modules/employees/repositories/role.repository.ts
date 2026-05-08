@@ -26,7 +26,6 @@ class RoleRepository {
             }
         })
     }
-    // Asignar un rol a un empleado
     async assignRoleToEmployee(employeeId: number, roleId: number) {
         return prisma.employeeRole.create({
             data: {
@@ -34,6 +33,18 @@ class RoleRepository {
                 roleId,
             },
         })
+    }
+
+    async findByName(name: string) {
+        return prisma.role.findFirst({ where: { name } })
+    }
+
+    async findIdentificationTypeByCode(code: string) {
+        return prisma.identificationType.findUnique({ where: { code } })
+    }
+
+    async findAllIdentificationTypes() {
+        return prisma.identificationType.findMany({ orderBy: { code: 'asc' } })
     }
 }
 

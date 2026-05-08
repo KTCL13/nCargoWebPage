@@ -15,6 +15,10 @@ class RoleRepository {
             },
         })
     }
+
+    async findIdentificationTypeByCode(code: string) {
+        return prisma.identificationType.findUnique({ where: { code } })
+    }
 }
 
 export const roleRepository = new RoleRepository()

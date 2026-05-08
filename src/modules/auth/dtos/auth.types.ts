@@ -6,7 +6,10 @@ export type LoginDto = {
 }
 
 export type RegisterDto = {
-    name: string
+    firstName: string
+    lastName: string
+    identificationNumber?: string
+    identificationTypeId?: number
     email: string
     password: string
     role: RoleType

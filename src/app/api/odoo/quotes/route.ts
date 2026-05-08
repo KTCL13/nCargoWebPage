@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSaleOrder, getShippingProductId } from '@/lib/odoo'
+import { quotationRepository } from '@/modules/quotations/repositories/quotation.repository'
 
 type Breakdown = {
   total: number
@@ -44,10 +45,11 @@ function buildDescription(country: string | undefined, q: Breakdown): string {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
-    const { customerId, quotationData, country } = body as {
+    const { customerId, quotationData, country, quotationId } = body as {
       customerId: number
       quotationData: Breakdown
       country?: 'CO' | 'MX'
+      quotationId?: number
     }
 
     if (!customerId) {
@@ -64,6 +66,16 @@ export async function POST(req: NextRequest) {
       quantity: 1,
       priceUnit: quotationData.total,
     })
+
+    if (quotationId) {
+      quotationRepository
+        .updateOdooInfo(quotationId, {
+          odooCustomerId: customerId,
+          odooOrderId: result.orderId,
+          odooOrderName: result.name,
+        })
+        .catch((err) => console.error('[Quotation] odoo update failed:', err))
+    }
 
     return NextResponse.json({
       success: true,

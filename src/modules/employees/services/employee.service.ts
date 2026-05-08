@@ -12,18 +12,32 @@ import { UpdateEmployeeDto } from '../dtos/update-employee.dto'
 import { CreateContractDto } from '../dtos/create-contract.dto'
 import { UpdateContractDto } from '../dtos/update-contract.dto'
 import { hashService } from '../../auth/services/hash.service'
-import { Employee, Contract, JobHistory } from '@prisma/client'
+import { Employee, Contract, JobHistory, IdentificationType } from '@prisma/client'
 import { ContractResponseDto } from '../dtos/contract-response.dto'
 
+type EmployeeWithIdType = Employee & { identificationType: IdentificationType }
+
+export function fullName(emp: { firstName: string; lastName: string }): string {
+    return `${emp.firstName} ${emp.lastName}`.trim()
+}
+
 class EmployeeService {
-    private async toEmployeeResponseDto(employee: Employee): Promise<EmployeeResponseDto> {
+    private async toEmployeeResponseDto(employee: EmployeeWithIdType): Promise<EmployeeResponseDto> {
         const roles = await roleRepository.getRolesByEmployeeId(employee.id)
         const contracts = await contractRepository.getContractsByEmployeeId(employee.id)
         const activeContract = contracts.find(contract => contract.isActive)
 
         return {
             id: employee.id,
-            name: employee.name,
+            firstName: employee.firstName,
+            lastName: employee.lastName,
+            name: fullName(employee),
+            identificationNumber: employee.identificationNumber,
+            identificationType: {
+                id: employee.identificationType.id,
+                code: employee.identificationType.code,
+                name: employee.identificationType.name,
+            },
             email: employee.email,
             status: employee.status,
             roles: roles.map(role => role.name),
@@ -41,7 +55,7 @@ class EmployeeService {
         return {
             id: contract.id,
             job: job ?? { id: contract.jobId, title: '—', description: null },
-            contractType: contractType?.name ?? '—',
+            contractType: contractType ?? { id: contract.contractTypeId, name: '—' },
             salary: Number(contract.salary),
             hourlyRate: Number(contract.hourlyRate),
             startDate: contract.startDate,
@@ -72,12 +86,20 @@ class EmployeeService {
     }
 
     async create(data: CreateEmployeeDto) {
-        const { name, email, password, status, roleIds, metadata } = data
+        const { firstName, lastName, identificationNumber, identificationTypeId, email, password, status, roleIds, metadata } = data
+
+        if (!firstName?.trim()) throw new Error('El nombre es obligatorio')
+        if (!lastName?.trim()) throw new Error('El apellido es obligatorio')
+        if (!identificationNumber?.trim()) throw new Error('El número de identificación es obligatorio')
+        if (!identificationTypeId) throw new Error('El tipo de identificación es obligatorio')
 
         const passwordHash = await hashService.hash(password)
 
         const employee = await employeeRepository.create({
-            name,
+            firstName: firstName.trim(),
+            lastName: lastName.trim(),
+            identificationNumber: identificationNumber.trim(),
+            identificationTypeId,
             email,
             passwordHash,
             status,
@@ -95,8 +117,19 @@ class EmployeeService {
         const { roleIds, ...rest } = data
         const updatedEmployee = await employeeRepository.updateEmployee(id, rest)
 
+        if (rest.status === 'INACTIVE') {
+            const today = new Date()
+            await prisma.contract.updateMany({
+                where: { employeeId: id, isActive: true },
+                data: { isActive: false, endDate: today },
+            })
+            await prisma.jobHistory.updateMany({
+                where: { employeeId: id, endDate: null },
+                data: { endDate: today },
+            })
+        }
+
         if (roleIds) {
-            // Eliminar roles actuales y asignar los nuevos
             await prisma.employeeRole.deleteMany({ where: { employeeId: id } })
             for (const roleId of roleIds) {
                 await roleRepository.assignRoleToEmployee(id, roleId)
@@ -107,6 +140,17 @@ class EmployeeService {
     }
 
     async remove(id: number): Promise<void> {
+        const today = new Date()
+        await prisma.$transaction([
+            prisma.contract.updateMany({
+                where: { employeeId: id, isActive: true },
+                data: { isActive: false, endDate: today },
+            }),
+            prisma.jobHistory.updateMany({
+                where: { employeeId: id, endDate: null },
+                data: { endDate: today },
+            }),
+        ])
         await employeeRepository.deleteEmployee(id)
     }
 
@@ -135,7 +179,7 @@ class EmployeeService {
 
             await tx.contract.updateMany({
                 where: { employeeId, isActive: true },
-                data: { isActive: false },
+                data: { isActive: false, endDate: previousEndDate },
             })
 
             const newContract = await tx.contract.create({

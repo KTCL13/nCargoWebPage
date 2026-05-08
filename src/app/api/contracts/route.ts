@@ -10,17 +10,18 @@ export async function GET(req: NextRequest) {
     const where = search
         ? {
               OR: [
-                  { employee: { name: { contains: search, mode: 'insensitive' as const } } },
-                  { job:      { title: { contains: search, mode: 'insensitive' as const } } },
+                  { employee: { firstName: { contains: search, mode: 'insensitive' as const } } },
+                  { employee: { lastName:  { contains: search, mode: 'insensitive' as const } } },
+                  { job:      { title:     { contains: search, mode: 'insensitive' as const } } },
               ],
           }
         : {}
 
-    const [data, total] = await Promise.all([
+    const [rawData, total] = await Promise.all([
         prisma.contract.findMany({
             where,
             include: {
-                employee:     { select: { id: true, name: true, email: true } },
+                employee:     { select: { id: true, firstName: true, lastName: true, email: true } },
                 job:          { select: { id: true, title: true } },
                 contractType: { select: { id: true, name: true } },
             },
@@ -30,6 +31,14 @@ export async function GET(req: NextRequest) {
         }),
         prisma.contract.count({ where }),
     ])
+
+    const data = rawData.map(c => ({
+        ...c,
+        employee: {
+            ...c.employee,
+            name: `${c.employee.firstName} ${c.employee.lastName}`.trim(),
+        },
+    }))
 
     return NextResponse.json({ data, total, page, limit })
 }
@@ -49,12 +58,16 @@ export async function PUT(req: NextRequest) {
                 ...(body.isActive   !== undefined && { isActive:   body.isActive }),
             },
             include: {
-                employee:     { select: { id: true, name: true } },
+                employee:     { select: { id: true, firstName: true, lastName: true } },
                 job:          { select: { id: true, title: true } },
                 contractType: { select: { id: true, name: true } },
             },
         })
-        return NextResponse.json(updated)
+        const result = {
+            ...updated,
+            employee: { ...updated.employee, name: `${updated.employee.firstName} ${updated.employee.lastName}`.trim() },
+        }
+        return NextResponse.json(result)
     } catch (error) {
         return NextResponse.json(
             { message: error instanceof Error ? error.message : 'Error interno' },

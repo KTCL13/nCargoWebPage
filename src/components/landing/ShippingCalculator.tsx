@@ -85,9 +85,16 @@ export function Calculator() {
         body: JSON.stringify(body),
       })
       const data = await res.json()
-      if (!res.ok) { setError(data.message ?? 'Error al calcular'); return }
+      if (!res.ok) {
+        setTotal(null)
+        setError(data.message ?? 'Error al calcular')
+        return
+      }
       setTotal(data.total)
-    } catch { setError('Error de conexión') }
+    } catch {
+      setTotal(null)
+      setError('Error de conexión')
+    }
     finally { setLoading(false) }
   }
 
@@ -197,6 +204,7 @@ export function Calculator() {
                   className={inp}
                   placeholder="0"
                   min="0"
+                  max="200"
                   step="1"
                 />
               </div>
@@ -209,7 +217,26 @@ export function Calculator() {
               <span className="font-black text-[var(--color-secondary)]">{volWeight}</span>
             </div>
           </div>
-          {error && <p className="text-[10px] text-[var(--color-danger)] font-semibold px-1">{error}</p>}
+
+          {error && (
+            <div
+              role="alert"
+              aria-live="polite"
+              className="flex items-start gap-2 rounded-[var(--radius-md)] border border-red-300 bg-red-50 px-3 py-2"
+            >
+              <span aria-hidden="true" className="text-sm leading-none">⚠️</span>
+              <p className="flex-1 text-[11px] font-semibold text-red-700">{error}</p>
+              <button
+                type="button"
+                onClick={() => setError('')}
+                className="text-red-400 hover:text-red-600 text-sm leading-none"
+                aria-label="Cerrar"
+              >
+                ×
+              </button>
+            </div>
+          )}
+
           <button
             onClick={handleCalc}
             disabled={!isValid || loading}
