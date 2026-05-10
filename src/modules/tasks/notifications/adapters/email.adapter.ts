@@ -2,7 +2,7 @@ import { Resend, CreateEmailOptions, CreateEmailResponse } from 'resend'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 
-const FROM = process.env.RESEND_FROM ?? 'N-Cargo <onboarding@resend.dev>'
+const FROM = process.env.RESEND_FROM ?? 'N-Cargo <noreply@updates.ncargousa.com>'
 
 async function send(payload: CreateEmailOptions): Promise<void> {
     if (!process.env.RESEND_API_KEY) {

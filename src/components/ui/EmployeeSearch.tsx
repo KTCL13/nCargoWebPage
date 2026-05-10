@@ -5,11 +5,16 @@ import { useDebounce } from '@/hooks/useDebounce'
 
 interface Employee {
   id: number
-  name: string
+  firstName: string
+  lastName: string
   identificationNumber: string
   identificationType: {
     name: string
   }
+}
+
+function empFullName(emp: Employee) {
+  return `${emp.firstName} ${emp.lastName}`
 }
 
 interface EmployeeSearchProps {
@@ -47,7 +52,7 @@ export function EmployeeSearch({
   const containerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    if (defaultValue !== undefined && defaultValue?.id !== selected?.id) {
+    if (defaultValue != null && defaultValue.id !== selected?.id) {
       setSelected(defaultValue)
     }
   }, [defaultValue, selected?.id])
@@ -135,10 +140,10 @@ export function EmployeeSearch({
         <div className="flex items-center justify-between gap-3 px-4 py-2 bg-blue-50 border border-blue-200 rounded-[var(--radius-lg)] animate-in fade-in zoom-in duration-200">
           <div className="flex items-center gap-3">
              <div className="w-8 h-8 rounded-full bg-[var(--color-nc-blue)] text-white flex items-center justify-center text-[10px] font-bold">
-                {selected.name.slice(0, 2).toUpperCase()}
+                {(selected.firstName[0] + selected.lastName[0]).toUpperCase()}
              </div>
              <div>
-                <p className="text-sm font-bold text-blue-900 leading-none">{selected.name}</p>
+                <p className="text-sm font-bold text-blue-900 leading-none">{empFullName(selected)}</p>
                 <p className="text-[10px] text-blue-700 font-mono mt-1">ID: {selected.identificationNumber}</p>
              </div>
           </div>
@@ -155,7 +160,7 @@ export function EmployeeSearch({
           <div className={`flex flex-wrap gap-2 p-1 border rounded-[var(--radius-lg)] bg-white transition-all focus-within:ring-2 focus-within:ring-[var(--color-primary)]/25 focus-within:border-[var(--color-primary)] ${error ? 'border-red-500' : 'border-gray-200'}`}>
             {multi && selectedMulti.map(emp => (
               <div key={emp.id} className="flex items-center gap-1.5 pl-1.5 pr-1 py-1 bg-gray-100 rounded-lg text-xs font-bold text-gray-700 animate-in fade-in zoom-in duration-200">
-                <span>{emp.name}</span>
+                <span>{empFullName(emp)}</span>
                 <button
                   type="button"
                   onClick={() => handleRemove(emp.id)}
@@ -200,10 +205,10 @@ export function EmployeeSearch({
                         className={`w-full text-left flex items-center gap-3 p-3 rounded-lg transition ${isSelected ? 'opacity-40 cursor-default bg-gray-50' : 'hover:bg-gray-50'}`}
                       >
                         <div className={`w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold ${isSelected ? 'bg-gray-200 text-gray-400' : 'bg-[var(--color-nc-dark)] text-white'}`}>
-                          {emp.name.slice(0, 2).toUpperCase()}
+                          {(emp.firstName[0] + emp.lastName[0]).toUpperCase()}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-bold text-gray-900 truncate">{emp.name}</p>
+                          <p className="text-sm font-bold text-gray-900 truncate">{empFullName(emp)}</p>
                           <p className="text-[10px] text-gray-500 font-mono">{emp.identificationType?.name}: {emp.identificationNumber}</p>
                         </div>
                         {isSelected && <span className="text-[10px] font-bold text-[var(--color-primary)] uppercase">Seleccionado</span>}

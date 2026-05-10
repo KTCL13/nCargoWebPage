@@ -93,8 +93,36 @@ export default function EmpleadosPage() {
     jobId: '', contractTypeId: '', salary: '', hourlyRate: '', startDate: '', endDate: '',
   })
 
+  // Duplicate-contact warning (email / phone soft-warning before save)
+  const [dupWarning, setDupWarning] = useState<{ message: string } | null>(null)
+  const [skipDupCheck, setSkipDupCheck] = useState(false)
+
+  // Password visibility toggle
+  const [showPassword, setShowPassword] = useState(false)
+
   // KPI
   const [activeCount, setActiveCount] = useState<number | null>(null)
+
+  function passwordStrength(pw: string) {
+    const checks = {
+      length:  { met: pw.length >= 8,          label: 'Mínimo 8 caracteres' },
+      upper:   { met: /[A-Z]/.test(pw),         label: '1 letra mayúscula' },
+      lower:   { met: /[a-z]/.test(pw),         label: '1 letra minúscula' },
+      number:  { met: /[0-9]/.test(pw),         label: '1 número' },
+      special: { met: /[^A-Za-z0-9]/.test(pw), label: '1 carácter especial' },
+    }
+    const score = Object.values(checks).filter(c => c.met).length
+    const isValid = checks.length.met && checks.upper.met && checks.lower.met && checks.number.met
+    const configs = [
+      { label: 'Muy débil', color: 'bg-red-500',    text: 'text-red-600'    },
+      { label: 'Débil',     color: 'bg-orange-400', text: 'text-orange-500' },
+      { label: 'Regular',   color: 'bg-yellow-400', text: 'text-yellow-600' },
+      { label: 'Buena',     color: 'bg-blue-500',   text: 'text-blue-600'   },
+      { label: 'Fuerte',    color: 'bg-green-500',  text: 'text-green-600'  },
+    ]
+    const cfg = configs[Math.max(0, score - 1)] ?? configs[0]
+    return { score, isValid, checks: Object.values(checks), ...cfg }
+  }
 
   // Determines whether a contract type is hourly-based (POR_HORA) vs monthly (MENSUAL)
   function isHourlyContractType(typeId: string | number) {
@@ -155,6 +183,9 @@ export default function EmpleadosPage() {
   async function openModal(emp?: Employee, view = false) {
     setShowModal(true)
     setModalError('')
+    setDupWarning(null)
+    setSkipDupCheck(false)
+    setShowPassword(false)
     setEditingId(emp?.id ?? null)
     setIsViewOnly(view)
 
@@ -205,8 +236,45 @@ export default function EmpleadosPage() {
   // ── Handle Submit (Create or Update) ───────────────────────────────────
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    setModalLoading(true)
     setModalError('')
+
+    // Block weak passwords on creation, or when a new password is provided on edit
+    if (form.password) {
+      const { isValid } = passwordStrength(form.password)
+      if (!isValid) {
+        setModalError('La contraseña no cumple los requisitos mínimos de seguridad')
+        return
+      }
+    }
+
+    // Soft-warning check for duplicate email / phone (skip if user already confirmed)
+    if (!skipDupCheck) {
+      const phone = form.phone.replace(/\s/g, '')
+      const params = new URLSearchParams()
+      if (form.email) params.set('email', form.email)
+      if (phone) params.set('phone', phone)
+      if (editingId) params.set('excludeId', String(editingId))
+
+      try {
+        const checkRes = await fetch(`/api/employees/check-duplicate?${params}`)
+        if (checkRes.ok) {
+          const { emailOwner, phoneOwner } = await checkRes.json()
+          const parts: string[] = []
+          if (emailOwner) parts.push(`el correo ya pertenece a ${emailOwner}`)
+          if (phoneOwner) parts.push(`el teléfono ya pertenece a ${phoneOwner}`)
+          if (parts.length > 0) {
+            setDupWarning({ message: `¿Seguro que quieres guardar? ${parts.join(' y ')}. ¿Continuar de todas formas?` })
+            return
+          }
+        }
+      } catch {
+        // If check fails, proceed normally
+      }
+    }
+
+    setSkipDupCheck(false)
+    setDupWarning(null)
+    setModalLoading(true)
     try {
       const isEditing = editingId !== null
       const url = isEditing ? `/api/employees?id=${editingId}` : '/api/employees'
@@ -228,6 +296,19 @@ export default function EmpleadosPage() {
         body.password = form.password
       }
 
+      // For new employees, include the initial contract in the same request
+      // so the backend creates both atomically (or fails without creating either).
+      if (!isEditing && form.jobId && form.contractTypeId) {
+        body.initialContract = {
+          jobId: Number(form.jobId),
+          contractTypeId: Number(form.contractTypeId),
+          salary: form.salary ? Number(form.salary) : 0,
+          hourlyRate: form.hourlyRate ? Number(form.hourlyRate) : 0,
+          startDate: form.startDate,
+          ...(form.endDate && { endDate: form.endDate }),
+        }
+      }
+
       const empRes = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
@@ -236,23 +317,6 @@ export default function EmpleadosPage() {
 
       const empData = await empRes.json()
       if (!empRes.ok) throw new Error(empData.message || 'Error en la operación')
-
-      // Initial contract is only created on employee creation, not on edit.
-      // To add a new contract to an existing employee, use the "Asignar nuevo contrato" action.
-      if (!isEditing && form.jobId && form.contractTypeId) {
-        await fetch(`/api/employees/contracts?employeeId=${empData.id}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            jobId: Number(form.jobId),
-            contractTypeId: Number(form.contractTypeId),
-            salary: form.salary ? Number(form.salary) : 0,
-            hourlyRate: form.hourlyRate ? Number(form.hourlyRate) : 0,
-            startDate: form.startDate,
-            ...(form.endDate && { endDate: form.endDate }),
-          }),
-        })
-      }
 
       setShowModal(false)
       fetchEmployees()
@@ -629,7 +693,7 @@ export default function EmpleadosPage() {
                   {isViewOnly ? `Viendo perfil de ${form.firstName} ${form.lastName}` : editingId ? `Modificando a ${form.firstName} ${form.lastName}` : 'Completa los datos con asterisco (*) para continuar'}
                 </p>
               </div>
-              <button onClick={() => setShowModal(false)} className="text-gray-400 hover:text-gray-600 text-xl">✕</button>
+              <button onClick={() => { setShowModal(false); setDupWarning(null); setSkipDupCheck(false) }} className="text-gray-400 hover:text-gray-600 text-xl">✕</button>
             </div>
 
             <form onSubmit={handleSubmit} className="px-6 py-5 flex flex-col gap-5">
@@ -712,16 +776,79 @@ export default function EmpleadosPage() {
                       />
                     </div>
                   </div>
-                  <div>
+                  <div className="sm:col-span-2">
                     <label className="block text-xs font-subtitles font-semibold text-gray-600 mb-1">
-                      Contraseña {editingId ? <span className="text-gray-400 font-normal">(dejar en blanco para no cambiar)</span> : <span className="text-red-500">*</span>}
+                      Contraseña{' '}
+                      {editingId
+                        ? <span className="text-gray-400 font-normal">(dejar en blanco para no cambiar)</span>
+                        : <span className="text-red-500">*</span>}
                     </label>
-                    <input
-                      type="password" required={!editingId} placeholder="••••••••"
-                      disabled={isViewOnly}
-                      value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
-                      className="form-input disabled:bg-gray-50 disabled:text-gray-500"
-                    />
+                    <div className="relative">
+                      <input
+                        type={showPassword ? 'text' : 'password'}
+                        required={!editingId}
+                        placeholder="••••••••"
+                        disabled={isViewOnly}
+                        value={form.password}
+                        onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
+                        className="form-input pr-10 disabled:bg-gray-50 disabled:text-gray-500"
+                      />
+                      {!isViewOnly && (
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(v => !v)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition"
+                          tabIndex={-1}
+                        >
+                          {showPassword ? (
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.477 0-8.268-2.943-9.542-7a9.956 9.956 0 012.223-3.592M6.53 6.53A9.956 9.956 0 0112 5c4.477 0 8.268 2.943 9.542 7a9.97 9.97 0 01-4.065 5.474M15 12a3 3 0 11-6 0 3 3 0 016 0zM3 3l18 18" />
+                            </svg>
+                          ) : (
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            </svg>
+                          )}
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Strength indicator — only shown while typing */}
+                    {form.password && !isViewOnly && (() => {
+                      const { score, isValid, checks, label, color, text } = passwordStrength(form.password)
+                      return (
+                        <div className="mt-2 space-y-2">
+                          {/* Bar */}
+                          <div className="flex gap-1 h-1.5">
+                            {[1,2,3,4,5].map(i => (
+                              <div
+                                key={i}
+                                className={`flex-1 rounded-full transition-colors duration-200 ${i <= score ? color : 'bg-gray-100'}`}
+                              />
+                            ))}
+                          </div>
+                          {/* Label */}
+                          <p className={`text-xs font-semibold font-subtitles ${text}`}>{label}</p>
+                          {/* Requirements grid */}
+                          <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-0.5">
+                            {checks.map((c, i) => (
+                              <li key={i} className={`text-xs font-subtitles flex items-center gap-1.5 ${c.met ? 'text-green-600' : 'text-gray-400'}`}>
+                                <span className={`inline-flex items-center justify-center w-3.5 h-3.5 rounded-full text-[9px] font-bold ${c.met ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-400'}`}>
+                                  {c.met ? '✓' : '○'}
+                                </span>
+                                {c.label}
+                              </li>
+                            ))}
+                          </ul>
+                          {!isValid && (
+                            <p className="text-xs text-amber-600 font-subtitles bg-amber-50 border border-amber-200 rounded-[var(--radius-lg)] px-2.5 py-1.5">
+                              La contraseña no cumple todos los requisitos mínimos.
+                            </p>
+                          )}
+                        </div>
+                      )
+                    })()}
                   </div>
                   <div>
                     <label className="block text-xs font-subtitles font-semibold text-gray-600 mb-1">Rol <span className="text-red-500">*</span></label>
@@ -814,7 +941,15 @@ export default function EmpleadosPage() {
                     <input
                       type="date" required
                       disabled={isViewOnly}
-                      value={form.startDate} onChange={e => setForm(f => ({ ...f, startDate: e.target.value }))}
+                      value={form.startDate}
+                      onChange={e => {
+                        const newStart = e.target.value
+                        setForm(f => ({
+                          ...f,
+                          startDate: newStart,
+                          endDate: f.endDate && f.endDate <= newStart ? '' : f.endDate,
+                        }))
+                      }}
                       className="form-input disabled:bg-gray-50 disabled:text-gray-500"
                     />
                   </div>
@@ -823,12 +958,36 @@ export default function EmpleadosPage() {
                     <input
                       type="date"
                       disabled={isViewOnly}
-                      value={form.endDate} onChange={e => setForm(f => ({ ...f, endDate: e.target.value }))}
+                      min={form.startDate || undefined}
+                      value={form.endDate}
+                      onChange={e => setForm(f => ({ ...f, endDate: e.target.value }))}
                       className="form-input disabled:bg-gray-50 disabled:text-gray-500"
                     />
                   </div>
                 </div>
               </div>
+              )}
+
+              {dupWarning && (
+                <div className="px-3 py-3 bg-yellow-50 rounded-[var(--radius-lg)] border border-yellow-200">
+                  <p className="text-xs font-subtitles text-yellow-800 mb-2">{dupWarning.message}</p>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setDupWarning(null)}
+                      className="flex-1 py-1.5 text-xs rounded-[var(--radius-lg)] border border-yellow-300 text-yellow-800 hover:bg-yellow-100 transition font-semibold"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setSkipDupCheck(true); setDupWarning(null); handleSubmit(new Event('submit') as any) }}
+                      className="flex-1 py-1.5 text-xs rounded-[var(--radius-lg)] bg-yellow-500 text-white hover:bg-yellow-600 transition font-semibold"
+                    >
+                      Sí, guardar de todas formas
+                    </button>
+                  </div>
+                </div>
               )}
 
               {modalError && (
@@ -837,33 +996,35 @@ export default function EmpleadosPage() {
                 </p>
               )}
 
-              <div className="flex gap-3 pt-1">
-                <button
-                  type="button"
-                  onClick={() => setShowModal(false)}
-                  className="flex-1 py-2.5 rounded-[var(--radius-lg)] border border-gray-200 text-sm font-subtitles font-semibold text-gray-600 hover:bg-gray-50 transition"
-                >
-                  Cancelar
-                </button>
-                {!isViewOnly && (
-                  <button
-                    type="submit"
-                    disabled={modalLoading}
-                    className="flex-1 py-2.5 rounded-[var(--radius-lg)] bg-[var(--color-primary)] text-white text-sm font-subtitles font-semibold hover:opacity-90 transition disabled:opacity-50"
-                  >
-                    {modalLoading ? 'Guardando...' : editingId ? 'Actualizar cambios' : 'Guardar empleado'}
-                  </button>
-                )}
-                {isViewOnly && (
+              {!dupWarning && (
+                <div className="flex gap-3 pt-1">
                   <button
                     type="button"
-                    onClick={() => setIsViewOnly(false)}
-                    className="flex-1 py-2.5 rounded-[var(--radius-lg)] bg-[var(--color-primary)] text-white text-sm font-subtitles font-semibold hover:opacity-90 transition"
+                    onClick={() => { setShowModal(false); setDupWarning(null); setSkipDupCheck(false) }}
+                    className="flex-1 py-2.5 rounded-[var(--radius-lg)] border border-gray-200 text-sm font-subtitles font-semibold text-gray-600 hover:bg-gray-50 transition"
                   >
-                    Habilitar edición
+                    Cancelar
                   </button>
-                )}
-              </div>
+                  {!isViewOnly && (
+                    <button
+                      type="submit"
+                      disabled={modalLoading}
+                      className="flex-1 py-2.5 rounded-[var(--radius-lg)] bg-[var(--color-primary)] text-white text-sm font-subtitles font-semibold hover:opacity-90 transition disabled:opacity-50"
+                    >
+                      {modalLoading ? 'Guardando...' : editingId ? 'Actualizar cambios' : 'Guardar empleado'}
+                    </button>
+                  )}
+                  {isViewOnly && (
+                    <button
+                      type="button"
+                      onClick={() => setIsViewOnly(false)}
+                      className="flex-1 py-2.5 rounded-[var(--radius-lg)] bg-[var(--color-primary)] text-white text-sm font-subtitles font-semibold hover:opacity-90 transition"
+                    >
+                      Habilitar edición
+                    </button>
+                  )}
+                </div>
+              )}
             </form>
           </div>
         </div>
@@ -958,7 +1119,14 @@ export default function EmpleadosPage() {
                     <input
                       type="date" required
                       value={contractForm.startDate}
-                      onChange={e => setContractForm(f => ({ ...f, startDate: e.target.value }))}
+                      onChange={e => {
+                        const newStart = e.target.value
+                        setContractForm(f => ({
+                          ...f,
+                          startDate: newStart,
+                          endDate: f.endDate && f.endDate <= newStart ? '' : f.endDate,
+                        }))
+                      }}
                       className="form-input"
                     />
                   </div>
@@ -966,6 +1134,7 @@ export default function EmpleadosPage() {
                     <label className="block text-xs font-subtitles font-semibold text-gray-600 mb-1">Fecha de fin <span className="text-gray-400">(opcional)</span></label>
                     <input
                       type="date"
+                      min={contractForm.startDate || undefined}
                       value={contractForm.endDate}
                       onChange={e => setContractForm(f => ({ ...f, endDate: e.target.value }))}
                       className="form-input"

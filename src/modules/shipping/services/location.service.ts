@@ -2,14 +2,20 @@ import { locationRepository } from "../repositories/location.repository";
 import { LocationResponseDto } from "../dtos/location.dto";
 
 class LocationService {
-  async findCountries(): Promise<LocationResponseDto[]> {
+  async findCountries(): Promise<(LocationResponseDto & { code: string | null })[]> {
     const locations = await locationRepository.findCountries();
     return locations.map((l) => ({
       id: l.id,
       name: l.name,
       type: l.type,
+      code: l.code ?? null,
       zipCode: l.zipCode ?? undefined,
     }));
+  }
+
+  async createCountry(name: string, code: string): Promise<LocationResponseDto & { code: string | null }> {
+    const location = await locationRepository.createCountry(name, code)
+    return { id: location.id, name: location.name, type: location.type, code: location.code ?? null }
   }
 
   async findDepartmentsByCountry(
@@ -39,22 +45,20 @@ class LocationService {
     }));
   }
 
-  async findByCountry(country: string): Promise<LocationResponseDto[]> {
-    const nameMap: Record<string, string> = {
-      CO: "Colombia",
-      MX: "Mexico",
-      US: "United States",
-    };
-    const countryName =
-      nameMap[country.toUpperCase()] ??
-      country.charAt(0).toUpperCase() + country.slice(1).toLowerCase();
+  async updateLocation(id: number, name: string): Promise<void> {
+    await locationRepository.updateLocation(id, name);
+  }
 
-    const countries = await locationRepository.findCountries();
-    const match = countries.find(
-      (c) => c.name.toLowerCase() === countryName.toLowerCase(),
-    );
-    if (!match) return [];
-    return this.findDepartmentsByCountry(match.id);
+  async findByCountry(country: string): Promise<{ id: number; city: string; region: string | null; country: string }[]> {
+    const code = country.toUpperCase()
+    if (!['CO', 'MX'].includes(code)) return []
+    const cities = await locationRepository.findCitiesByCountryCode(code)
+    return cities.map(l => ({
+      id: l.id,
+      city: l.name,
+      region: l.parent?.name ?? null,
+      country: code,
+    }))
   }
 }
 

@@ -14,8 +14,11 @@ interface Employee {
   id: number
   firstName: string
   lastName: string
-  name: string
   email: string
+}
+
+function empFullName(emp: Employee) {
+  return `${emp.firstName} ${emp.lastName}`
 }
 
 interface Task {
@@ -184,7 +187,7 @@ export default function GestionTareasPage() {
           showToast(`Tareas asignadas a ${form.employeeIds.length} empleados`)
         } else {
           const emp = employees.find(e => e.id === Number(form.employeeId))
-          showToast(`Asignaste la tarea "${form.title}" a ${emp?.name ?? 'empleado'}`)
+          showToast(`Asignaste la tarea "${form.title}" a ${emp ? empFullName(emp) : 'empleado'}`)
         }
       } else {
         const err = await res.json()
@@ -206,7 +209,7 @@ export default function GestionTareasPage() {
       })
       if (res.ok) {
         const emp = employees.find(e => e.id === Number(newEmployeeId))
-        showToast(`Reasignaste "${reassignTask.title}" a ${emp?.name ?? 'empleado'}`)
+        showToast(`Reasignaste "${reassignTask.title}" a ${emp ? empFullName(emp) : 'empleado'}`)
         setReassignTask(null)
         setNewEmployeeId('')
         fetchData()
@@ -332,9 +335,9 @@ export default function GestionTareasPage() {
                     <td className="px-5 py-4">
                       <div className="flex items-center gap-2">
                         <div className="w-7 h-7 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-[10px] font-bold">
-                          {task.employee?.name.slice(0, 2).toUpperCase()}
+                          {task.employee ? (task.employee.firstName[0] + task.employee.lastName[0]).toUpperCase() : '?'}
                         </div>
-                        <span className="font-subtitles text-gray-700">{task.employee?.name || 'Cargando...'}</span>
+                        <span className="font-subtitles text-gray-700">{task.employee ? empFullName(task.employee) : 'Cargando...'}</span>
                       </div>
                     </td>
                     <td className="px-5 py-4">
@@ -386,7 +389,7 @@ export default function GestionTareasPage() {
       {/* ── Create Task Modal (Individual & Bulk) ────────────────────── */}
       {showCreateModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-white rounded-[var(--radius-xl)] shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in duration-200">
+          <div className="bg-white rounded-[var(--radius-xl)] shadow-2xl w-full max-w-lg animate-in fade-in zoom-in duration-200">
             <div className="px-6 py-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
               <h2 className="font-titles text-xl font-extrabold text-[var(--color-foreground)]">Nueva Tarea</h2>
               <button onClick={() => setShowCreateModal(false)} className="text-gray-400 hover:text-gray-600">×</button>
@@ -498,7 +501,7 @@ export default function GestionTareasPage() {
       {/* ── Reassign Modal ────────────────────────────────────────── */}
       {reassignTask && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-white rounded-[var(--radius-xl)] shadow-2xl w-full max-w-sm overflow-hidden p-6">
+          <div className="bg-white rounded-[var(--radius-xl)] shadow-2xl w-full max-w-sm p-6">
             <h2 className="font-titles text-lg font-bold text-[var(--color-foreground)] mb-4">Reasignar Tarea</h2>
             <p className="text-xs text-gray-500 mb-4 font-subtitles">
               Vas a reasignar: <span className="font-bold text-gray-900">{reassignTask.title}</span>

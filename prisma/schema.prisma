@@ -55,6 +55,7 @@ model Employee {
   passwordResetTokens PasswordResetToken[]
   cotizacionRecords   CotizacionRecord[]
 
+  @@unique([identificationTypeId, identificationNumber], name: "uq_employee_identification")
   @@map("employees")
 }
 
@@ -217,6 +218,7 @@ model Location {
   id        Int        @id @default(autoincrement())
   name      String     @db.VarChar(100)
   type      String     @db.VarChar(20)  // 'COUNTRY', 'DEPARTMENT', 'CITY'
+  code      String?    @db.VarChar(10)  // ISO country code for COUNTRY rows
   zipCode   String?    @map("zip_code") @db.VarChar(20)
   parentId  Int?       @map("parent_id")
   parent    Location?  @relation("LocationHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
@@ -261,13 +263,14 @@ model ShippingProvider {
 }
 
 model ShippingRate {
-  id         Int              @id @default(autoincrement())
-  providerId Int              @map("provider_id")
-  locationId Int              @map("location_id")
-  price      Decimal          @db.Decimal(10, 2)
-  provider   ShippingProvider @relation(fields: [providerId], references: [id])
-  location   Location         @relation(fields: [locationId], references: [id])
-  quotations Quotation[]
+  id          Int              @id @default(autoincrement())
+  providerId  Int              @map("provider_id")
+  locationId  Int              @map("location_id")
+  price       Decimal          @db.Decimal(10, 2)
+  countryCode String?          @map("country_code") @db.VarChar(10)
+  provider    ShippingProvider @relation(fields: [providerId], references: [id])
+  location    Location         @relation(fields: [locationId], references: [id])
+  quotations  Quotation[]
 
   @@unique([providerId, locationId])
   @@map("shipping_rates")
@@ -298,8 +301,9 @@ model Quotation {
   employee            Employee?     @relation(fields: [employeeId], references: [id])
   originOffice        Office?       @relation(fields: [originOfficeId], references: [id])
   destinationLocation Location?     @relation(fields: [destinationLocationId], references: [id])
-  shippingRate        ShippingRate? @relation(fields: [shippingRateId], references: [id])
+  shippingRate        ShippingRate?      @relation(fields: [shippingRateId], references: [id])
   shipments           Shipment[]
+  cotizacionRecords   CotizacionRecord[]
 
   @@map("quotations")
 }
@@ -540,11 +544,13 @@ model CotizacionRecord {
   source              String    @default("PUBLIC") @map("source") @db.VarChar(10)
   employeeId          Int?      @map("employee_id")
   shipmentId          Int?      @map("shipment_id")
+  quotationId         Int?      @map("quotation_id")
   createdAt           DateTime  @default(now()) @map("created_at")
 
   destinationLocation Location?  @relation(fields: [destinationLocationId], references: [id])
   employee            Employee?  @relation(fields: [employeeId], references: [id])
   shipment            Shipment?  @relation(fields: [shipmentId], references: [id])
+  quotation           Quotation? @relation(fields: [quotationId], references: [id])
 
   @@map("cotizacion_records")
 }

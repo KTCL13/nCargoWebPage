@@ -94,6 +94,37 @@ class EmployeeRepository {
         })
     }
 
+    async findByIdentification(identificationTypeId: number, identificationNumber: string, excludeId?: number) {
+        return prisma.employee.findFirst({
+            where: {
+                identificationTypeId,
+                identificationNumber,
+                ...(excludeId !== undefined && { id: { not: excludeId } }),
+            },
+            include: identificationTypeInclude,
+        })
+    }
+
+    async findByEmailExcluding(email: string, excludeId?: number) {
+        return prisma.employee.findFirst({
+            where: {
+                email,
+                ...(excludeId !== undefined && { id: { not: excludeId } }),
+            },
+            include: identificationTypeInclude,
+        })
+    }
+
+    async findByPhone(phone: string, excludeId?: number) {
+        return prisma.employee.findFirst({
+            where: {
+                metadata: { path: ['phone'], equals: phone },
+                ...(excludeId !== undefined && { id: { not: excludeId } }),
+            },
+            include: identificationTypeInclude,
+        })
+    }
+
     async deleteEmployee(id: number) {
         await prisma.employee.update({
             where: { id },
