@@ -7,7 +7,7 @@ import { NAV_ITEMS } from '@/components/layout/nav-config'
 import { Pagination } from '@/components/ui/Pagination'
 import { useAuth } from '@/context/AuthContext'
 
-const DEFAULT_LIMIT = 10
+const LIMIT = 10
 
 type Tab = 'publica' | 'empleados' | 'offices'
 
@@ -82,12 +82,14 @@ export default function CotizacionesPage() {
   const [pubRecords, setPubRecords] = useState<CotizacionRecord[]>([])
   const [pubTotal, setPubTotal] = useState(0)
   const [pubPage, setPubPage] = useState(0)
+  const [pubPageSize, setPubPageSize] = useState(LIMIT)
   const [pubLoading, setPubLoading] = useState(false)
 
   // ── Empleados state ──
   const [empRecords, setEmpRecords] = useState<CotizacionRecord[]>([])
   const [empTotal, setEmpTotal] = useState(0)
   const [empPage, setEmpPage] = useState(0)
+  const [empPageSize, setEmpPageSize] = useState(LIMIT)
   const [empLoading, setEmpLoading] = useState(false)
 
   // ── Offices state ──
@@ -104,22 +106,22 @@ export default function CotizacionesPage() {
   const fetchPublica = useCallback(async () => {
     setPubLoading(true)
     try {
-      const res = await fetch(`/api/cotizacion-records?source=PUBLIC&page=${pubPage + 1}&pageSize=${LIMIT}`)
+      const res = await fetch(`/api/cotizacion-records?source=PUBLIC&page=${pubPage + 1}&pageSize=${pubPageSize}`)
       const data = await res.json()
       setPubRecords(data.data ?? [])
       setPubTotal(data.total ?? 0)
     } catch { /* ignore */ } finally { setPubLoading(false) }
-  }, [pubPage])
+  }, [pubPage, pubPageSize])
 
   const fetchEmpleados = useCallback(async () => {
     setEmpLoading(true)
     try {
-      const res = await fetch(`/api/cotizacion-records?source=EMPLOYEE&page=${empPage + 1}&pageSize=${LIMIT}`)
+      const res = await fetch(`/api/cotizacion-records?source=EMPLOYEE&page=${empPage + 1}&pageSize=${empPageSize}`)
       const data = await res.json()
       setEmpRecords(data.data ?? [])
       setEmpTotal(data.total ?? 0)
     } catch { /* ignore */ } finally { setEmpLoading(false) }
-  }, [empPage])
+  }, [empPage, empPageSize])
 
   const fetchOffices = useCallback(async () => {
     setLoadingO(true)
@@ -272,7 +274,15 @@ export default function CotizacionesPage() {
                 </table>
               </div>
               <div className="p-4 border-t border-gray-50">
-                <Pagination page={pubPage} pageCount={Math.ceil(pubTotal / LIMIT)} onPageChange={setPubPage} />
+                <Pagination
+                  page={pubPage}
+                  pageSize={pubPageSize}
+                  totalItems={pubTotal}
+                  onPageChange={setPubPage}
+                  onPageSizeChange={(size) => {
+                    setPubPageSize(size)
+                  }}
+                />
               </div>
             </div>
           </>
@@ -352,7 +362,13 @@ export default function CotizacionesPage() {
                 </table>
               </div>
               <div className="p-4 border-t border-gray-50">
-                <Pagination page={empPage} pageCount={Math.ceil(empTotal / LIMIT)} onPageChange={setEmpPage} />
+                <Pagination
+                  page={empPage}
+                  pageSize={empPageSize}
+                  totalItems={empTotal}
+                  onPageChange={setEmpPage}
+                  onPageSizeChange={(size) => setEmpPageSize(size)}
+                />
               </div>
             </div>
           </>
