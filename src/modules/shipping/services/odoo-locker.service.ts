@@ -41,12 +41,12 @@ class OdooLockerService {
     return { lockers: projects.length, shipments: shipmentCount }
   }
 
-  async getAllLockers() {
-    return lockerRepository.findAllLockers()
+  async getAllLockers(page: number = 1, limit: number = 10) {
+    return lockerRepository.findAllLockers(page, limit)
   }
 
-  async getShipmentsForLocker(lockerId: number, search?: string) {
-    return lockerRepository.findShipmentsByLocker(lockerId, search)
+  async getShipmentsForLocker(lockerId: number, page: number = 1, limit: number = 10, search?: string) {
+    return lockerRepository.findShipmentsByLocker(lockerId, page, limit, search)
   }
 
   async getShipments(filters: ShipmentFilters) {
@@ -93,7 +93,7 @@ class OdooLockerService {
     description: string | undefined,
     performedBy: number,
   ) {
-    const locker = await lockerRepository.findAllLockers().then(ls => ls.find(l => l.id === lockerId))
+    const locker = await lockerRepository.findAllLockers(1, 1000).then(res => res.data.find(l => l.id === lockerId))
     if (!locker) throw new Error('Locker not found')
 
     const { providerId, statusId } = await lockerRepository.ensureLockerDefaults()

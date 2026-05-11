@@ -40,10 +40,10 @@ export function Charts({ timeSeries }: { timeSeries: TimePoint[] }) {
     <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
 
       {/* Horas trabajadas — area */}
-      <div className="bg-white rounded-2xl border border-black/5 shadow-sm p-5">
+      <div className="bg-white rounded-2xl border border-black/5 shadow-sm p-5 relative">
         <p className="font-subtitles font-semibold text-sm text-[var(--color-nc-dark)]">Horas trabajadas</p>
         <p className="font-subtitles text-xs text-[var(--color-nc-dark)]/40 mb-4">Acumulado por día</p>
-        <ResponsiveContainer width="100%" height={CHART_H}>
+        <ResponsiveContainer width="100%" height={CHART_H} minWidth={0} minHeight={0} debounce={50}>
           <AreaChart data={data} margin={{ top: 4, right: 4, left: -22, bottom: 0 }}>
             <defs>
               <linearGradient id="kpiHoursGrad" x1="0" y1="0" x2="0" y2="1">
@@ -72,10 +72,10 @@ export function Charts({ timeSeries }: { timeSeries: TimePoint[] }) {
       </div>
 
       {/* Tareas completadas — bars */}
-      <div className="bg-white rounded-2xl border border-black/5 shadow-sm p-5">
+      <div className="bg-white rounded-2xl border border-black/5 shadow-sm p-5 relative">
         <p className="font-subtitles font-semibold text-sm text-[var(--color-nc-dark)]">Tareas completadas</p>
         <p className="font-subtitles text-xs text-[var(--color-nc-dark)]/40 mb-4">Por día</p>
-        <ResponsiveContainer width="100%" height={CHART_H}>
+        <ResponsiveContainer width="100%" height={CHART_H} minWidth={0} minHeight={0} debounce={50}>
           <BarChart data={data} margin={{ top: 4, right: 4, left: -22, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#f0f2f5" vertical={false} />
             <XAxis dataKey="date" tick={tickStyle} tickLine={false} axisLine={false} />
@@ -95,10 +95,10 @@ export function Charts({ timeSeries }: { timeSeries: TimePoint[] }) {
       </div>
 
       {/* Productividad — dark card line */}
-      <div className="bg-[var(--color-nc-dark)] rounded-2xl shadow-sm p-5">
+      <div className="bg-[var(--color-nc-dark)] rounded-2xl shadow-sm p-5 relative">
         <p className="font-subtitles font-semibold text-sm text-white">Productividad</p>
         <p className="font-subtitles text-xs text-white/40 mb-4">Score promedio por día</p>
-        <ResponsiveContainer width="100%" height={CHART_H}>
+        <ResponsiveContainer width="100%" height={CHART_H} minWidth={0} minHeight={0} debounce={50}>
           <LineChart data={data} margin={{ top: 4, right: 4, left: -22, bottom: 0 }}>
             <defs>
               <linearGradient id="kpiProdGrad" x1="0" y1="0" x2="0" y2="1">

@@ -16,6 +16,9 @@ function redirect(req: NextRequest, path: string) {
 export function proxy(req: NextRequest) {
   const token = req.cookies.get('token')?.value
   const { pathname } = req.nextUrl
+  if (pathname.startsWith('/api') || pathname === '/login') {
+    return NextResponse.next()
+  }
 
   if (!token) return redirect(req, '/login')
 

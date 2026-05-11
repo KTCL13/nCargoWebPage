@@ -12,13 +12,6 @@ export const NAV_ITEMS: NavItem[] = [
     roles: ['ADMIN'],
   },
   {
-    label: 'Mi Perfil',
-    href: '/employee/perfil',
-    icon: <span aria-hidden="true">👤</span>,
-    roles: ['EMPLOYEE'],
-    section: 'Usuario',
-  },
-  {
     label: 'Gestión de empleados',
     href: '/admin/empleados',
     icon: <span aria-hidden="true">👥</span>,
@@ -44,7 +37,7 @@ export const NAV_ITEMS: NavItem[] = [
   },
   {
     label: 'Cargos',
-    href: '/admin/contratos/cargos',
+    href: '/admin/cargos',
     icon: <span aria-hidden="true">💼</span>,
     roles: ['ADMIN'],
   },
@@ -68,7 +61,7 @@ export const NAV_ITEMS: NavItem[] = [
   },
   {
     label: 'KPIs Empleados',
-    href: '/employees/reports',
+    href: '/admin/reports',
     icon: <span aria-hidden="true">📈</span>,
     roles: ['ADMIN'],
   },
@@ -77,6 +70,13 @@ export const NAV_ITEMS: NavItem[] = [
     href: '/admin/configuracion',
     icon: <span aria-hidden="true">⚙️</span>,
     roles: ['ADMIN'],
+  },
+  {
+    label: 'Mi Perfil',
+    href: '/employee/perfil',
+    icon: <span aria-hidden="true">👤</span>,
+    roles: ['EMPLOYEE'],
+    section: 'Usuario',
   },
   {
     label: 'Jornada laboral',
@@ -114,3 +114,4 @@ export const NAV_ITEMS: NavItem[] = [
     section: 'Envíos y Casilleros',
   },
 ]
+

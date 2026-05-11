@@ -4,9 +4,13 @@ import { CreateJobDto } from '../dtos/create-job.dto'
 import { UpdateJobDto } from '../dtos/update-job.dto'
 
 class JobController {
-    async findAll() {
+    async findAll(req: NextRequest) {
+        const url = new URL(req.url)
+        const page = Number(url.searchParams.get('page')) || 1
+        const limit = Number(url.searchParams.get('limit')) || 10
+
         try {
-            const result = await jobService.findAll()
+            const result = await jobService.findAll(page, limit)
             return NextResponse.json(result, { status: 200 })
         } catch (error: unknown) {
             return NextResponse.json(

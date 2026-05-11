@@ -9,7 +9,7 @@ export async function GET(req: NextRequest) {
         return jobController.findOne(req)
     }
 
-    return jobController.findAll()
+    return jobController.findAll(req)
 }
 
 export async function POST(req: NextRequest) {

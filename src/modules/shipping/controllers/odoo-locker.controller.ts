@@ -18,8 +18,11 @@ class OdooLockerController {
   async getLockers(req: NextRequest) {
     try {
       getAuthEmployee(req)
-      const lockers = await odooLockerService.getAllLockers()
-      return NextResponse.json(lockers)
+      const { searchParams } = new URL(req.url)
+      const page = parseInt(searchParams.get('page') ?? '1')
+      const limit = parseInt(searchParams.get('limit') ?? '10')
+      const result = await odooLockerService.getAllLockers(page, limit)
+      return NextResponse.json(result)
     } catch (error) {
       return NextResponse.json({ message: (error as Error).message }, { status: 400 })
     }
@@ -74,8 +77,10 @@ class OdooLockerController {
       getAuthEmployee(req)
       const { searchParams } = new URL(req.url)
       const search = searchParams.get('search') ?? undefined
-      const shipments = await odooLockerService.getShipmentsForLocker(lockerId, search)
-      return NextResponse.json(shipments)
+      const page = parseInt(searchParams.get('page') ?? '1')
+      const limit = parseInt(searchParams.get('limit') ?? '10')
+      const result = await odooLockerService.getShipmentsForLocker(lockerId, page, limit, search)
+      return NextResponse.json(result)
     } catch (error) {
       return NextResponse.json({ message: (error as Error).message }, { status: 400 })
     }

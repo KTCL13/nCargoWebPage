@@ -19,11 +19,11 @@ export default function CargosPage() {
   const [page, setPage] = useState(0)
   const [pageSize, setPageSize] = useState(DEFAULT_LIMIT)
   const [loading, setLoading] = useState(false)
-  
+
   const [showModal, setShowModal] = useState(false)
   const [modalMode, setModalMode] = useState<'create' | 'edit'>('create')
   const [editingJobId, setEditingJobId] = useState<number | null>(null)
-  
+
   const [form, setForm] = useState({ title: '', description: '' })
   const [modalLoading, setModalLoading] = useState(false)
   const [modalError, setModalError] = useState('')
@@ -44,7 +44,7 @@ export default function CargosPage() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [page, pageSize])
 
   useEffect(() => { fetchJobs() }, [fetchJobs])
 
@@ -82,7 +82,7 @@ export default function CargosPage() {
     try {
       const url = modalMode === 'edit' ? `/api/jobs?id=${editingJobId}` : '/api/jobs'
       const method = modalMode === 'edit' ? 'PUT' : 'POST'
-      
+
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },

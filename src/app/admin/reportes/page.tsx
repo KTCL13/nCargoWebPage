@@ -7,7 +7,7 @@ import { useAuth } from '@/context/AuthContext'
 import { Pagination } from '@/components/ui/Pagination'
 import {
   PieChart, Pie, Cell, ResponsiveContainer, Tooltip as ReTooltip, Legend,
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer as RespCont
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip
 } from 'recharts'
 
 // ── Types ─────────────────────────────────────────────────────────────────
@@ -370,9 +370,9 @@ export default function ReportesPage() {
         {/* Charts Row */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <Section title="📊 Distribución Global de Estado">
-            <div className="h-[300px] w-full">
+            <div className="h-[300px] w-full min-w-0 relative">
               {loading.workload ? <LoadingSkeleton rows={1} /> : pieData.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+                <ResponsiveContainer width="100%" height={300} minWidth={0} minHeight={0} debounce={50}>
                   <PieChart>
                     <Pie data={pieData} innerRadius={60} outerRadius={100} paddingAngle={5} dataKey="value">
                       {pieData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
@@ -387,9 +387,9 @@ export default function ReportesPage() {
 
           {/* Bar chart — shares perfPage with the performance table */}
           <Section title="🏆 Top Rendimiento (Tareas vs Horas)">
-            <div className="h-[240px] w-full">
+            <div className="h-[240px] w-full min-w-0 relative">
               {loading.performance ? <LoadingSkeleton rows={1} /> : barData.length > 0 ? (
-                <RespCont width="100%" height="100%" minWidth={0}>
+                <ResponsiveContainer width="100%" height={240} minWidth={0} minHeight={0} debounce={50}>
                   <BarChart data={barData}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} />
                     <XAxis dataKey="name" fontSize={10} tickLine={false} axisLine={false} />
@@ -399,7 +399,7 @@ export default function ReportesPage() {
                     <Bar dataKey="completadas" name="Tareas" fill="var(--color-primary)" radius={[4, 4, 0, 0]} />
                     <Bar dataKey="horas" name="Horas" fill="var(--color-secondary)" radius={[4, 4, 0, 0]} />
                   </BarChart>
-                </RespCont>
+                </ResponsiveContainer>
               ) : <EmptyState message="No hay datos de rendimiento disponibles." />}
             </div>
 

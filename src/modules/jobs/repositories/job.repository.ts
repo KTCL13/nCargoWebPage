@@ -4,8 +4,16 @@ import { CreateJobDto } from '../dtos/create-job.dto'
 import { UpdateJobDto } from '../dtos/update-job.dto'
 
 class JobRepository {
-    async findAll(): Promise<Job[]> {
-        return prisma.job.findMany()
+    async findAll(skip?: number, take?: number): Promise<Job[]> {
+        return prisma.job.findMany({
+            skip,
+            take,
+            orderBy: { id: 'asc' }
+        })
+    }
+
+    async count(): Promise<number> {
+        return prisma.job.count()
     }
 
     async findById(id: number): Promise<Job | null> {

@@ -201,12 +201,12 @@ export default function DashboardPage() {
           </div>
 
           {/* Productivity Pie */}
-          <div className="bg-white rounded-[var(--radius-xl)] border border-gray-100 shadow-sm p-5">
+          <div className="bg-white rounded-[var(--radius-xl)] border border-gray-100 shadow-sm p-5 relative">
             <h3 className="font-bold mb-4">Productividad del equipo</h3>
             {pieData.length === 0 ? (
               <p className="text-center text-gray-400 text-sm py-6">Sin datos de rendimiento</p>
             ) : (
-              <ResponsiveContainer width="100%" height={260} minWidth={0}>
+              <ResponsiveContainer width="100%" height={260} minWidth={0} minHeight={0} debounce={50}>
                 <PieChart>
                   <Pie
                     data={pieData}
