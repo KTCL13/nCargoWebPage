@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from 'react'
 import { Contract } from '@/types/admin/contracts'
+import { contractsClient } from '@/lib/api-client/contracts'
 
 const DEFAULT_LIMIT = 10
 
@@ -25,10 +26,7 @@ export function useContracts() {
     setDirty({})
     setSelected(new Set())
     try {
-      const params = new URLSearchParams({ page: String(page + 1), limit: String(pageSize), ...(search && { search }) })
-      const res = await fetch(`/api/contracts?${params}`)
-      if (!res.ok) throw new Error('API Error')
-      const data = await res.json()
+      const data = await contractsClient.getContracts(page, pageSize, search)
       setContracts(data.data ?? [])
       setTotal(data.total ?? 0)
     } catch (e) { console.error(e) } finally { setLoading(false) }
@@ -45,7 +43,7 @@ export function useContracts() {
     if (!changes) return
     setSaving(s => new Set(s).add(id))
     try {
-      await fetch(`/api/contracts?id=${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(changes) })
+      await contractsClient.updateContract(id, changes)
       setDirty(d => { const n = { ...d }; delete n[id]; return n })
       setContracts(list => list.map(c => c.id === id ? { ...c, ...changes } : c))
     } finally { setSaving(s => { const n = new Set(s); n.delete(id); return n }) }
@@ -56,8 +54,7 @@ export function useContracts() {
   const openHistory = async (empId: number, empName: string) => {
     setHistoryOpen(true); setHistoryEmpName(empName); setHistoryLoading(true); setHistoryList([])
     try {
-      const res = await fetch(`/api/employees/contracts?employeeId=${empId}`)
-      const data = await res.json()
+      const data = await contractsClient.getEmployeeContractsHistory(empId)
       setHistoryList(Array.isArray(data) ? data : (data.data ?? []))
     } catch { alert('Error') } finally { setHistoryLoading(false) }
   }

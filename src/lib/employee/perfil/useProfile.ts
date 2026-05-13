@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '@/context/AuthContext'
 import { ProfileData, ProfileFormData } from './types'
+import { employeeClient } from '@/lib/api-client/employee'
 
 export function useProfile() {
   const { token } = useAuth()
@@ -19,11 +20,7 @@ export function useProfile() {
     if (!token) return
     try {
       setLoading(true)
-      const res = await fetch('/api/employee/me', {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-      if (!res.ok) throw new Error('Error al cargar el perfil')
-      const data = await res.json()
+      const data = await employeeClient.getProfile()
       setProfile(data)
       setFormData({
         firstName: data.firstName,
@@ -46,15 +43,7 @@ export function useProfile() {
     if (!token) return
     try {
       setSaving(true)
-      const res = await fetch('/api/employee/me', {
-        method: 'PATCH',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(formData)
-      })
-      if (!res.ok) throw new Error('Error al actualizar el perfil')
+      await employeeClient.updateProfile(formData)
       await fetchProfile()
       setEditing(false)
     } catch (err: any) {

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useAuth } from '@/context/AuthContext'
 import { AttendanceRecord, TimerState, TaskItem, AttendanceEvent } from './types'
+import { jornadaClient } from '@/lib/api-client/jornada'
 
 const MAX_SECS = 8 * 3600
 
@@ -42,15 +43,6 @@ export function useJornada() {
   const [selectedTaskId, setSelectedTaskId] = useState<number | null>(null)
   const [taskLoading, setTaskLoading] = useState(false)
 
-  const authHeaders = useCallback(
-    (extra?: Record<string, string>): HeadersInit => {
-      const h: Record<string, string> = { ...extra }
-      if (token) h.Authorization = `Bearer ${token}`
-      return h
-    },
-    [token],
-  )
-
   const applyAttendance = useCallback((att: AttendanceRecord | null) => {
     if (!att) {
       setAttendance(null)
@@ -68,56 +60,31 @@ export function useJornada() {
   const loadToday = useCallback(async () => {
     if (!token) return
     try {
-      const res = await fetch(`/api/attendance/today?_=${Date.now()}`, {
-        headers: authHeaders(),
-        cache: 'no-store',
-      })
-      if (!res.ok) {
-        setErrorMsg(res.status === 401 ? 'Sesión expirada, inicia sesión nuevamente.' : 'No se pudo cargar la jornada.')
-        return
-      }
-      const data: AttendanceRecord | null = await res.json()
+      const data = await jornadaClient.getToday(token)
       applyAttendance(data)
       setErrorMsg(null)
-    } catch (err) {
-      setErrorMsg('Error de red al cargar la jornada.')
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Error al cargar la jornada.')
     }
-  }, [token, authHeaders, applyAttendance])
+  }, [token, applyAttendance])
 
   const loadTasks = useCallback(async () => {
     if (!token || !employeeId) return
     try {
-      const [pendingRes, inProgressRes] = await Promise.all([
-        fetch(`/api/tasks?employeeId=${employeeId}&status=PENDING&limit=50`, { headers: authHeaders() }),
-        fetch(`/api/tasks?employeeId=${employeeId}&status=IN_PROGRESS&limit=50`, { headers: authHeaders() }),
-      ])
-      const [pending, inProgress] = await Promise.all([
-        pendingRes.ok ? pendingRes.json() : { data: [] },
-        inProgressRes.ok ? inProgressRes.json() : { data: [] },
-      ])
-      const combined: TaskItem[] = [
-        ...(pending.data ?? pending ?? []),
-        ...(inProgress.data ?? inProgress ?? []),
-      ].map((t: any) => ({ id: t.id, title: t.title, status: t.status }))
+      const combined = await jornadaClient.loadTasks(token, employeeId)
       setTasks(combined)
     } catch {
       // silent
     }
-  }, [token, employeeId, authHeaders])
+  }, [token, employeeId])
 
   const handleCompleteTask = async () => {
     if (!selectedTaskId || !token) return
     setTaskLoading(true)
     try {
-      const res = await fetch(`/api/tasks?id=${selectedTaskId}`, {
-        method: 'PUT',
-        headers: authHeaders({ 'Content-Type': 'application/json' }),
-        body: JSON.stringify({ status: 'COMPLETED', endTime: new Date() }),
-      })
-      if (res.ok) {
-        setSelectedTaskId(null)
-        await loadTasks()
-      }
+      await jornadaClient.completeTask(token, selectedTaskId)
+      setSelectedTaskId(null)
+      await loadTasks()
     } catch {
       // silent
     } finally {
@@ -150,21 +117,11 @@ export function useJornada() {
     setLoading(true)
     setErrorMsg(null)
     try {
-      const res = await fetch(path, {
-        method: 'POST',
-        headers: authHeaders({ 'Content-Type': 'application/json' }),
-        cache: 'no-store',
-      })
-      const data = await res.json().catch(() => null)
-      if (!res.ok) {
-        const msg = (data && typeof data === 'object' && 'message' in data ? (data as { message: string }).message : '') || 'Error en la operación'
-        setErrorMsg(msg)
-        return
-      }
+      const data = await jornadaClient.action(token, path)
       applyAttendance(data as AttendanceRecord)
       await loadTasks()
-    } catch (err) {
-      setErrorMsg('Error de red')
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Error de red')
     } finally {
       setLoading(false)
     }
