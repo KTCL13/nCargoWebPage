@@ -1,4 +1,4 @@
-import { Country, Dimensions, CityItem } from '@/lib/employee/cotizaciones/types'
+import { Country, Dimensions, CityItem } from '@/types/cotizaciones'
 
 interface CalculatorFormProps {
   country: Country

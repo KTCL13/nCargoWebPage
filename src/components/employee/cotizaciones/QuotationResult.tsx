@@ -1,4 +1,4 @@
-import { Breakdown } from '@/lib/employee/cotizaciones/types'
+import { Breakdown } from '@/types/cotizaciones'
 
 interface QuotationResultProps {
   result: Breakdown

@@ -1,5 +1,5 @@
 import dynamic from 'next/dynamic'
-import { Office } from '@/lib/employee/cotizaciones/types'
+import { Office } from '@/types/cotizaciones'
 
 const MapPicker = dynamic(() => import('@/components/ui/MapPicker'), { ssr: false })
 
