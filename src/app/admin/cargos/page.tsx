@@ -1,229 +1,58 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useState } from 'react'
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
 import { NAV_ITEMS } from '@/components/layout/nav-config'
 import { Pagination } from '@/components/ui/Pagination'
-
-const DEFAULT_LIMIT = 10
-
-type Job = {
-  id: number
-  title: string
-  description?: string
-}
+import { useJobs } from '@/lib/admin/jobs/useJobs'
+import { Job } from '@/types/admin/jobs'
 
 export default function CargosPage() {
-  const [jobs, setJobs] = useState<Job[]>([])
-  const [total, setTotal] = useState(0)
-  const [page, setPage] = useState(0)
-  const [pageSize, setPageSize] = useState(DEFAULT_LIMIT)
-  const [loading, setLoading] = useState(false)
+  const { jobs, total, page, setPage, pageSize, setPageSize, loading, fetchJobs, deleteJob } = useJobs()
+  const [showModal, setShowModal] = useState(false); const [modalMode, setModalMode] = useState<'create' | 'edit'>('create')
+  const [editingJobId, setEditingJobId] = useState<number | null>(null); const [form, setForm] = useState({ title: '', description: '' })
+  const [modalLoading, setModalLoading] = useState(false); const [modalError, setModalError] = useState('')
 
-  const [showModal, setShowModal] = useState(false)
-  const [modalMode, setModalMode] = useState<'create' | 'edit'>('create')
-  const [editingJobId, setEditingJobId] = useState<number | null>(null)
-
-  const [form, setForm] = useState({ title: '', description: '' })
-  const [modalLoading, setModalLoading] = useState(false)
-  const [modalError, setModalError] = useState('')
-
-  const fetchJobs = useCallback(async () => {
-    setLoading(true)
-    try {
-      const params = new URLSearchParams({
-        page: String(page + 1),
-        limit: String(pageSize),
-      })
-      const res = await fetch(`/api/jobs?${params}`)
-      const data = await res.json()
-      setJobs(data.data ?? [])
-      setTotal(data.total ?? 0)
-    } catch (err) {
-      console.error(err)
-    } finally {
-      setLoading(false)
-    }
-  }, [page, pageSize])
-
-  useEffect(() => { fetchJobs() }, [fetchJobs])
-
-  const openCreate = () => {
-    setModalMode('create')
-    setEditingJobId(null)
-    setForm({ title: '', description: '' })
-    setModalError('')
-    setShowModal(true)
-  }
-
-  const openEdit = (job: Job) => {
-    setModalMode('edit')
-    setEditingJobId(job.id)
-    setForm({ title: job.title, description: job.description || '' })
-    setModalError('')
-    setShowModal(true)
-  }
-
-  const handleDelete = async (id: number) => {
-    if (!confirm('¿Seguro que deseas eliminar este cargo?')) return
-    try {
-      const res = await fetch(`/api/jobs?id=${id}`, { method: 'DELETE' })
-      if (!res.ok) throw new Error('Error al eliminar')
-      fetchJobs()
-    } catch (err) {
-      alert('No se pudo eliminar el cargo. Es posible que esté en uso por algún contrato.')
-    }
-  }
+  const openCreate = () => { setModalMode('create'); setEditingJobId(null); setForm({ title: '', description: '' }); setModalError(''); setShowModal(true) }
+  const openEdit = (job: Job) => { setModalMode('edit'); setEditingJobId(job.id); setForm({ title: job.title, description: job.description || '' }); setModalError(''); setShowModal(true) }
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setModalLoading(true)
-    setModalError('')
+    e.preventDefault(); setModalLoading(true); setModalError('')
     try {
-      const url = modalMode === 'edit' ? `/api/jobs?id=${editingJobId}` : '/api/jobs'
-      const method = modalMode === 'edit' ? 'PUT' : 'POST'
-
-      const res = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form)
-      })
-      if (!res.ok) {
-        const error = await res.json()
-        throw new Error(error.message || 'Error al guardar')
-      }
-      setShowModal(false)
-      fetchJobs()
-    } catch (err) {
-      setModalError(err instanceof Error ? err.message : 'Error desconocido')
-    } finally {
-      setModalLoading(false)
-    }
+      const res = await fetch(modalMode === 'edit' ? `/api/jobs?id=${editingJobId}` : '/api/jobs', { method: modalMode === 'edit' ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) })
+      if (!res.ok) throw new Error((await res.json()).message || 'Error')
+      setShowModal(false); fetchJobs()
+    } catch (err) { setModalError(err instanceof Error ? err.message : 'Error') } finally { setModalLoading(false) }
   }
 
   return (
-    <DashboardLayout
-      pageTitle="Gestión de Cargos"
-      navItems={NAV_ITEMS}
-      onReload={fetchJobs}
-    >
-      <div className="bg-white rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] border border-gray-100 overflow-hidden">
-        <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 border-b border-gray-100">
-          <h3 className="font-titles text-lg font-bold text-[var(--color-foreground)]">
-            Cargos de la Empresa
-          </h3>
-          <button
-            onClick={openCreate}
-            className="bg-[var(--color-primary)] text-white text-sm font-subtitles font-semibold px-4 py-2 rounded-[var(--radius-lg)] hover:opacity-90 transition whitespace-nowrap"
-          >
-            + Añadir Cargo
-          </button>
+    <DashboardLayout pageTitle="Cargos" navItems={NAV_ITEMS} onReload={fetchJobs}>
+      <div className="bg-white rounded-[var(--radius-xl)] shadow-sm border border-gray-100 overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-4 border-b">
+          <h3 className="font-titles text-lg font-bold">Cargos de la Empresa</h3>
+          <button onClick={openCreate} className="bg-[var(--color-primary)] text-white text-sm font-bold px-4 py-2 rounded-lg">+ Añadir</button>
         </div>
-
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-100 bg-gray-50">
-                <th className="px-4 py-3 text-left font-subtitles text-xs uppercase tracking-wide text-gray-500">ID</th>
-                <th className="px-4 py-3 text-left font-subtitles text-xs uppercase tracking-wide text-gray-500">Título</th>
-                <th className="px-4 py-3 text-left font-subtitles text-xs uppercase tracking-wide text-gray-500">Descripción</th>
-                <th className="px-4 py-3 text-right font-subtitles text-xs uppercase tracking-wide text-gray-500">Acciones</th>
-              </tr>
-            </thead>
+            <thead><tr className="border-b bg-gray-50"><th className="px-4 py-3 text-left font-bold text-gray-400 text-xs">ID</th><th className="px-4 py-3 text-left font-bold text-gray-400 text-xs">Título</th><th className="px-4 py-3 text-left font-bold text-gray-400 text-xs">Descripción</th><th className="px-4 py-3 text-right font-bold text-gray-400 text-xs">Acciones</th></tr></thead>
             <tbody>
-              {loading ? (
-                <tr>
-                  <td colSpan={4} className="text-center py-12 text-gray-400 font-subtitles text-sm">Cargando...</td>
-                </tr>
-              ) : jobs.length === 0 ? (
-                <tr>
-                  <td colSpan={4} className="text-center py-12 text-gray-400 font-subtitles text-sm">No se encontraron cargos</td>
-                </tr>
-              ) : jobs.map(job => (
-                <tr key={job.id} className="border-b border-gray-50 hover:bg-gray-50/50 transition">
-                  <td className="px-4 py-3 font-mono text-gray-400 text-xs">{job.id}</td>
-                  <td className="px-4 py-3 font-subtitles font-semibold text-[var(--color-foreground)]">{job.title}</td>
-                  <td className="px-4 py-3 text-gray-500 text-xs max-w-sm truncate">
-                    {job.description || '—'}
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <button
-                      onClick={() => openEdit(job)}
-                      className="text-[var(--color-primary)] hover:underline font-semibold text-xs mr-3"
-                    >
-                      Editar
-                    </button>
-                    <button
-                      onClick={() => handleDelete(job.id)}
-                      className="text-red-600 hover:underline font-semibold text-xs"
-                    >
-                      Eliminar
-                    </button>
-                  </td>
-                </tr>
+              {loading ? <tr><td colSpan={4} className="text-center py-10 text-gray-400">Cargando...</td></tr> : jobs.length === 0 ? <tr><td colSpan={4} className="text-center py-10 text-gray-400">Sin cargos</td></tr> : jobs.map(job => (
+                <tr key={job.id} className="border-b hover:bg-gray-50/50"><td className="px-4 py-3 font-mono text-gray-400 text-xs">{job.id}</td><td className="px-4 py-3 font-bold">{job.title}</td><td className="px-4 py-3 text-xs text-gray-500 truncate max-w-sm">{job.description || '—'}</td><td className="px-4 py-3 text-right"><button onClick={() => openEdit(job)} className="text-indigo-600 font-bold mr-3">Editar</button><button onClick={() => deleteJob(job.id)} className="text-red-600 font-bold">Eliminar</button></td></tr>
               ))}
             </tbody>
           </table>
         </div>
-        <div className="px-5 py-4 border-t border-gray-100">
-          <Pagination
-            page={page}
-            pageSize={pageSize}
-            totalItems={total}
-            onPageChange={setPage}
-            onPageSizeChange={setPageSize}
-          />
-        </div>
+        <div className="px-5 py-4 border-t"><Pagination page={page} pageSize={pageSize} totalItems={total} onPageChange={setPage} onPageSizeChange={setPageSize} /></div>
       </div>
 
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-          <div className="bg-white rounded-[var(--radius-xl)] shadow-xl w-full max-w-md">
-            <div className="px-6 py-5 border-b border-gray-100">
-              <h2 className="font-titles text-xl font-extrabold text-[var(--color-foreground)]">
-                {modalMode === 'create' ? 'Añadir Cargo' : 'Editar Cargo'}
-              </h2>
-            </div>
-            <form onSubmit={handleSubmit} className="px-6 py-5 flex flex-col gap-4">
-              <div>
-                <label className="block text-xs font-subtitles font-semibold text-gray-600 mb-1">Título</label>
-                <input
-                  type="text" required placeholder="Ej: Operador logístico"
-                  value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
-                  className="form-input w-full"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-subtitles font-semibold text-gray-600 mb-1">Descripción (opcional)</label>
-                <textarea
-                  placeholder="Detalles sobre el cargo..."
-                  value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
-                  className="form-input w-full resize-none h-24"
-                />
-              </div>
-
-              {modalError && (
-                <p className="text-xs text-[var(--color-primary)] px-3 py-2 bg-red-50 rounded-[var(--radius-lg)] border border-red-100">
-                  {modalError}
-                </p>
-              )}
-
-              <div className="flex gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowModal(false)}
-                  className="flex-1 py-2.5 rounded-[var(--radius-lg)] border border-gray-200 text-sm font-subtitles font-semibold text-gray-600 hover:bg-gray-50 transition"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  disabled={modalLoading}
-                  className="flex-1 py-2.5 rounded-[var(--radius-lg)] bg-[var(--color-primary)] text-white text-sm font-subtitles font-semibold hover:opacity-90 transition disabled:opacity-50"
-                >
-                  {modalLoading ? 'Guardando...' : 'Guardar'}
-                </button>
-              </div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl w-full max-w-md p-6"><h2 className="font-bold text-xl mb-4">{modalMode === 'create' ? 'Añadir' : 'Editar'} Cargo</h2>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div><label className="block text-xs font-bold text-gray-500 mb-1">Título</label><input type="text" required value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} className="form-input w-full" /></div>
+              <div><label className="block text-xs font-bold text-gray-500 mb-1">Descripción</label><textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} className="form-input w-full h-24" /></div>
+              {modalError && <p className="text-xs text-red-600 bg-red-50 p-2 rounded">{modalError}</p>}
+              <div className="flex gap-3 pt-2"><button type="button" onClick={() => setShowModal(false)} className="flex-1 py-2 font-bold text-gray-500">Cancelar</button><button type="submit" disabled={modalLoading} className="flex-1 py-2 bg-[var(--color-primary)] text-white rounded-lg font-bold">{modalLoading ? '...' : 'Guardar'}</button></div>
             </form>
           </div>
         </div>

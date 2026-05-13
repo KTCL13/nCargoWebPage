@@ -86,7 +86,11 @@ class AnalyticsController {
     async getAlerts(req: NextRequest): Promise<NextResponse> {
         try {
             getAuthEmployee(req)
-            const data = await analyticsService.getAlerts()
+            const { searchParams } = new URL(req.url)
+            const from = this.parseDate(searchParams.get('from'))
+            const to = this.parseDate(searchParams.get('to'))
+
+            const data = await analyticsService.getAlerts({ from, to })
             return NextResponse.json(data)
         } catch (err: unknown) {
             const message = err instanceof Error ? err.message : 'Error'

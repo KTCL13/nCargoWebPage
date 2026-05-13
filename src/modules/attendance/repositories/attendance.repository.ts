@@ -70,10 +70,9 @@ class AttendanceRepository {
     }): Promise<{ data: Attendance[]; total: number }> {
         const where: any = {}
         if (filters.date) {
-            const start = new Date(filters.date)
-            start.setHours(0, 0, 0, 0)
-            const end = new Date(filters.date)
-            end.setHours(23, 59, 59, 999)
+            // Append time to force local-day parsing and avoid UTC shifts
+            const start = new Date(filters.date + 'T00:00:00')
+            const end = new Date(filters.date + 'T23:59:59.999')
             where.startedAt = { gte: start, lte: end }
         }
         if (filters.employeeId) where.employeeId = filters.employeeId

@@ -19,6 +19,11 @@ interface WorkloadParams {
     to?: Date
 }
 
+interface AlertParams {
+    from?: Date
+    to?: Date
+}
+
 class AnalyticsService {
     async getEmployeePerformance(params: PerformanceParams) {
         const { employeeId, from, to, page = 1, limit = 10 } = params
@@ -337,8 +342,15 @@ class AnalyticsService {
         return { upserted }
     }
 
-    async getAlerts() {
+    async getAlerts(params: AlertParams = {}) {
+        const { from, to } = params
         const now = new Date()
+
+        const dateFilter = {
+            ...(from && { gte: from }),
+            ...(to && { lte: to }),
+        }
+
         const startOfToday = new Date(now)
         startOfToday.setHours(0, 0, 0, 0)
 
@@ -353,12 +365,15 @@ class AnalyticsService {
                 prisma.attendance.findMany({
                     where: {
                         status: { in: ['OPEN', 'PAUSED'] },
-                        startedAt: { lt: startOfToday },
+                        ...(Object.keys(dateFilter).length ? { startedAt: dateFilter } : { startedAt: { lt: startOfToday } }),
                     },
                     include: { employee: { select: { id: true, firstName: true, lastName: true } } },
                 }),
                 prisma.task.findMany({
-                    where: { status: { name: 'NOT_DONE' } },
+                    where: { 
+                        status: { name: 'NOT_DONE' },
+                        ...(Object.keys(dateFilter).length && { createdAt: dateFilter })
+                    },
                     include: { employee: { select: { id: true, firstName: true, lastName: true } } },
                 }),
                 prisma.employee.findMany({
