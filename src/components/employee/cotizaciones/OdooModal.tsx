@@ -21,7 +21,7 @@ export function OdooModal({
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+    <div role="dialog" aria-modal="true" aria-labelledby="modal-title" className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
       <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in duration-200">
         {/* Modal Header */}
         <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-[#714B67]/5">
@@ -31,7 +31,7 @@ export function OdooModal({
           </div>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-400"
+            className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-600"
           >
             ✕
           </button>
@@ -81,11 +81,11 @@ export function OdooModal({
               ))
             ) : searchQuery.length >= 3 && !isSearching ? (
               <div className="py-10 text-center">
-                <p className="text-gray-400 font-subtitles text-sm">No se encontraron clientes que coincidan.</p>
+                <p className="text-gray-600 font-subtitles text-sm">No se encontraron clientes que coincidan.</p>
               </div>
             ) : !searchQuery ? (
               <div className="py-10 text-center">
-                <p className="text-gray-300 font-subtitles text-sm">Empieza a escribir para buscar...</p>
+                <p className="text-gray-500 font-subtitles text-sm">Empieza a escribir para buscar...</p>
               </div>
             ) : null}
           </div>

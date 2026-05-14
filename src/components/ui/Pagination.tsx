@@ -89,7 +89,7 @@ export function Pagination({
           nextClassName="w-8 h-8"
           nextLinkClassName="w-full h-full flex items-center justify-center rounded-md text-sm text-[var(--color-nc-dark)] border border-gray-100 hover:bg-gray-50 transition bg-white shadow-sm"
           breakClassName="w-8 h-8"
-          breakLinkClassName="w-full h-full flex items-center justify-center text-sm text-gray-400"
+          breakLinkClassName="w-full h-full flex items-center justify-center text-sm text-gray-600"
           disabledClassName="opacity-30 pointer-events-none"
         />
 

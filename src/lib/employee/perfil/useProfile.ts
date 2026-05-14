@@ -20,7 +20,7 @@ export function useProfile() {
     if (!token) return
     try {
       setLoading(true)
-      const data = await employeeClient.getProfile()
+      const data = await employeeClient.getProfile(token)
       setProfile(data)
       setFormData({
         firstName: data.firstName,
@@ -43,7 +43,7 @@ export function useProfile() {
     if (!token) return
     try {
       setSaving(true)
-      await employeeClient.updateProfile(formData)
+      await employeeClient.updateProfile(formData, token)
       await fetchProfile()
       setEditing(false)
     } catch (err: any) {

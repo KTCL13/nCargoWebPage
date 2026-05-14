@@ -328,7 +328,7 @@ export function NotificationBell() {
             {/* ── Pagination footer ─────────────────────────────────── */}
             {total > 0 && (
               <div className="flex items-center justify-between px-4 py-3 bg-gray-50 border-t border-gray-100">
-                <p className="text-[11px] text-gray-400">
+                <p className="text-[11px] text-gray-600">
                   Pág. {page} de {Math.max(pageCount, 1)} · {total} total
                 </p>
                 <div className="flex items-center gap-1.5">
@@ -415,12 +415,12 @@ function NotifRow({
           <span className={`text-[12px] font-bold leading-tight ${item.read ? 'text-gray-500' : 'text-[var(--color-nc-dark)]'}`}>
             {cfg.label}
           </span>
-          <span className="shrink-0 text-[10px] text-gray-400 mt-0.5 tabular-nums">
+          <span className="shrink-0 text-[10px] text-gray-600 mt-0.5 tabular-nums">
             {relFmt(item.createdAt)}
           </span>
         </div>
 
-        <p className={`text-[12px] leading-relaxed line-clamp-2 ${item.read ? 'text-gray-400' : 'text-gray-600'}`}>
+        <p className={`text-[12px] leading-relaxed line-clamp-2 ${item.read ? 'text-gray-600' : 'text-gray-600'}`}>
           {item.message}
         </p>
 
@@ -434,14 +434,14 @@ function NotifRow({
           {!item.read && (
             <button
               onClick={e => { e.stopPropagation(); onMarkRead() }}
-              className="text-[10px] font-semibold text-gray-400 hover:text-[var(--color-secondary)] transition"
+              className="text-[10px] font-semibold text-gray-600 hover:text-[var(--color-secondary)] transition"
             >
               Marcar leída
             </button>
           )}
           <button
             onClick={e => { e.stopPropagation(); onDelete() }}
-            className="text-[10px] font-semibold text-gray-400 hover:text-rose-500 transition-colors"
+            className="text-[10px] font-semibold text-gray-600 hover:text-rose-500 transition-colors"
           >
             Eliminar
           </button>
@@ -477,10 +477,10 @@ function EmptyPanel() {
   return (
     <div className="py-14 flex flex-col items-center gap-3 px-8">
       <div className="w-14 h-14 rounded-full bg-gray-50 border-2 border-gray-100 flex items-center justify-center">
-        <BellIcon className="w-7 h-7 text-gray-300" />
+        <BellIcon className="w-7 h-7 text-gray-500" />
       </div>
-      <p className="text-sm font-semibold text-gray-400 text-center">Sin notificaciones</p>
-      <p className="text-xs text-gray-300 text-center leading-relaxed">
+      <p className="text-sm font-semibold text-gray-600 text-center">Sin notificaciones</p>
+      <p className="text-xs text-gray-500 text-center leading-relaxed">
         Aquí verás tus tareas asignadas y alertas del sistema.
       </p>
     </div>

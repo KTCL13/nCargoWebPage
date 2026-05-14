@@ -164,7 +164,7 @@ export function EmployeeSearch({
                 <button
                   type="button"
                   onClick={() => handleRemove(emp.id)}
-                  className="w-4 h-4 flex items-center justify-center rounded-full hover:bg-gray-200 text-gray-400 hover:text-red-500 transition"
+                  className="w-4 h-4 flex items-center justify-center rounded-full hover:bg-gray-200 text-gray-600 hover:text-red-500 transition"
                 >
                   ×
                 </button>
@@ -179,13 +179,13 @@ export function EmployeeSearch({
               }}
               onFocus={() => setIsOpen(true)}
               placeholder={multi && selectedMulti.length > 0 ? "" : placeholder}
-              className="flex-1 min-w-[120px] bg-transparent border-none shadow-none outline-none text-sm px-3 py-2 placeholder:text-gray-400"
+              className="flex-1 min-w-[120px] bg-transparent border-none shadow-none outline-none text-sm px-3 py-2 placeholder:text-gray-600"
             />
             <div className="flex items-center pr-3">
               {loading ? (
                 <div className="w-4 h-4 border-2 border-gray-300 border-t-[var(--color-primary)] rounded-full animate-spin" />
               ) : (
-                <span className="text-gray-300 text-xs">🔍</span>
+                <span className="text-gray-500 text-xs">🔍</span>
               )}
             </div>
           </div>
@@ -204,7 +204,7 @@ export function EmployeeSearch({
                         onClick={() => handleSelect(emp)}
                         className={`w-full text-left flex items-center gap-3 p-3 rounded-lg transition ${isSelected ? 'opacity-40 cursor-default bg-gray-50' : 'hover:bg-gray-50'}`}
                       >
-                        <div className={`w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold ${isSelected ? 'bg-gray-200 text-gray-400' : 'bg-[var(--color-nc-dark)] text-white'}`}>
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold ${isSelected ? 'bg-gray-200 text-gray-600' : 'bg-[var(--color-nc-dark)] text-white'}`}>
                           {(emp.firstName[0] + emp.lastName[0]).toUpperCase()}
                         </div>
                         <div className="flex-1 min-w-0">
@@ -218,7 +218,7 @@ export function EmployeeSearch({
                 </div>
               ) : !loading && query.length >= 2 ? (
                 <div className="p-8 text-center">
-                  <p className="text-sm text-gray-400 font-subtitles">No se encontraron empleados</p>
+                  <p className="text-sm text-gray-600 font-subtitles">No se encontraron empleados</p>
                 </div>
               ) : null}
             </div>

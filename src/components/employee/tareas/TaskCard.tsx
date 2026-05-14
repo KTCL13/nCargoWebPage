@@ -24,7 +24,7 @@ export function TaskCard({ task, archived, canUpdate, onUpdateStatus, showStatus
       <div className="flex items-start justify-between gap-2">
         <p className="font-subtitles font-semibold text-sm text-[var(--color-nc-dark)] leading-tight">{task.title}</p>
         {showStatusLabel && (
-          <span className="text-[10px] font-subtitles text-gray-400 bg-gray-100 rounded-full px-2 py-0.5 flex-shrink-0">
+          <span className="text-[10px] font-subtitles text-gray-600 bg-gray-100 rounded-full px-2 py-0.5 flex-shrink-0">
             {statusLabel(task.status)}
           </span>
         )}

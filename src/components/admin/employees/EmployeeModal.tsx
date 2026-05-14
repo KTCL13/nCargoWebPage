@@ -29,7 +29,7 @@ export function EmployeeModal({
   if (!showModal) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+    <div role="dialog" aria-modal="true" aria-labelledby="modal-title" className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
       <div className="bg-white rounded-[var(--radius-xl)] shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
         <div className="px-6 py-5 border-b border-gray-100 flex justify-between items-center">
           <div>
@@ -40,13 +40,13 @@ export function EmployeeModal({
               {isViewOnly ? `Viendo perfil de ${form.firstName} ${form.lastName}` : editingId ? `Modificando a ${form.firstName} ${form.lastName}` : 'Completa los datos con asterisco (*) para continuar'}
             </p>
           </div>
-          <button onClick={() => { setShowModal(false); setDupWarning(null); setSkipDupCheck(false) }} className="text-gray-400 hover:text-gray-600 text-xl">✕</button>
+          <button onClick={() => { setShowModal(false); setDupWarning(null); setSkipDupCheck(false) }} className="text-gray-600 hover:text-gray-600 text-xl">✕</button>
         </div>
 
         <form onSubmit={handleSubmit} className="px-6 py-5 flex flex-col gap-5">
           {/* Employee section */}
           <div>
-            <p className="font-subtitles text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">
+            <p className="font-subtitles text-xs font-bold text-gray-600 uppercase tracking-wider mb-3">
               Datos del empleado
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -126,7 +126,7 @@ export function EmployeeModal({
                 <label className="block text-xs font-subtitles font-semibold text-gray-600 mb-1">
                   Contraseña{' '}
                   {editingId
-                    ? <span className="text-gray-400 font-normal">(dejar en blanco para no cambiar)</span>
+                    ? <span className="text-gray-600 font-normal">(dejar en blanco para no cambiar)</span>
                     : <span className="text-red-500">*</span>}
                 </label>
                 <div className="relative">
@@ -143,7 +143,7 @@ export function EmployeeModal({
                     <button
                       type="button"
                       onClick={() => setShowPassword(v => !v)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-600 hover:text-gray-600 transition"
                     >
                       {showPassword ? '👁️' : '👁️‍🗨️'}
                     </button>
@@ -152,7 +152,7 @@ export function EmployeeModal({
                 {form.password && !isViewOnly && (
                   <div className="mt-3 p-3 bg-gray-50 rounded-[var(--radius-lg)] border border-gray-100">
                     <div className="flex justify-between items-center mb-2">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Seguridad:</span>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-gray-600">Seguridad:</span>
                       <span className={`text-[10px] font-bold uppercase ${passwordStrength(form.password).text}`}>
                         {passwordStrength(form.password).label}
                       </span>
@@ -165,8 +165,8 @@ export function EmployeeModal({
                     <div className="grid grid-cols-2 gap-x-4 gap-y-1 mt-2">
                       {passwordStrength(form.password).checks.map((c, i) => (
                         <div key={i} className="flex items-center gap-1.5">
-                          <span className={`text-[10px] ${c.met ? 'text-green-500' : 'text-gray-300'}`}>{c.met ? '✓' : '○'}</span>
-                          <span className={`text-[10px] ${c.met ? 'text-gray-600' : 'text-gray-400'}`}>{c.label}</span>
+                          <span className={`text-[10px] ${c.met ? 'text-green-500' : 'text-gray-500'}`}>{c.met ? '✓' : '○'}</span>
+                          <span className={`text-[10px] ${c.met ? 'text-gray-600' : 'text-gray-600'}`}>{c.label}</span>
                         </div>
                       ))}
                     </div>

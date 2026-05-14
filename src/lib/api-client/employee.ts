@@ -1,14 +1,19 @@
 export const employeeClient = {
-  async getProfile() {
-    const res = await fetch("/api/employee/me")
+  async getProfile(token: string) {
+    const res = await fetch("/api/employee/me", {
+      headers: { "Authorization": `Bearer ${token}` }
+    })
     if (!res.ok) throw new Error("Error obteniendo perfil")
     return res.json()
   },
   
-  async updateProfile(data: { firstName: string, lastName: string, timezone: string }) {
+  async updateProfile(data: { firstName: string, lastName: string, timezone: string }, token: string) {
     const res = await fetch("/api/employee/me", {
       method: "PATCH",
-      headers: { "Content-Type": "application/json" },
+      headers: { 
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}` 
+      },
       body: JSON.stringify(data)
     })
     

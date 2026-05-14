@@ -22,10 +22,10 @@ export function EmployeeTable({
 }: EmployeeTableProps) {
   return (
     <div className="overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b border-gray-100 bg-gray-50">
-            <th className="px-4 py-3 w-10">
+      <table role="grid" aria-label="Data table" className="w-full text-sm">
+        <thead role="rowgroup">
+          <tr role="row" className="border-b border-gray-100 bg-gray-50">
+            <th role="columnheader" className="px-4 py-3 w-10">
               <input
                 type="checkbox"
                 checked={employees.length > 0 && selected.size === employees.length}
@@ -33,23 +33,23 @@ export function EmployeeTable({
                 className="accent-[var(--color-primary)] w-4 h-4"
               />
             </th>
-            <th className="px-4 py-3 text-left font-subtitles text-xs uppercase tracking-wide text-gray-500">Nombre</th>
-            <th className="px-4 py-3 text-left font-subtitles text-xs uppercase tracking-wide text-gray-500">Rol</th>
-            <th className="px-4 py-3 text-left font-subtitles text-xs uppercase tracking-wide text-gray-500">Cargo</th>
-            <th className="px-4 py-3 text-left font-subtitles text-xs uppercase tracking-wide text-gray-500">Estado</th>
-            <th className="px-4 py-3 text-right font-subtitles text-xs uppercase tracking-wide text-gray-500">Acciones</th>
+            <th role="columnheader" className="px-4 py-3 text-left font-subtitles text-xs uppercase tracking-wide text-gray-500">Nombre</th>
+            <th role="columnheader" className="px-4 py-3 text-left font-subtitles text-xs uppercase tracking-wide text-gray-500">Rol</th>
+            <th role="columnheader" className="px-4 py-3 text-left font-subtitles text-xs uppercase tracking-wide text-gray-500">Cargo</th>
+            <th role="columnheader" className="px-4 py-3 text-left font-subtitles text-xs uppercase tracking-wide text-gray-500">Estado</th>
+            <th role="columnheader" className="px-4 py-3 text-right font-subtitles text-xs uppercase tracking-wide text-gray-500">Acciones</th>
           </tr>
         </thead>
-        <tbody>
+        <tbody role="rowgroup">
           {loading ? (
-            <tr>
-              <td colSpan={6} className="text-center py-12 text-gray-400 font-subtitles text-sm">
+            <tr role="row">
+              <td role="gridcell" colSpan={6} className="text-center py-12 text-gray-600 font-subtitles text-sm">
                 Cargando...
               </td>
             </tr>
           ) : employees.length === 0 ? (
-            <tr>
-              <td colSpan={6} className="text-center py-12 text-gray-400 font-subtitles text-sm">
+            <tr role="row">
+              <td role="gridcell" colSpan={6} className="text-center py-12 text-gray-600 font-subtitles text-sm">
                 No se encontraron empleados
               </td>
             </tr>
@@ -59,8 +59,8 @@ export function EmployeeTable({
             const isSaving = saving.has(emp.id)
 
             return (
-              <tr key={emp.id} className="border-b border-gray-50 hover:bg-gray-50/50 transition">
-                <td className="px-4 py-3">
+              <tr role="row" key={emp.id} className="border-b border-gray-50 hover:bg-gray-50/50 transition">
+                <td role="gridcell" className="px-4 py-3">
                   <input
                     type="checkbox"
                     checked={selected.has(emp.id)}
@@ -70,34 +70,34 @@ export function EmployeeTable({
                 </td>
 
                 {/* Name */}
-                <td className="px-4 py-3">
+                <td role="gridcell" className="px-4 py-3">
                   <div className="flex items-center gap-3">
                     <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0 ${avatarColor(emp.name)}`}>
                       {initials(emp.name)}
                     </div>
                     <div>
                       <p className="font-subtitles font-semibold text-[var(--color-foreground)]">{emp.name}</p>
-                      <p className="text-xs text-gray-400">{emp.email}</p>
+                      <p className="text-xs text-gray-600">{emp.email}</p>
                     </div>
                   </div>
                 </td>
 
                 {/* Role */}
-                <td className="px-4 py-3">
+                <td role="gridcell" className="px-4 py-3">
                   <span className="font-subtitles text-gray-600 text-sm">
                     {translateRole(emp.roles[0] ?? '—')}
                   </span>
                 </td>
 
                 {/* Job Title */}
-                <td className="px-4 py-3">
+                <td role="gridcell" className="px-4 py-3">
                   <span className="text-xs font-medium font-subtitles text-gray-600 bg-gray-100 px-2 py-1 rounded-[var(--radius-md)]">
                     {emp.activeContract?.job.title ?? 'Sin cargo'}
                   </span>
                 </td>
 
                 {/* Status toggle */}
-                <td className="px-4 py-3">
+                <td role="gridcell" className="px-4 py-3">
                   <button
                     role="switch"
                     aria-checked={currentStatus === 'ACTIVE'}
@@ -110,7 +110,7 @@ export function EmployeeTable({
                 </td>
 
                 {/* Actions */}
-                <td className="px-4 py-3 text-right">
+                <td role="gridcell" className="px-4 py-3 text-right">
                   <div className="flex items-center justify-end gap-2 flex-wrap">
                     <div className="flex items-center gap-1 bg-white p-1 rounded-[var(--radius-lg)] shadow-sm border border-gray-100">
                       <button
@@ -143,7 +143,7 @@ export function EmployeeTable({
                         flex items-center gap-1.5 px-3 py-1.5 rounded-[var(--radius-lg)] text-xs font-bold font-subtitles transition-all shadow-sm
                         ${isDirty && !isSaving
                           ? 'bg-green-600 text-white hover:bg-green-700 hover:shadow-md'
-                          : 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200'
+                          : 'bg-gray-100 text-gray-600 cursor-not-allowed border border-gray-200'
                         }
                       `}
                     >

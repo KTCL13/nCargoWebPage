@@ -53,7 +53,7 @@ export function EmployeeFilters({
             onChange={e => { setSearch(e.target.value); setPage(0) }}
             className="pl-8 pr-3 py-2 rounded-[var(--radius-lg)] border border-gray-200 text-xs font-subtitles focus:outline-none focus:border-[var(--color-primary)] w-52"
           />
-          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs">🔍</span>
+          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-600 text-xs">🔍</span>
         </div>
         <button
           onClick={onAddEmployee}

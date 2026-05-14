@@ -27,7 +27,7 @@ export const HowItWorks = () => (
                 <h2 id="hero-heading" className="font-titles font-black text-white tracking-tighter leading-[1.05] text-3xl md:text-4xl lg:text-6xl">
                     Tan fácil como 1, 2, 3, 4
                 </h2>
-                <p className="font-body text-lg md:text-xl text-gray-400 leading-relaxed max-w-2xl">
+                <p className="font-body text-lg md:text-xl text-gray-600 leading-relaxed max-w-2xl">
                     Desde que compras hasta que recibes tu pedido en casa
                 </p>
             </div>
@@ -50,7 +50,7 @@ export const HowItWorks = () => (
                             <h3 className="font-titles font-bold text-lg mb-2 tracking-wide text-white uppercase">
                                 <span className="sr-only">Paso {i + 1}: </span>{step.title}
                             </h3>
-                            <p className="font-body text-xs leading-relaxed max-w-[220px] text-gray-400">{step.desc}</p>
+                            <p className="font-body text-xs leading-relaxed max-w-[220px] text-gray-600">{step.desc}</p>
                         </li>
                     ))}
                 </ol>

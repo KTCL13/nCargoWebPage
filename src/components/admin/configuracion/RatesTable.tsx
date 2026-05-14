@@ -151,35 +151,35 @@ export function RatesTable({
         </span>
       </div>
       <div className="overflow-x-auto">
-        <table className="w-full border-collapse text-sm">
-          <thead>
-            <tr className="border-b border-[#30363d] bg-[#161b22]">
-              <th className="w-10 px-3 py-2.5 text-[11px] font-bold text-[#8b949e] uppercase tracking-wider text-center">#</th>
-              <th className={thCls} onClick={() => toggleSort('city')}>Ciudad{arrow('city')}</th>
-              <th className={thCls} onClick={() => toggleSort('region')}>Departamento{arrow('region')}</th>
-              <th className={thCls} onClick={() => toggleSort('price')}>Precio USD{arrow('price')}</th>
-              <th className="px-3 py-2.5 text-[11px] font-bold text-[#8b949e] uppercase tracking-wider text-right">Acciones</th>
+        <table role="grid" aria-label="Data table" className="w-full border-collapse text-sm">
+          <thead role="rowgroup">
+            <tr role="row" className="border-b border-[#30363d] bg-[#161b22]">
+              <th role="columnheader" className="w-10 px-3 py-2.5 text-[11px] font-bold text-[#8b949e] uppercase tracking-wider text-center">#</th>
+              <th role="columnheader" className={thCls} onClick={() => toggleSort('city')}>Ciudad{arrow('city')}</th>
+              <th role="columnheader" className={thCls} onClick={() => toggleSort('region')}>Departamento{arrow('region')}</th>
+              <th role="columnheader" className={thCls} onClick={() => toggleSort('price')}>Precio USD{arrow('price')}</th>
+              <th role="columnheader" className="px-3 py-2.5 text-[11px] font-bold text-[#8b949e] uppercase tracking-wider text-right">Acciones</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-[#21262d]">
-            {pageItems.length === 0 && <tr><td colSpan={5} className="px-4 py-10 text-center text-[#484f58] text-sm">Sin resultados</td></tr>}
+          <tbody role="rowgroup" className="divide-y divide-[#21262d]">
+            {pageItems.length === 0 && <tr role="row"><td role="gridcell" colSpan={5} className="px-4 py-10 text-center text-[#484f58] text-sm">Sin resultados</td></tr>}
             {pageItems.map((rate, idx) => {
               const isDirty  = rate.id in editing
               const isSaved  = saved.has(rate.id)
               const isSaving = savingRow === rate.id
               return (
-                <tr key={rate.id} className={`transition-colors ${isDirty  ? 'bg-[#1c2128] border-l-2 border-l-[#e3b341]' : isSaved ? 'bg-[#0f2a1a] border-l-2 border-l-[#3fb950]' : idx % 2 === 0 ? 'bg-[#0d1117] hover:bg-[#161b22]' : 'bg-[#0a0e14] hover:bg-[#161b22]'}`}>
-                  <td className="px-3 py-2 text-center text-[11px] text-[#484f58] tabular-nums">{page * TABLE_PAGE_SIZE + idx + 1}</td>
-                  <td className="px-3 py-2">
+                <tr role="row" key={rate.id} className={`transition-colors ${isDirty  ? 'bg-[#1c2128] border-l-2 border-l-[#e3b341]' : isSaved ? 'bg-[#0f2a1a] border-l-2 border-l-[#3fb950]' : idx % 2 === 0 ? 'bg-[#0d1117] hover:bg-[#161b22]' : 'bg-[#0a0e14] hover:bg-[#161b22]'}`}>
+                  <td role="gridcell" className="px-3 py-2 text-center text-[11px] text-[#484f58] tabular-nums">{page * TABLE_PAGE_SIZE + idx + 1}</td>
+                  <td role="gridcell" className="px-3 py-2">
                     <input type="text" value={editing[rate.id]?.city ?? rate.destination.city} onChange={e => setEditing(prev => ({ ...prev, [rate.id]: { ...prev[rate.id], city: e.target.value } }))} className={`${txtInputCls} font-semibold`} />
                   </td>
-                  <td className="px-3 py-2">
+                  <td role="gridcell" className="px-3 py-2">
                     <input type="text" value={editing[rate.id]?.region ?? (rate.destination.region ?? '')} onChange={e => setEditing(prev => ({ ...prev, [rate.id]: { ...prev[rate.id], region: e.target.value } }))} placeholder="—" className={txtInputCls} />
                   </td>
-                  <td className="px-3 py-2">
+                  <td role="gridcell" className="px-3 py-2">
                     <div className="flex items-center gap-1"><span className="text-[#3fb950] font-mono text-xs font-bold shrink-0">$</span><input type="number" step="0.5" value={editing[rate.id]?.price ?? String(rate.basePrice)} onChange={e => setEditing(prev => ({ ...prev, [rate.id]: { ...prev[rate.id], price: e.target.value } }))} className={numInputCls} /></div>
                   </td>
-                  <td className="px-3 py-2">
+                  <td role="gridcell" className="px-3 py-2">
                     <div className="flex items-center justify-end gap-1.5">{isSaved && !isDirty ? <span className="text-xs text-[#3fb950] font-semibold">✓ Guardado</span> : isDirty ? <><button onClick={() => handleSave(rate.id)} disabled={isSaving} className="px-2.5 py-1 text-xs font-semibold rounded bg-[#1f6feb] hover:bg-[#388bfd] text-white disabled:opacity-50 transition-colors">{isSaving ? '...' : 'Guardar'}</button><button onClick={() => handleDiscard(rate.id)} disabled={isSaving} className="px-2 py-1 text-xs rounded bg-[#21262d] hover:bg-[#30363d] text-[#8b949e] disabled:opacity-50 transition-colors">✕</button></> : <><span className="text-[#484f58] text-xs select-none">—</span><button onClick={() => onDeleteRate(rate.id)} title="Eliminar tarifa" className="w-6 h-6 flex items-center justify-center text-xs rounded text-[#6e7681] hover:text-[#f85149] hover:bg-[#21262d] transition-colors">✕</button></>}</div>
                   </td>
                 </tr>

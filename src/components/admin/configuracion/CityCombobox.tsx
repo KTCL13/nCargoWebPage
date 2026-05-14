@@ -41,7 +41,7 @@ export function CityCombobox({
       <button
         type="button"
         onClick={() => { setOpen(o => !o); setSearch(''); setPage(0) }}
-        className={`form-input w-full text-left truncate ${!selectedLoc ? 'text-gray-400' : ''}`}
+        className={`form-input w-full text-left truncate ${!selectedLoc ? 'text-gray-600' : ''}`}
       >
         {triggerLabel}
       </button>
@@ -61,7 +61,7 @@ export function CityCombobox({
 
           <div className="max-h-60 overflow-y-auto divide-y">
             {visible.length === 0 && (
-              <p className="text-sm text-gray-400 text-center py-3">Sin resultados</p>
+              <p className="text-sm text-gray-600 text-center py-3">Sin resultados</p>
             )}
             {visible.map(l => (
               <button
@@ -73,7 +73,7 @@ export function CityCombobox({
                 }`}
               >
                 <span className="text-sm font-medium truncate">{l.city}</span>
-                {l.region && <span className="text-xs text-gray-400 shrink-0">{l.region}</span>}
+                {l.region && <span className="text-xs text-gray-600 shrink-0">{l.region}</span>}
               </button>
             ))}
           </div>

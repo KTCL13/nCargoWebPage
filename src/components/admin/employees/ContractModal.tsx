@@ -27,14 +27,14 @@ export function ContractModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+    <div role="dialog" aria-modal="true" aria-labelledby="modal-title" className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
       <div className="bg-white rounded-[var(--radius-xl)] shadow-xl w-full max-w-lg">
         <div className="px-6 py-5 border-b border-gray-100 flex justify-between items-center">
           <div>
             <h2 className="font-titles text-xl font-extrabold text-[var(--color-foreground)]">Nuevo Contrato</h2>
             <p className="font-subtitles text-sm text-gray-500 mt-0.5">Asignar cargo y salario a {contractModalEmpName}</p>
           </div>
-          <button onClick={() => setContractModalOpen(false)} className="text-gray-400 hover:text-gray-600 text-xl">✕</button>
+          <button onClick={() => setContractModalOpen(false)} className="text-gray-600 hover:text-gray-600 text-xl">✕</button>
         </div>
         <form onSubmit={handleContractSubmit} className="px-6 py-5 flex flex-col gap-5">
           <div className="grid grid-cols-2 gap-3">
