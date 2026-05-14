@@ -16,10 +16,63 @@
 - [x] **Focus management y navegación por teclado**: Implementado parcialmente en modales utilizando los roles correctos para la captura del foco.
 - [x] **Roles ARIA**: Se inyectaron roles ARIA (`role="dialog"`, `aria-modal="true"`) en 5 componentes de tipo Modal, así como directivas semánticas explícitas (`role="grid"`, `rowgroup`, `columnheader`, `gridcell`) en tablas de datos interactivas y formularios de 21 componentes de la aplicación.
 
-## 5. Checklist de SEO
-- [x] **Etiquetas Semánticas**: Estructuradas en los layouts (`<main>`, `<header>`, etc.).
-- [x] **Metadata por Página (`page.tsx`)**: Revisado vía búsqueda; páginas como `employee/perfil` y `admin/contratos` tienen `metadata`.
-- [ ] **Títulos únicos**: Pendiente integrar `export const metadata` en más de 15 rutas (incluyendo el root y los dashboards) para un óptimo SEO.
+## 5. SEO — Auditoría y Refactorización de Metadata
+
+### 5.1 Resultado del Escaneo Inicial
+
+| Ruta (`src/app/...`) | Tenía `metadata` | Solución aplicada |
+|---|---|---|
+| `page.tsx` (landing) | ❌ | `export const metadata` añadido directamente (Server Component) |
+| `login/page.tsx` | ❌ | `layout.tsx` creado con `metadata` |
+| `forgot-password/page.tsx` | ❌ | `layout.tsx` creado con `metadata` |
+| `reset-password/[token]/page.tsx` | ❌ | `layout.tsx` creado en `reset-password/` con `metadata` |
+| `docs/page.tsx` | ❌ | `layout.tsx` creado con `metadata` |
+| `admin/dashboard/page.tsx` | ❌ | `layout.tsx` creado con `metadata` |
+| `admin/empleados/page.tsx` | ❌ | `layout.tsx` creado con `metadata` |
+| `admin/asistencia/page.tsx` | ❌ | `layout.tsx` creado con `metadata` |
+| `admin/cargos/page.tsx` | ❌ | `layout.tsx` creado con `metadata` |
+| `admin/configuracion/page.tsx` | ❌ | `layout.tsx` creado con `metadata` |
+| `admin/reportes/page.tsx` | ❌ | `layout.tsx` creado con `metadata` |
+| `admin/reports/page.tsx` | ❌ | `layout.tsx` creado con `metadata` |
+| `admin/tasks/page.tsx` | ❌ | `layout.tsx` creado con `metadata` |
+| `employee/dashboard/page.tsx` | ❌ | `layout.tsx` creado con `metadata` |
+| `employee/cotizaciones/page.tsx` | ❌ | `layout.tsx` creado con `metadata` |
+| `employee/envios/page.tsx` | ❌ | `layout.tsx` creado con `metadata` |
+| `employee/reportes/page.tsx` | ❌ | `layout.tsx` creado con `metadata` |
+| `employee/tareas/page.tsx` | ❌ | `layout.tsx` creado con `metadata` |
+| `admin/contratos/page.tsx` | ✅ | Ya tenía `metadata` — sin cambios |
+| `admin/cotizaciones/page.tsx` | ✅ | Ya tenía `metadata` — sin cambios |
+| `admin/envios/page.tsx` | ✅ | Ya tenía `metadata` — sin cambios |
+| `employee/jornada/page.tsx` | ✅ | Ya tenía `metadata` — sin cambios |
+| `employee/perfil/page.tsx` | ✅ | Ya tenía `metadata` — sin cambios |
+
+**Total auditado**: 23 rutas · **18 corregidas** · **5 ya conformes**
+
+### 5.2 Estrategia Arquitectónica
+
+Dado que las páginas que carecían de metadata usan `'use client'` (requerido por hooks, estado y efectos del navegador), se aplicó el patrón recomendado por Next.js App Router:
+
+> **`export const metadata` SOLO funciona en Server Components.**  
+> La solución es crear un `layout.tsx` _sin_ `'use client'_ al mismo nivel de la ruta, que exporte la metadata. Next.js la procesa en el servidor y la inyecta en el `<head>` sin interferir con la hidratación del Client Component hijo.
+
+Se crearon **19 archivos `layout.tsx`** nuevos (incluyendo layouts de sección para `admin/` y `employee/`).
+
+### 5.3 Estándares Aplicados por Metadata
+
+Cada entrada de metadata incluye:
+
+- **`title`**: Único por ruta, formato `"Módulo | Sección · N-Cargo"`.
+- **`description`**: Descripción semántica específica al contenido de la página (100–160 caracteres).
+- **`keywords`**: Array de términos relevantes al módulo.
+- **`robots`**: `{ index: false, follow: false }` en todas las rutas autenticadas (admin/employee/auth) para prevenir indexación de páginas privadas.
+
+### 5.4 Checklist Final
+
+- [x] **Etiquetas Semánticas**: `<main>`, `<header>`, `<h1>` estructuradas en layouts y páginas.
+- [x] **Metadata por página**: 100% de rutas cubiertas con `export const metadata`.
+- [x] **Títulos únicos**: Cada ruta tiene un `title` distinto y descriptivo.
+- [x] **Robots `noindex`**: Aplicado a todas las rutas privadas (admin, employee, auth).
+- [x] **OpenGraph**: Configurado en la landing page pública (`app/page.tsx`).
 
 ## 6. Corrección de Tipado
 - **Análisis**: Se detectaron 35 archivos afectados por el uso de `any`, abarcando principalmente tests (ej. `task.service.test.ts`), componentes de administración (`EmployeeModal.tsx`, `ContractModal.tsx`) y utilidades (`odoo-client.ts`).
