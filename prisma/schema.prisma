@@ -496,6 +496,8 @@ model CotizacionRecord {
   quotation             Quotation? @relation(fields: [quotationId], references: [id])
   shipment              Shipment?  @relation(fields: [shipmentId], references: [id])
 
+  @@index([source])
+  @@index([createdAt(sort: Desc)])
   @@map("cotizacion_records")
 }
 

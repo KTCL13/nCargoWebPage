@@ -9,26 +9,25 @@ export async function GET(req: NextRequest) {
 
   const where = source ? { source } : {}
 
-  const [data, total] = await Promise.all([
-    prisma.cotizacionRecord.findMany({
-      where,
-      include: {
-        employee: { select: { id: true, firstName: true, lastName: true } },
-        destinationLocation: {
-          select: {
-            name: true,
-            type: true,
-            parent: { select: { name: true, parent: { select: { name: true } } } },
-          },
+  const data = await prisma.cotizacionRecord.findMany({
+    where,
+    include: {
+      employee: { select: { id: true, firstName: true, lastName: true } },
+      destinationLocation: {
+        select: {
+          name: true,
+          type: true,
+          parent: { select: { name: true, parent: { select: { name: true } } } },
         },
-        quotation: { select: { id: true, odooCustomerId: true, odooOrderName: true, status: true } },
       },
-      orderBy: { createdAt: 'desc' },
-      skip:  (page - 1) * pageSize,
-      take:  pageSize,
-    }),
-    prisma.cotizacionRecord.count({ where }),
-  ])
+      quotation: { select: { id: true, odooCustomerId: true, odooOrderName: true, status: true } },
+    },
+    orderBy: { createdAt: 'desc' },
+    skip: (page - 1) * pageSize,
+    take: pageSize,
+  })
+
+  const total = await prisma.cotizacionRecord.count({ where })
 
   return NextResponse.json({ data, total, page, pageSize, totalPages: Math.ceil(total / pageSize) })
 }
