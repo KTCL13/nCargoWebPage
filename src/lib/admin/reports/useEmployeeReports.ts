@@ -36,23 +36,74 @@ export function useEmployeeReports(token: string | null) {
     return Array.from(map.entries()).map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name))
   }, [records])
 
-  const metrics = useMemo<Metrics>(() => ({
-    totalWorkedHours: sum(records.map(r => r.totalWorkedHours)),
-    totalTasksCompleted: sum(records.map(r => r.tasksCompleted)),
-    avgProductivity: avg(records.map(r => r.productivityScore)),
-    avgTaskTime: avg(records.map(r => r.avgTaskTimeMinutes)),
-  }), [records])
+  // Weighted Average Calculation
+  const calculateWeightedStats = (rows: KPIRecord[]) => {
+    let totalHours = 0
+    let totalTasks = 0
+    let weightedProd = 0
+    let weightedTime = 0
+    let prodCount = 0
+    let timeCount = 0
+
+    rows.forEach(r => {
+      const h = Number(r.totalWorkedHours ?? 0)
+      const t = Number(r.tasksCompleted ?? 0)
+      
+      totalHours += h
+      totalTasks += t
+
+      if (r.productivityScore != null) {
+        weightedProd += r.productivityScore * h
+        prodCount += h
+      }
+      if (r.avgTaskTimeMinutes != null) {
+        weightedTime += r.avgTaskTimeMinutes * t
+        timeCount += t
+      }
+    })
+
+    return {
+      totalWorkedHours: totalHours,
+      totalTasksCompleted: totalTasks,
+      avgProductivity: prodCount > 0 ? weightedProd / prodCount : null,
+      avgTaskTime: timeCount > 0 ? weightedTime / timeCount : null
+    }
+  }
+
+  const metrics = useMemo<Metrics>(() => calculateWeightedStats(records), [records])
 
   const timeSeries = useMemo<TimePoint[]>(() => {
     const byDate = new Map<string, KPIRecord[]>()
     records.forEach(r => { const d = r.date.slice(0, 10); if (!byDate.has(d)) byDate.set(d, []); byDate.get(d)!.push(r) })
-    return Array.from(byDate.entries()).sort(([a], [b]) => a.localeCompare(b)).map(([date, rows]) => ({ date: formatDate(date), workedHours: sum(rows.map(r => r.totalWorkedHours)), tasksCompleted: sum(rows.map(r => r.tasksCompleted)), productivityScore: avg(rows.map(r => r.productivityScore)) }))
+    
+    return Array.from(byDate.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, rows]) => {
+        const stats = calculateWeightedStats(rows)
+        return {
+          date: formatDate(date),
+          workedHours: stats.totalWorkedHours,
+          tasksCompleted: stats.totalTasksCompleted,
+          productivityScore: stats.avgProductivity
+        }
+      })
   }, [records])
 
   const employeeRows = useMemo<EmployeeRow[]>(() => {
     const byEmp = new Map<number, { name: string; rows: KPIRecord[] }>()
     records.forEach(r => { if (!byEmp.has(r.employeeId)) byEmp.set(r.employeeId, { name: r.employee.name, rows: [] }); byEmp.get(r.employeeId)!.rows.push(r) })
-    return Array.from(byEmp.entries()).map(([id, { name, rows }]) => ({ employeeId: id, name, totalWorkedHours: sum(rows.map(r => r.totalWorkedHours)), tasksCompleted: sum(rows.map(r => r.tasksCompleted)), avgTaskTime: avg(rows.map(r => r.avgTaskTimeMinutes)), avgProductivity: avg(rows.map(r => r.productivityScore)) }))
+    
+    return Array.from(byEmp.entries()).map(([id, { name, rows }]) => {
+      const stats = calculateWeightedStats(rows)
+      return {
+        employeeId: id,
+        name,
+        totalWorkedHours: stats.totalWorkedHours,
+        tasksCompleted: stats.totalTasksCompleted,
+        avgTaskTime: stats.avgTaskTime,
+        avgProductivity: stats.avgProductivity
+      }
+    })
   }, [records])
 
   return { range, setRange, employeeFilter, setEmployeeFilter, records, loading, error, fetchData, uniqueEmployees, metrics, timeSeries, employeeRows }
