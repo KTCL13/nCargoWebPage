@@ -1,38 +1,97 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# ncargo
 
-## Getting Started
+Proyecto Next.js 16 (App Router) monolito: frontend y backend dentro del mismo repositorio.
 
-Created Backend
+Este README resume cómo poner en marcha el proyecto, comandos útiles y convenciones importantes para desarrolladores.
 
-First, run the development server:
+## Requisitos mínimos y recomendados
+
+### Mínimos
+
+- Node.js 18
+- CPU: 2 cores
+- Memoria: 2 GB RAM
+- Espacio libre en disco: 2 GB
+- npm / pnpm / yarn (cualquier gestor de paquetes)
+
+### Recomendados
+
+- Node.js 20 (o la LTS más reciente)
+- CPU: 4+ cores
+- Memoria: 8+ GB RAM
+- Espacio libre en disco: 10 GB+
+- pnpm (recomendado por velocidad y determinismo)
+
+Nota: Para desarrollo en Windows se recomienda usar WSL2 para compatibilidad con herramientas y scripts tipo Unix.
+
+## Instalación rápida
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
+# o con pnpm
+pnpm install
 pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Abre http://localhost:3000 en tu navegador.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Comandos útiles
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- `npm run dev` — servidor de desarrollo
+- `npm run build` — build para producción
+- `npm start` — iniciar en producción (`next start`)
+- `npm run lint` — ESLint
+- `npm run test` — Jest
+- `npm run test:coverage` — tests con cobertura
+- `npm run seed:shipping` — seed de tarifas de envío (ver `prisma/seed-shipping.ts`)
 
-## Learn More
+## Variables de entorno
 
-To learn more about Next.js, take a look at the following resources:
+Crea un archivo `.env` con al menos las siguientes variables:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- `DATABASE_URL`
+- `JWT_SECRET`
+- `RESEND_API_KEY`
+- `NEXT_PUBLIC_APP_URL`
+- `NEXT_PUBLIC_STRAPI_URL` (opcional)
+- `STRAPI_API_TOKEN` (opcional)
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Prisma
 
-## Deploy on Vercel
+- Ejecutar migraciones: `npx prisma migrate dev --name <descripcion>`
+- Ejecutar seed: `npx prisma db seed` o `npm run seed:shipping`
+- Prisma Studio: `npx prisma studio`
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Estructura y convenciones
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- App Router de Next.js: código en `src/app/`.
+- Endpoints API: Route Handlers en `src/app/api/`.
+- Lógica por módulos en `src/modules/` (controllers → services → repositories → dtos).
+- Cliente Prisma singleton: `src/lib/prisma.ts`.
+- OpenAPI / Swagger: especificación en `src/lib/openapi-spec.ts` y UI disponible en `/docs`.
+
+## Estructura del proyecto
+
+Estructura de alto nivel (archivos y carpetas más relevantes):
+
+```
+- prisma/              # esquema Prisma, migraciones y seeds
+- public/              # recursos estáticos (images, logos, website)
+- src/                 # código fuente
+	- app/               # App Router: páginas y `api` (route handlers)
+	- components/        # componentes UI reutilizables
+	- modules/           # lógica por dominio (controllers → services → repositories → dtos)
+	- lib/               # utilidades (prisma client, auth-guard, openapi-spec, audit-logger, etc.)
+	- context/           # React contexts (ej. AuthContext)
+	- hooks/             # custom hooks
+- next.config.mjs      # configuración de Next.js
+- package.json
+- prisma.config.ts
+- tsconfig.json
+```
+
+### Notas rápidas para desarrolladores
+
+- Autenticación: JWT para las APIs (ver `src/lib/auth-guard.ts`).
+- Alias de importación: `@/` → `src/`.
