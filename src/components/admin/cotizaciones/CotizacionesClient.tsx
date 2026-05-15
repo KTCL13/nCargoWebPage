@@ -56,8 +56,8 @@ export function CotizacionesClient() {
       fetchOffices()
     } catch (error) {
       setOfficeError('Error guardando almacén')
-    } finally { 
-      setSavingOffice(false) 
+    } finally {
+      setSavingOffice(false)
     }
   }
 
@@ -88,7 +88,7 @@ export function CotizacionesClient() {
         <div className="flex justify-between items-end">
           <div><h2 className="font-titles text-2xl font-extrabold text-[var(--color-foreground)]">Gestión de Cotizaciones</h2><p className="text-gray-500 text-sm">Cálculos de envío y almacenes</p></div>
           <div className="flex gap-2">
-            {tab === 'empleados' && <button onClick={() => router.push('/admin/cotizaciones/nueva')} className="bg-[var(--color-primary)] text-white px-4 py-2 rounded-lg font-bold text-sm" aria-label="Nueva cotización">+ Nueva</button>}
+            {/* {tab === 'empleados' && <button onClick={() => router.push('/admin/cotizaciones/nueva')} className="bg-[var(--color-primary)] text-white px-4 py-2 rounded-lg font-bold text-sm" aria-label="Nueva cotización">+ Nueva</button>} */}
             {tab === 'offices' && <button onClick={openNewOffice} className="bg-[var(--color-primary)] text-white px-4 py-2 rounded-lg font-bold text-sm" aria-label="Nuevo almacén">+ Almacén</button>}
           </div>
         </div>
