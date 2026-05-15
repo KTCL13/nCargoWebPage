@@ -9,6 +9,7 @@ import { TaskTable } from '@/components/admin/tasks/TaskTable'
 import { useTasks } from '@/lib/admin/tasks/useTasks'
 import { useTaskActions } from '@/lib/admin/tasks/useTaskActions'
 import { STATUS_LABELS, TaskStatus } from '@/types/admin/tasks'
+import { Calendar, Clock, AlertCircle } from 'lucide-react'
 
 export default function GestionTareasPage() {
   const { token } = useAuth()
@@ -21,7 +22,8 @@ export default function GestionTareasPage() {
   const {
     showCreateModal, setShowCreateModal, isBulk, setIsBulk, form, setForm, createLoading,
     reassignTask, setReassignTask, newEmployeeId, setNewEmployeeId, reassignLoading,
-    toasts, handleCreateSubmit, handleReassign
+    toasts, handleCreateSubmit, handleReassign,
+    isDateInvalid, dateError
   } = useTaskActions(token, employees, fetchData)
 
   return (
@@ -92,13 +94,58 @@ export default function GestionTareasPage() {
                 <textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} className="form-input w-full h-20 resize-none" placeholder="Instrucciones detalladas..." />
               </div>
               {isBulk ? <EmployeeSearch multi label="Empleados Responsables" onMultiSelect={emps => setForm(f => ({ ...f, employeeIds: emps.map(e => String(e.id)) }))} placeholder="Escribe para buscar y añadir empleados..." /> : <EmployeeSearch label="Empleado Responsable" onSelect={emp => setForm(f => ({ ...f, employeeId: emp ? String(emp.id) : '' }))} placeholder="Escribe nombre o identificación..." />}
-              <div className="grid grid-cols-2 gap-3">
-                <div><label className="block text-xs font-bold text-gray-500 uppercase mb-1">Inicio</label><input type="datetime-local" value={form.startTime} onChange={e => setForm(f => ({ ...f, startTime: e.target.value }))} className="form-input w-full" /></div>
-                <div><label className="block text-xs font-bold text-gray-500 uppercase mb-1">Deadline</label><input type="datetime-local" value={form.endTime} onChange={e => setForm(f => ({ ...f, endTime: e.target.value }))} className="form-input w-full" /></div>
+              
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="flex items-center gap-1.5 text-xs font-bold text-gray-500 uppercase">
+                      <Calendar size={14} className="text-[var(--color-primary)]" /> Inicio
+                    </label>
+                    <div className="relative">
+                      <input 
+                        type="datetime-local" 
+                        value={form.startTime} 
+                        onChange={e => setForm(f => ({ ...f, startTime: e.target.value }))} 
+                        className={`form-input w-full transition-colors ${isDateInvalid ? 'border-red-500 focus:border-red-600 focus:ring-red-100' : ''}`} 
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="flex items-center gap-1.5 text-xs font-bold text-gray-500 uppercase">
+                      <Clock size={14} className="text-[var(--color-primary)]" /> Deadline
+                    </label>
+                    <div className="relative">
+                      <input 
+                        type="datetime-local" 
+                        value={form.endTime} 
+                        onChange={e => setForm(f => ({ ...f, endTime: e.target.value }))} 
+                        className={`form-input w-full transition-colors ${isDateInvalid ? 'border-red-500 focus:border-red-600 focus:ring-red-100' : ''}`} 
+                      />
+                    </div>
+                  </div>
+                </div>
+                
+                {isDateInvalid && (
+                  <div className="flex items-center gap-2 text-red-600 bg-red-50 p-2.5 rounded-[var(--radius-md)] border border-red-100 animate-in fade-in slide-in-from-top-1 duration-200">
+                    <AlertCircle size={16} className="shrink-0" />
+                    <p className="text-[11px] font-bold leading-tight">La fecha de fin no puede ser anterior a la de inicio.</p>
+                  </div>
+                )}
               </div>
+
               <div className="flex gap-3 pt-2">
                 <button type="button" onClick={() => setShowCreateModal(false)} className="flex-1 py-2.5 rounded-[var(--radius-lg)] border border-gray-200 text-sm font-bold text-gray-500 hover:bg-gray-50 transition">Cancelar</button>
-                <button type="submit" disabled={createLoading} className="flex-1 py-2.5 rounded-[var(--radius-lg)] bg-[var(--color-primary)] text-white text-sm font-bold hover:opacity-90 transition disabled:opacity-50">{createLoading ? 'Creando...' : 'Crear Tarea'}</button>
+                <button 
+                  type="submit" 
+                  disabled={createLoading || isDateInvalid} 
+                  className={`flex-1 py-2.5 rounded-[var(--radius-lg)] text-white text-sm font-bold transition flex items-center justify-center gap-2 ${
+                    isDateInvalid 
+                    ? 'bg-gray-400 cursor-not-allowed opacity-70' 
+                    : 'bg-[var(--color-primary)] hover:opacity-90 active:scale-[0.98]'
+                  }`}
+                >
+                  {createLoading ? 'Creando...' : 'Crear Tarea'}
+                </button>
               </div>
             </form>
           </div>

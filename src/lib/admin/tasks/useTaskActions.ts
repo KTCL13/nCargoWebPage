@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { Task, TaskEmployee } from '@/types/admin/tasks'
+// State to hold date validation error message
+
 
 type ToastMsg = { id: number; text: string }
 
@@ -21,16 +23,28 @@ export function useTaskActions(token: string | null, employees: TaskEmployee[], 
   const [reassignLoading, setReassignLoading] = useState(false)
 
   const [toasts, setToasts] = useState<ToastMsg[]>([])
+  // Holds validation error for start/end dates
+  const [dateError, setDateError] = useState<string>('')
   const showToast = (text: string) => {
     const id = Date.now()
     setToasts(ts => [...ts, { id, text }])
     setTimeout(() => setToasts(ts => ts.filter(t => t.id !== id)), 5000)
   }
 
+  // Reactive validation for dates
+  const isDateInvalid = !!(form.startTime && form.endTime && new Date(form.endTime) < new Date(form.startTime));
+
   const handleCreateSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!token) return
-    setCreateLoading(true)
+    e.preventDefault();
+    if (!token) return;
+
+    if (isDateInvalid) {
+      setDateError('La fecha de fin no puede ser anterior a la fecha de inicio.');
+      return;
+    }
+
+    setDateError('');
+    setCreateLoading(true);
     try {
       const apiUrl = isBulk ? '/api/tasks/bulk-assign' : '/api/tasks'
       const payload = isBulk
@@ -100,6 +114,7 @@ export function useTaskActions(token: string | null, employees: TaskEmployee[], 
   return {
     showCreateModal, setShowCreateModal, isBulk, setIsBulk, form, setForm, createLoading,
     reassignTask, setReassignTask, newEmployeeId, setNewEmployeeId, reassignLoading,
-    toasts, handleCreateSubmit, handleReassign
+    toasts, handleCreateSubmit, handleReassign,
+    dateError, setDateError, isDateInvalid
   }
 }
