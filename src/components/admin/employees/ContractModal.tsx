@@ -25,6 +25,8 @@ export function ContractModal({
     const type = contractTypes.find(ct => String(ct.id) === String(typeId))
     return type?.name?.toUpperCase().includes('HORA') ?? false
   }
+  // Ensure jobs is an array to avoid runtime errors when mapping
+  const safeJobs: Job[] = Array.isArray(jobs) ? jobs : []
 
   return (
     <div role="dialog" aria-modal="true" aria-labelledby="modal-title" className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
@@ -47,7 +49,7 @@ export function ContractModal({
                 className="form-input bg-white"
               >
                 <option value="">Seleccionar cargo...</option>
-                {jobs.map(j => <option key={j.id} value={j.id}>{j.title}</option>)}
+                {safeJobs.map(j => <option key={j.id} value={j.id}>{j.title}</option>)}
               </select>
             </div>
             <div className="col-span-2 sm:col-span-1">

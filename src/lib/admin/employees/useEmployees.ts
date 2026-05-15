@@ -55,7 +55,7 @@ export function useEmployees() {
       fetch('/api/identification-types').then(x => x.json()),
     ]).then(([r, j, ct, it]) => {
       setRoles(r)
-      setJobs(j)
+      setJobs(j.data ?? [])
       setContractTypes(ct)
       setIdentificationTypes(it)
     }).catch(err => console.error('Error fetching dependencies:', err))
