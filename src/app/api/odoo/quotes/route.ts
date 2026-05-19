@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSaleOrder, getShippingProductId } from '@/lib/odoo'
 import { quotationRepository } from '@/modules/quotations/repositories/quotation.repository'
+import { getAuthEmployee } from '@/lib/auth-guard'
 
 type Breakdown = {
   total: number
@@ -44,6 +45,7 @@ function buildDescription(country: string | undefined, q: Breakdown): string {
 
 export async function POST(req: NextRequest) {
   try {
+    getAuthEmployee(req)
     const body = await req.json()
     const { customerId, quotationData, country, quotationId } = body as {
       customerId: number

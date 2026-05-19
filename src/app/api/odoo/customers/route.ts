@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { searchPartners } from '@/lib/odoo'
+import { getAuthEmployee } from '@/lib/auth-guard'
 
 export async function GET(req: NextRequest) {
   try {
+    getAuthEmployee(req)
     const q = new URL(req.url).searchParams.get('q')?.trim() ?? ''
     if (q.length < 3) return NextResponse.json([])
 

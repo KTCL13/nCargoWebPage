@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
+import jwt from 'jsonwebtoken'
 
-function decodePayload(token: string): { role: string } | null {
+type JwtPayload = { id: number; email: string; role: string }
+
+function verifyToken(token: string): JwtPayload | null {
+  const secret = process.env.JWT_SECRET
+  if (!secret) return null
   try {
-    const b64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')
-    return JSON.parse(atob(b64))
+    return jwt.verify(token, secret) as JwtPayload
   } catch {
     return null
   }
@@ -19,7 +23,7 @@ export function proxy(req: NextRequest) {
 
   if (!token) return redirect(req, '/login')
 
-  const payload = decodePayload(token)
+  const payload = verifyToken(token)
   if (!payload) return redirect(req, '/login')
 
   if (pathname.startsWith('/admin') && payload.role !== 'ADMIN') {
