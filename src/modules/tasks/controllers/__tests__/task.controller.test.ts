@@ -230,7 +230,7 @@ describe('taskController.update (PUT /tasks?id=X)', () => {
     )
 
     expect(res.status).toBe(200)
-    expect(taskService.update).toHaveBeenCalledWith(3, { status: 'COMPLETED' })
+    expect(taskService.update).toHaveBeenCalledWith(3, { status: 'COMPLETED', actorId: 1 })
   })
 
   it('G2 error de negocio: tarea no existe → 400', async () => {
