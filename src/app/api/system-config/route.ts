@@ -1,12 +1,36 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { requireAdmin } from '@/lib/auth-guard'
 
-export async function GET() {
+function authError(error: unknown) {
+  const status =
+    error instanceof Error && error.message.startsWith('Forbidden')
+      ? 403
+      : error instanceof Error && error.message.includes('Token')
+        ? 401
+        : 400
+  return NextResponse.json(
+    { message: error instanceof Error ? error.message : 'No autorizado' },
+    { status },
+  )
+}
+
+export async function GET(req: NextRequest) {
+  try {
+    requireAdmin(req)
+  } catch (error) {
+    return authError(error)
+  }
   const data = await prisma.systemConfig.findMany({ orderBy: { key: 'asc' } })
   return NextResponse.json({ data, total: data.length })
 }
 
 export async function PUT(req: NextRequest) {
+  try {
+    requireAdmin(req)
+  } catch (error) {
+    return authError(error)
+  }
   try {
     const body: { key: string; value: string }[] = await req.json()
     if (!Array.isArray(body)) {

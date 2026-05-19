@@ -60,7 +60,7 @@ import { hashService } from '../hash.service'
 const mocked = <T extends (...args: any) => any>(fn: T) => fn as unknown as jest.Mock
 
 describe('authService.register — escenarios inválidos', () => {
-  const base = { firstName: 'Alice', lastName: 'Smith', identificationTypeId: 1, email: 'a@b.c', password: 'pw', role: 'ADMIN' as const }
+  const base = { firstName: 'Alice', lastName: 'Smith', identificationTypeId: 1, email: 'a@b.c', password: 'Secret123' }
 
   it('rechaza cuando el nombre solo tiene espacios', async () => {
     await expect(authService.register({ ...base, firstName: '   ' })).rejects.toThrow('El nombre es obligatorio')
@@ -74,8 +74,8 @@ describe('authService.register — escenarios inválidos', () => {
     await expect(authService.register({ ...base, password: '   ' })).rejects.toThrow('La contraseña es obligatoria')
   })
 
-  it('rechaza cuando el rol no viene en el payload', async () => {
-    await expect(authService.register({ ...base, role: undefined as any })).rejects.toThrow('El rol es obligatorio')
+  it('rechaza cuando la contraseña no cumple los requisitos de complejidad', async () => {
+    await expect(authService.register({ ...base, password: 'shortpw' })).rejects.toThrow(/al menos 8 caracteres/)
   })
 
   it('rechaza cuando el email ya existe (no crea usuario nuevo)', async () => {
@@ -84,7 +84,7 @@ describe('authService.register — escenarios inválidos', () => {
     expect(userRepository.create).not.toHaveBeenCalled()
   })
 
-  it('rechaza cuando el rol indicado no existe en la BD', async () => {
+  it('rechaza cuando el rol EMPLOYEE no existe en la BD', async () => {
     mocked(userRepository.findByEmail).mockResolvedValue(null)
     mocked(hashService.hash).mockResolvedValue('h')
     mocked(userRepository.create).mockResolvedValue({ id: 1, firstName: 'A', lastName: '', email: 'a@b.c' })
