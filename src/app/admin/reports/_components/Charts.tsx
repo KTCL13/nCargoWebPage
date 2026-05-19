@@ -1,7 +1,6 @@
 import {
   AreaChart, Area,
   BarChart, Bar,
-  LineChart, Line,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts'
 
@@ -23,21 +22,13 @@ const baseTip = {
   padding: '8px 12px',
 }
 
-const darkTip = {
-  ...baseTip,
-  backgroundColor: '#0d1340',
-  border: '1px solid rgba(255,255,255,0.1)',
-  color: '#fff',
-}
-
 const tickStyle = { fontSize: 11, fill: '#94a3b8' }
-const darkTickStyle = { fontSize: 11, fill: 'rgba(255,255,255,0.35)' }
 
 export function Charts({ timeSeries }: { timeSeries: TimePoint[] }) {
   const data = timeSeries.length > 0 ? timeSeries : [{ date: '—', workedHours: 0, tasksCompleted: 0, productivityScore: null }]
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
 
       {/* Horas trabajadas — area */}
       <div className="bg-white rounded-2xl border border-black/5 shadow-sm p-5 relative">
@@ -91,38 +82,6 @@ export function Charts({ timeSeries }: { timeSeries: TimePoint[] }) {
               maxBarSize={36}
             />
           </BarChart>
-        </ResponsiveContainer>
-      </div>
-
-      {/* Productividad — dark card line */}
-      <div className="bg-[var(--color-nc-dark)] rounded-2xl shadow-sm p-5 relative">
-        <p className="font-subtitles font-semibold text-sm text-white">Productividad</p>
-        <p className="font-subtitles text-xs text-white/40 mb-4">Score promedio por día</p>
-        <ResponsiveContainer width="100%" height={CHART_H} minWidth={0} minHeight={0} debounce={50}>
-          <LineChart data={data} margin={{ top: 4, right: 4, left: -22, bottom: 0 }}>
-            <defs>
-              <linearGradient id="kpiProdGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%"  stopColor="#22c55e" stopOpacity={0.25} />
-                <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
-              </linearGradient>
-            </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.07)" />
-            <XAxis dataKey="date" tick={darkTickStyle} tickLine={false} axisLine={false} />
-            <YAxis tick={darkTickStyle} tickLine={false} axisLine={false} domain={[0, 100]} />
-            <Tooltip
-              contentStyle={darkTip}
-              formatter={(v) => [v != null ? `${Number(v).toFixed(1)}%` : '—', 'Score']}
-            />
-            <Line
-              type="monotone"
-              dataKey="productivityScore"
-              stroke="#22c55e"
-              strokeWidth={2.5}
-              dot={false}
-              activeDot={{ r: 4, fill: '#22c55e', strokeWidth: 0 }}
-              connectNulls
-            />
-          </LineChart>
         </ResponsiveContainer>
       </div>
 

@@ -30,9 +30,44 @@ function extractClockInIp(events: AttendanceEvent[]): string | null {
 }
 
 class AttendanceService {
+    private async autoCloseStaleSessions(employeeId: number, timezone: string): Promise<void> {
+        const stale = await attendanceRepository.findStaleOpenByEmployee(employeeId, timezone)
+        for (const attendance of stale) {
+            const now = new Date()
+            await attendanceEventRepository.create({
+                attendanceId: attendance.id,
+                type: 'CLOCK_OUT',
+                locationMetadata: { autoClose: true, reason: 'Cierre automático al cambiar de día' },
+                timestamp: now,
+            })
+
+            const events = await attendanceEventRepository.findByAttendance(attendance.id)
+            const workedHours = computeWorkedHours(events)
+
+            await attendanceRepository.updateStatus(attendance.id, 'CLOSED', {
+                endedAt: now,
+                workedHours,
+            })
+
+            await auditLog({
+                entityType: 'Attendance',
+                entityId: attendance.id,
+                action: 'AUTO_CLOSE',
+                performedBy: employeeId,
+                newValues: { status: 'CLOSED', endedAt: now, workedHours, reason: 'Día cambió' },
+            })
+
+            const day = new Date(attendance.startedAt)
+            day.setHours(0, 0, 0, 0)
+            analyticsService.aggregateKPIs({ employeeId: attendance.employeeId, from: day, to: day }).catch(() => {})
+        }
+    }
+
     async clockIn(employeeId: number, ip: string): Promise<AttendanceWithEvents> {
         const emp = await employeeRepository.getEmployeeById(employeeId)
         const timezone = emp?.timezone ?? 'America/Bogota'
+
+        await this.autoCloseStaleSessions(employeeId, timezone)
 
         const existing = await attendanceRepository.findTodayByEmployee(employeeId, timezone)
         if (existing) {
@@ -65,6 +100,9 @@ class AttendanceService {
     async pause(employeeId: number, ip: string): Promise<AttendanceWithEvents> {
         const emp = await employeeRepository.getEmployeeById(employeeId)
         const timezone = emp?.timezone ?? 'America/Bogota'
+
+        await this.autoCloseStaleSessions(employeeId, timezone)
+
         const attendance = await attendanceRepository.findActiveByEmployee(employeeId, timezone)
         if (!attendance || attendance.status !== 'OPEN') {
             throw new Error('No hay una sesión activa para pausar')
@@ -97,6 +135,9 @@ class AttendanceService {
     async resume(employeeId: number, ip: string): Promise<AttendanceWithEvents> {
         const emp = await employeeRepository.getEmployeeById(employeeId)
         const timezone = emp?.timezone ?? 'America/Bogota'
+
+        await this.autoCloseStaleSessions(employeeId, timezone)
+
         const attendance = await attendanceRepository.findActiveByEmployee(employeeId, timezone)
         if (!attendance || attendance.status !== 'PAUSED') {
             throw new Error('No hay una sesión pausada para reanudar')
@@ -129,6 +170,9 @@ class AttendanceService {
     async clockOut(employeeId: number, ip: string): Promise<AttendanceWithEvents> {
         const emp = await employeeRepository.getEmployeeById(employeeId)
         const timezone = emp?.timezone ?? 'America/Bogota'
+
+        await this.autoCloseStaleSessions(employeeId, timezone)
+
         const attendance = await attendanceRepository.findActiveByEmployee(employeeId, timezone)
         if (!attendance) {
             throw new Error('No hay una sesión activa para cerrar')
@@ -174,6 +218,9 @@ class AttendanceService {
     async getToday(employeeId: number): Promise<AttendanceWithEvents | null> {
         const emp = await employeeRepository.getEmployeeById(employeeId)
         const timezone = emp?.timezone ?? 'America/Bogota'
+
+        await this.autoCloseStaleSessions(employeeId, timezone)
+
         const attendance = await attendanceRepository.findTodayByEmployee(employeeId, timezone)
         if (!attendance) return null
 

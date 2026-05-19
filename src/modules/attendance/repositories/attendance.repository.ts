@@ -28,6 +28,17 @@ class AttendanceRepository {
         })
     }
 
+    async findStaleOpenByEmployee(employeeId: number, timezone: string): Promise<Attendance[]> {
+        return prisma.attendance.findMany({
+            where: {
+                employeeId,
+                startedAt: { lt: getStartOfDayForEmployee(timezone) },
+                status: { in: ['OPEN', 'PAUSED'] },
+            },
+            orderBy: { startedAt: 'asc' },
+        })
+    }
+
     async create(data: { employeeId: number; startedAt: Date; timezone: string }): Promise<Attendance> {
         return prisma.attendance.create({ data: { ...data, status: 'OPEN' } })
     }
