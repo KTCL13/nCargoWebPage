@@ -92,7 +92,7 @@ function KPICard({ label, value, icon, sub, subColor, dark = false }: { label: s
 
 function QuickActionCard({ icon, label, sub, color, onClick }: { icon: string; label: string; sub: string; color: string; onClick: () => void }) {
   return (
-    <div onClick={onClick} className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all cursor-pointer group">
+    <div onClick={onClick} className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-[opacity,transform,box-shadow] cursor-pointer group">
       <div className="w-12 h-12 rounded-xl flex items-center justify-center text-xl mb-3 group-hover:scale-110 transition-transform" style={{ backgroundColor: color }}>{icon}</div>
       <div className="font-bold text-sm text-gray-800">{label}</div>
       <div className="text-[10px] text-gray-600 font-mono mt-1">{sub}</div>

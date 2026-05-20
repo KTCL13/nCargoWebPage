@@ -7,11 +7,12 @@ import { NAV_ITEMS } from '@/components/layout/nav-config'
 import { useAuth } from '@/context/AuthContext'
 import { useEmployeeReports } from '@/lib/admin/reports/useEmployeeReports'
 import { MetricCards } from './_components/MetricCards'
+import { EmployeeSearch } from '@/components/ui/EmployeeSearch'
 import dynamic from 'next/dynamic'
 
 const Charts = dynamic(() => import('./_components/Charts').then(mod => mod.Charts), { ssr: false, loading: () => <div className="animate-pulse h-[300px] bg-gray-100 rounded-xl" /> })
-import { EmployeeTable } from './_components/EmployeeTable'
-import { EmployeeSearch } from '@/components/ui/EmployeeSearch'
+const EmployeeTable = dynamic(() => import('./_components/EmployeeTable').then(mod => mod.EmployeeTable), { ssr: false, loading: () => <div className="animate-pulse space-y-2">{Array.from({ length: 5 }).map((_, i) => <div key={i} className="h-10 bg-gray-100 rounded-lg" />)}</div> })
+
 
 export default function EmployeeReportsPage() {
   const { user, token } = useAuth()
