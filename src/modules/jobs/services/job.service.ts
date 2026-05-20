@@ -13,9 +13,17 @@ class JobService {
         }
     }
 
-    async findAll(): Promise<JobResponseDto[]> {
-        const jobs = await jobRepository.findAll()
-        return jobs.map(job => this.toJobResponseDto(job))
+    async findAll(page: number = 1, limit: number = 10): Promise<{ data: JobResponseDto[], total: number }> {
+        const skip = (page - 1) * limit
+        const [jobs, total] = await Promise.all([
+            jobRepository.findAll(skip, limit),
+            jobRepository.count()
+        ])
+
+        return {
+            data: jobs.map((job: Job) => this.toJobResponseDto(job)),
+            total
+        }
     }
 
     async findOne(id: number): Promise<JobResponseDto> {

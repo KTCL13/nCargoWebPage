@@ -1,5 +1,6 @@
-import { redirect } from 'next/navigation';
+import { NotFoundUI } from '@/components/common/NotFoundUI';
 
 export default function NotFound() {
-  redirect('/');
+  return <NotFoundUI />;
 }
+

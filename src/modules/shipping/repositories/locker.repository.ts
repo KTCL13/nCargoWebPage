@@ -85,29 +85,45 @@ class LockerRepository {
     })
   }
 
-  async findAllLockers() {
-    return prisma.locker.findMany({
-      orderBy: { createdAt: 'desc' },
-      include: { _count: { select: { shipments: true } } },
-    })
+  async findAllLockers(page: number = 1, limit: number = 10) {
+    const skip = (page - 1) * limit
+    const [data, total] = await Promise.all([
+      prisma.locker.findMany({
+        orderBy: { createdAt: 'desc' },
+        include: { _count: { select: { shipments: true } } },
+        skip,
+        take: limit,
+      }),
+      prisma.locker.count(),
+    ])
+    return { data, total }
   }
 
-  async findShipmentsByLocker(lockerId: number, search?: string) {
-    return prisma.shipment.findMany({
-      where: {
-        lockerId,
-        ...(search ? {
-          OR: [
-            { odooTaskName: { contains: search, mode: 'insensitive' } },
-            { odooCustomerName: { contains: search, mode: 'insensitive' } },
-            { trackingNumber: { contains: search, mode: 'insensitive' } },
-            { odooStageName: { contains: search, mode: 'insensitive' } },
-          ],
-        } : {}),
-      },
-      include: { status: true, provider: true, locker: true },
-      orderBy: { createdAt: 'desc' },
-    })
+  async findShipmentsByLocker(lockerId: number, page: number = 1, limit: number = 10, search?: string) {
+    const skip = (page - 1) * limit
+    const where = {
+      lockerId,
+      ...(search ? {
+        OR: [
+          { odooTaskName: { contains: search, mode: 'insensitive' as const } },
+          { odooCustomerName: { contains: search, mode: 'insensitive' as const } },
+          { trackingNumber: { contains: search, mode: 'insensitive' as const } },
+          { odooStageName: { contains: search, mode: 'insensitive' as const } },
+        ],
+      } : {}),
+    }
+
+    const [data, total] = await Promise.all([
+      prisma.shipment.findMany({
+        where,
+        include: { status: true, provider: true, locker: true },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+      }),
+      prisma.shipment.count({ where }),
+    ])
+    return { data, total }
   }
 
   async ensureLockerDefaults() {

@@ -7,6 +7,7 @@
 jest.mock('../../repositories/job.repository', () => ({
   jobRepository: {
     findAll: jest.fn(),
+    count: jest.fn().mockResolvedValue(0),
     findById: jest.fn(),
     create: jest.fn(),
     update: jest.fn(),
@@ -25,28 +26,30 @@ const fakeJob = { id: 1, title: 'Dev', description: 'senior role' }
 // findAll
 // =====================================================================
 describe('jobService.findAll', () => {
-  it('G1 happy path: retorna array de JobResponseDto', async () => {
+  it('G1 happy path: retorna { data, total }', async () => {
     mocked(jobRepository.findAll).mockResolvedValue([fakeJob])
+    mocked(jobRepository.count).mockResolvedValue(1)
 
     const result = await jobService.findAll()
 
     expect(jobRepository.findAll).toHaveBeenCalledTimes(1)
-    expect(result).toEqual([fakeJob])
+    expect(result).toEqual({ data: [fakeJob], total: 1 })
   })
 
   it('G2 error de negocio: repo lanza → propaga', async () => {
     mocked(jobRepository.findAll).mockRejectedValue(new Error('DB down'))
+    mocked(jobRepository.count).mockResolvedValue(0)
 
     await expect(jobService.findAll()).rejects.toThrow('DB down')
   })
 
-  it('G3 caso inválido controlado: repo retorna [] → retorna []', async () => {
-    // caso inválido controlado
+  it('G3 caso inválido controlado: repo retorna [] → data:[] total:0', async () => {
     mocked(jobRepository.findAll).mockResolvedValue([])
+    mocked(jobRepository.count).mockResolvedValue(0)
 
     const result = await jobService.findAll()
 
-    expect(result).toEqual([])
+    expect(result).toEqual({ data: [], total: 0 })
   })
 })
 

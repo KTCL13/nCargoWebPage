@@ -1,12 +1,9 @@
 /// <reference types="jest" />
 
 // =====================================================================
-// Pruebas unitarias del route handler global /api/contracts
-// ---------------------------------------------------------------------
-// Este handler usa prisma directamente (no controlador/servicio).
-//   GET  /contracts       → lista paginada con búsqueda opcional
-//   PUT  /contracts?id=X  → actualiza campos permitidos del contrato
-// Cada método se cubre con los 3 grupos estándar.
+// Route handler tests for /api/contracts
+// After front2 refactor it delegates to contractsService and uses Zod.
+// secfix added requireAdmin.
 // =====================================================================
 
 jest.mock('next/server', () => {
@@ -22,18 +19,20 @@ jest.mock('next/server', () => {
   return { NextResponse, NextRequest }
 })
 
-jest.mock('@/lib/prisma', () => ({
-  prisma: {
-    contract: {
-      findMany: jest.fn(),
-      count: jest.fn(),
-      update: jest.fn(),
-    },
+jest.mock('@/modules/services/contracts.service', () => ({
+  contractsService: {
+    findAll: jest.fn(),
+    update: jest.fn(),
   },
 }))
 
+jest.mock('@/lib/auth-guard', () => ({
+  requireAdmin: jest.fn(),
+}))
+
 import { GET, PUT } from '../route'
-import { prisma } from '@/lib/prisma'
+import { contractsService } from '@/modules/services/contracts.service'
+import { requireAdmin } from '@/lib/auth-guard'
 
 const mocked = <T extends (...args: any) => any>(fn: T) => fn as unknown as jest.Mock
 
@@ -45,106 +44,77 @@ function makeReq({ url = 'http://localhost/api/contracts', body }: { url?: strin
   }
 }
 
-// =====================================================================
-// GET /contracts
-// =====================================================================
-describe('GET /api/contracts', () => {
-  it('G1 happy path: sin filtros retorna paginación con defaults', async () => {
-    const rawContracts = [{ id: 1, salary: 5000, employee: { id: 1, firstName: 'Ana', lastName: 'García' }, job: { id: 1, title: 'Dev' } }]
-    const mappedContracts = [{ id: 1, salary: 5000, employee: { id: 1, firstName: 'Ana', lastName: 'García', name: 'Ana García' }, job: { id: 1, title: 'Dev' } }]
-    mocked((prisma as any).contract.findMany).mockResolvedValue(rawContracts)
-    mocked((prisma as any).contract.count).mockResolvedValue(1)
+beforeEach(() => {
+  jest.clearAllMocks()
+  mocked(requireAdmin).mockReturnValue({ id: 1, email: 'a@x', role: 'ADMIN' })
+})
 
-    const res: any = await GET(makeReq())
+describe('GET /api/contracts', () => {
+  it('G1 happy path: admin forwards page/limit/search to contractsService', async () => {
+    mocked(contractsService.findAll).mockResolvedValue({ data: [], total: 0 })
+
+    const res: any = await GET(makeReq({ url: 'http://localhost/api/contracts?page=2&limit=5&search=ana' }))
 
     expect(res.status).toBe(200)
-    await expect(res.json()).resolves.toEqual({ data: mappedContracts, total: 1, page: 1, limit: 10 })
-    expect((prisma as any).contract.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({ where: {}, skip: 0, take: 10 }),
-    )
+    expect(contractsService.findAll).toHaveBeenCalledWith(2, 5, 'ana')
   })
 
-  it('G2 con búsqueda: construye where con OR insensitive sobre employee.name y job.title', async () => {
-    mocked((prisma as any).contract.findMany).mockResolvedValue([])
-    mocked((prisma as any).contract.count).mockResolvedValue(0)
+  it('G2 defaults: page=1, limit=10, search=""', async () => {
+    mocked(contractsService.findAll).mockResolvedValue({ data: [], total: 0 })
+    await GET(makeReq())
+    expect(contractsService.findAll).toHaveBeenCalledWith(1, 10, '')
+  })
 
-    await GET(makeReq({ url: 'http://localhost/api/contracts?search=Juan&page=2&limit=5' }))
-
-    const call = mocked((prisma as any).contract.findMany).mock.calls[0][0]
-    expect(call.where).toEqual({
-      OR: [
-        { employee: { firstName: { contains: 'Juan', mode: 'insensitive' } } },
-        { employee: { lastName: { contains: 'Juan', mode: 'insensitive' } } },
-        { job: { title: { contains: 'Juan', mode: 'insensitive' } } },
-      ],
+  it('G3 non-admin → 403', async () => {
+    mocked(requireAdmin).mockImplementationOnce(() => {
+      throw new Error('Forbidden: se requiere rol ADMIN')
     })
-    expect(call.skip).toBe(5)
-    expect(call.take).toBe(5)
+    const res: any = await GET(makeReq())
+    expect(res.status).toBe(403)
+    expect(contractsService.findAll).not.toHaveBeenCalled()
   })
 
-  it('G3 caso inválido controlado: page=0 se normaliza a 1 gracias a Math.max', async () => {
-    // caso inválido controlado
-    mocked((prisma as any).contract.findMany).mockResolvedValue([])
-    mocked((prisma as any).contract.count).mockResolvedValue(0)
-
-    const res: any = await GET(makeReq({ url: 'http://localhost/api/contracts?page=0&limit=-5' }))
-
-    const body = await res.json()
-    expect(body.page).toBe(1)
-    expect(body.limit).toBe(1)
-    const call = mocked((prisma as any).contract.findMany).mock.calls[0][0]
-    expect(call.skip).toBe(0)
-    expect(call.take).toBe(1)
+  it('G4 missing token → 401', async () => {
+    mocked(requireAdmin).mockImplementationOnce(() => {
+      throw new Error('Token no proporcionado')
+    })
+    const res: any = await GET(makeReq())
+    expect(res.status).toBe(401)
   })
 })
 
-// =====================================================================
-// PUT /contracts?id=X
-// =====================================================================
 describe('PUT /api/contracts?id=X', () => {
-  it('G1 happy path: retorna 200 con el contrato actualizado y pasa solo campos presentes a prisma.update', async () => {
-    const rawUpdated = { id: 7, salary: 8000, hourlyRate: 35, isActive: true, employee: { id: 1, firstName: 'Ana', lastName: 'García' }, job: { id: 1, title: 'Dev' }, contractType: { id: 1, name: 'MENSUAL' } }
-    const mappedUpdated = { ...rawUpdated, employee: { id: 1, firstName: 'Ana', lastName: 'García', name: 'Ana García' } }
-    mocked((prisma as any).contract.update).mockResolvedValue(rawUpdated)
-
-    const res: any = await PUT(
-      makeReq({ url: 'http://localhost/api/contracts?id=7', body: { salary: 8000, hourlyRate: 35 } }),
-    )
-
+  it('G1 happy path: validates and delegates update', async () => {
+    mocked(contractsService.update).mockResolvedValue({ id: 7, salary: 9000 })
+    const res: any = await PUT(makeReq({ url: 'http://localhost/api/contracts?id=7', body: { salary: 9000 } }))
     expect(res.status).toBe(200)
-    await expect(res.json()).resolves.toEqual(mappedUpdated)
-    const call = mocked((prisma as any).contract.update).mock.calls[0][0]
-    expect(call.where).toEqual({ id: 7 })
-    expect(call.data).toEqual({ salary: 8000, hourlyRate: 35 })
+    expect(contractsService.update).toHaveBeenCalledWith(7, { salary: 9000 })
   })
 
-  it('G2 error de negocio: prisma.update lanza "Record to update not found" → 400 con mensaje', async () => {
-    mocked((prisma as any).contract.update).mockRejectedValue(new Error('Record to update not found'))
-
-    const res: any = await PUT(
-      makeReq({ url: 'http://localhost/api/contracts?id=999', body: { salary: 1 } }),
-    )
-
+  it('G2 missing id → 400', async () => {
+    const res: any = await PUT(makeReq({ body: { salary: 9000 } }))
     expect(res.status).toBe(400)
-    await expect(res.json()).resolves.toEqual({ message: 'Record to update not found' })
+    expect(contractsService.update).not.toHaveBeenCalled()
   })
 
-  it('G3 caso inválido controlado: body con campos desconocidos (foo) → se ignoran por el spread condicional', async () => {
-    // caso inválido controlado
-    const updated = { id: 7 }
-    mocked((prisma as any).contract.update).mockResolvedValue(updated)
+  it('G3 ZodError on invalid body → 400 with first issue message', async () => {
+    const res: any = await PUT(makeReq({ url: 'http://localhost/api/contracts?id=7', body: { salary: 'not-a-number' } }))
+    expect(res.status).toBe(400)
+    expect(contractsService.update).not.toHaveBeenCalled()
+  })
 
-    await PUT(
-      makeReq({
-        url: 'http://localhost/api/contracts?id=7',
-        body: { foo: 'bar', baz: 123, salary: 9000 },
-      }),
-    )
+  it('G4 service throws not-found → 400', async () => {
+    mocked(contractsService.update).mockRejectedValue(new Error('Record to update not found'))
+    const res: any = await PUT(makeReq({ url: 'http://localhost/api/contracts?id=99', body: { salary: 5000 } }))
+    expect(res.status).toBe(400)
+  })
 
-    const call = mocked((prisma as any).contract.update).mock.calls[0][0]
-    // foo y baz nunca se pasan al payload de prisma
-    expect(call.data).toEqual({ salary: 9000 })
-    expect(call.data).not.toHaveProperty('foo')
-    expect(call.data).not.toHaveProperty('baz')
+  it('G5 non-admin → 403', async () => {
+    mocked(requireAdmin).mockImplementationOnce(() => {
+      throw new Error('Forbidden: se requiere rol ADMIN')
+    })
+    const res: any = await PUT(makeReq({ url: 'http://localhost/api/contracts?id=7', body: { salary: 9000 } }))
+    expect(res.status).toBe(403)
+    expect(contractsService.update).not.toHaveBeenCalled()
   })
 })

@@ -42,7 +42,7 @@ export const Destinations = () => {
                         <h1 id="hero-heading" className="font-titles font-black text-white tracking-tighter leading-[1.05] text-3xl md:text-4xl lg:text-6xl">
                             Enviamos a toda Colombia y México
                         </h1>
-                        <p className="font-body text-lg md:text-xl text-gray-400 leading-relaxed max-w-2xl">
+                        <p className="font-body text-lg md:text-xl text-gray-600 leading-relaxed max-w-2xl">
                             Cobertura nacional en ambos países con más de 200 ciudades destino.
                         </p>
                     </div>

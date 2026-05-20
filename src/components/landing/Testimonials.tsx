@@ -135,7 +135,7 @@ export const Testimonials = () => (
                                     {t.name}
                                     <span aria-label={t.flagLabel}>{t.flag}</span>
                                 </div>
-                                <div className="font-body text-xs text-gray-400">
+                                <div className="font-body text-xs text-gray-600">
                                     {t.city}
                                 </div>
                             </div>
