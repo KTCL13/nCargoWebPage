@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from 'react'
 import { AttendanceRegistry, AttendanceEmployee } from '@/types/admin/attendance'
+import { authFetch } from '@/lib/api-client/auth-fetch'
 
 const DEFAULT_LIMIT = 10
 
@@ -34,8 +35,8 @@ export function useAttendance(token: string | null) {
 
       const auth = { Authorization: `Bearer ${token}` }
       const [res, empRes] = await Promise.all([
-        fetch(`/api/attendance?${params}`, { headers: auth }),
-        fetch("/api/employees?limit=100", { headers: auth }),
+        authFetch(`/api/attendance?${params}`, { headers: auth }),
+        authFetch("/api/employees?limit=100", { headers: auth }),
       ])
 
       const data = await res.json()
@@ -64,7 +65,7 @@ export function useAttendance(token: string | null) {
     if (!token) return
     if (!confirm("¿Seguro que deseas cerrar esta jornada manualmente?")) return
     try {
-      const res = await fetch(`/api/attendance/force-close?id=${id}`, {
+      const res = await authFetch(`/api/attendance/force-close?id=${id}`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
       })

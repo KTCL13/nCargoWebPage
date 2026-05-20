@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useDebounce } from '@/hooks/useDebounce'
+import { authFetch } from '@/lib/api-client/auth-fetch'
 
 interface Employee {
   id: number
@@ -76,7 +77,7 @@ export function EmployeeSearch({
 
       setLoading(true)
       try {
-        const res = await fetch(`/api/employees?search=${encodeURIComponent(debouncedQuery)}&limit=10`)
+        const res = await authFetch(`/api/employees?search=${encodeURIComponent(debouncedQuery)}&limit=10`)
         const json = await res.json()
         const data = json.data || json || []
         setResults(Array.isArray(data) ? data : [])

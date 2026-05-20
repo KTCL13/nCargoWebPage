@@ -3,6 +3,7 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/context/AuthContext'
+import { authFetch } from '@/lib/api-client/auth-fetch'
 
 // ── Types ─────────────────────────────────────────────────────────────────
 type NotifItem = {
@@ -126,7 +127,7 @@ export function NotificationBell() {
     if (!token) return
     setLoading(true)
     try {
-      const res  = await fetch(`/api/notifications?pageSize=${PAGE_SIZE}&page=${p}`, { headers: authH() })
+      const res  = await authFetch(`/api/notifications?pageSize=${PAGE_SIZE}&page=${p}`, { headers: authH() })
       const data = await res.json()
       setItems(data.data  ?? [])
       setTotal(data.total ?? 0)
@@ -138,7 +139,7 @@ export function NotificationBell() {
   const checkUnread = useCallback(async () => {
     if (!token) return
     try {
-      const res   = await fetch('/api/notifications?unread=true', { headers: authH() })
+      const res   = await authFetch('/api/notifications?unread=true', { headers: authH() })
       const data  = await res.json()
       const count = (data.total ?? data.data?.length ?? 0) as number
 
@@ -210,7 +211,7 @@ export function NotificationBell() {
 
   const markRead = async (item: NotifItem) => {
     if (!item.read) {
-      await fetch('/api/notifications', {
+      await authFetch('/api/notifications', {
         method:  'PATCH',
         headers: { ...authH(), 'Content-Type': 'application/json' },
         body:    JSON.stringify({ id: item.id, read: true }),
@@ -224,7 +225,7 @@ export function NotificationBell() {
   }
 
   const markAllRead = async () => {
-    await fetch('/api/notifications', {
+    await authFetch('/api/notifications', {
       method:  'PATCH',
       headers: { ...authH(), 'Content-Type': 'application/json' },
       body:    JSON.stringify({ all: true }),
@@ -236,7 +237,7 @@ export function NotificationBell() {
 
   const deleteItem = async (id: number) => {
     const wasUnread = items.find(n => n.id === id)?.read === false
-    await fetch(`/api/notifications?id=${id}`, { method: 'DELETE', headers: authH() })
+    await authFetch(`/api/notifications?id=${id}`, { method: 'DELETE', headers: authH() })
     setItems(ns => ns.filter(n => n.id !== id))
     setTotal(t => Math.max(0, t - 1))
     if (wasUnread) {

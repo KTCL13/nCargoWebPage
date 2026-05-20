@@ -1,6 +1,8 @@
+import { authFetch } from './auth-fetch'
+
 export const jornadaClient = {
   async getToday(token: string) {
-    const res = await fetch(`/api/attendance/today?_=${Date.now()}`, {
+    const res = await authFetch(`/api/attendance/today?_=${Date.now()}`, {
       headers: { Authorization: `Bearer ${token}` },
       cache: 'no-store',
     })
@@ -12,7 +14,7 @@ export const jornadaClient = {
   },
 
   async action(token: string, path: string) {
-    const res = await fetch(path, {
+    const res = await authFetch(path, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -31,8 +33,8 @@ export const jornadaClient = {
 
   async loadTasks(token: string, employeeId: number) {
     const [pendingRes, inProgressRes] = await Promise.all([
-      fetch(`/api/tasks?employeeId=${employeeId}&status=PENDING&limit=50`, { headers: { Authorization: `Bearer ${token}` } }),
-      fetch(`/api/tasks?employeeId=${employeeId}&status=IN_PROGRESS&limit=50`, { headers: { Authorization: `Bearer ${token}` } }),
+      authFetch(`/api/tasks?employeeId=${employeeId}&status=PENDING&limit=50`, { headers: { Authorization: `Bearer ${token}` } }),
+      authFetch(`/api/tasks?employeeId=${employeeId}&status=IN_PROGRESS&limit=50`, { headers: { Authorization: `Bearer ${token}` } }),
     ])
     const [pending, inProgress] = await Promise.all([
       pendingRes.ok ? pendingRes.json() : { data: [] },
@@ -45,7 +47,7 @@ export const jornadaClient = {
   },
 
   async completeTask(token: string, taskId: number) {
-    const res = await fetch(`/api/tasks?id=${taskId}`, {
+    const res = await authFetch(`/api/tasks?id=${taskId}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',

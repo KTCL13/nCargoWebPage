@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect, useMemo } from 'react'
 import { Country, CityItem, Office } from '@/types/cotizaciones'
+import { authFetch } from '@/lib/api-client/auth-fetch'
 
 export function useCitiesAndOffices(country: Country, dept: string) {
   const [allCities, setAllCities] = useState<CityItem[]>([])
@@ -11,7 +12,7 @@ export function useCitiesAndOffices(country: Country, dept: string) {
   const [origin, setOrigin] = useState<Office | null>(null)
 
   useEffect(() => {
-    fetch('/api/pickup-points?active=true')
+    authFetch('/api/pickup-points?active=true')
       .then(r => r.json())
       .then(data => {
         const list: Office[] = data.data ?? []

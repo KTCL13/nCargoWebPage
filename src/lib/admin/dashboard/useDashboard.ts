@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from 'react'
 import { useAuth } from '@/context/AuthContext'
+import { authFetch } from '@/lib/api-client/auth-fetch'
 
 export type DashboardEmployee = {
   id: number
@@ -41,10 +42,10 @@ export function useDashboard() {
     const auth = { Authorization: `Bearer ${token}` }
 
     const [empRes, workloadRes, attendanceRes, quotationsRes] = await Promise.allSettled([
-      fetch('/api/employees?status=ACTIVE&limit=1', { headers: auth }).then(r => r.json()),
-      fetch('/api/analytics/workload', { headers: auth }).then(r => r.json()),
-      fetch('/api/attendance?page=1&pageSize=1', { headers: auth }).then(r => r.json()),
-      fetch('/api/quotations?page=1&limit=1', { headers: auth }).then(r => r.json()),
+      authFetch('/api/employees?status=ACTIVE&limit=1', { headers: auth }).then(r => r.json()),
+      authFetch('/api/analytics/workload', { headers: auth }).then(r => r.json()),
+      authFetch('/api/attendance?page=1&pageSize=1', { headers: auth }).then(r => r.json()),
+      authFetch('/api/quotations?page=1&limit=1', { headers: auth }).then(r => r.json()),
     ])
 
     if (empRes.status === 'fulfilled') setActiveCount(empRes.value.total ?? 0)
@@ -62,7 +63,7 @@ export function useDashboard() {
     if (quotationsRes.status === 'fulfilled') setTotalQuotations(quotationsRes.value.total ?? 0)
 
     try {
-      const empList = await fetch('/api/employees?page=1&limit=4', { headers: auth }).then(r => r.json())
+      const empList = await authFetch('/api/employees?page=1&limit=4', { headers: auth }).then(r => r.json())
       setRecentEmployees(empList.data ?? [])
     } catch { /* silent */ }
   }, [token])

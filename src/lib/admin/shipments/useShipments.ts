@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { Locker, Envio } from '@/types/admin/shipments'
+import { authFetch } from '@/lib/api-client/auth-fetch'
 
 const DEFAULT_LIMIT = 10
 
@@ -37,7 +38,7 @@ export function useShipments(token: string | null) {
     setLockersLoading(true)
     try {
       const p = new URLSearchParams({ page: String(lockersPage + 1), limit: String(lockersPageSize) })
-      const res = await fetch(`/api/lockers?${p}`, { headers })
+      const res = await authFetch(`/api/lockers?${p}`, { headers })
       const json = await res.json()
       setLockers(json.data ?? [])
       setLockersTotal(json.total ?? 0)
@@ -50,7 +51,7 @@ export function useShipments(token: string | null) {
     try {
       const params = new URLSearchParams({ page: String(enviosPage + 1), limit: String(enviosPageSize) })
       if (debouncedEnvioSearch) params.set('search', debouncedEnvioSearch)
-      const res = await fetch(`/api/lockers/${selectedLocker.id}/shipments?${params}`, { headers })
+      const res = await authFetch(`/api/lockers/${selectedLocker.id}/shipments?${params}`, { headers })
       const json = await res.json()
       setEnvios(json.data ?? [])
       setEnviosTotal(json.total ?? 0)
@@ -63,7 +64,7 @@ export function useShipments(token: string | null) {
   const handleSync = async () => {
     setSyncing(true)
     try {
-      const res = await fetch('/api/odoo/sync-lockers', {
+      const res = await authFetch('/api/odoo/sync-lockers', {
         method: 'POST',
         headers: { ...headers, 'Content-Type': 'application/json' },
         body: JSON.stringify({ searchTerm: syncTerm.trim() || undefined }),

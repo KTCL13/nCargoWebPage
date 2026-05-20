@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Employee } from '@/types/admin/employees'
+import { authFetch } from '@/lib/api-client/auth-fetch'
 
 interface EmployeeKPIProps {
   employees: Employee[]
@@ -9,7 +10,7 @@ export function EmployeeKPI({ employees }: EmployeeKPIProps) {
   const [activeCount, setActiveCount] = useState<number | null>(null)
 
   useEffect(() => {
-    fetch('/api/employees?status=ACTIVE&limit=1')
+    authFetch('/api/employees?status=ACTIVE&limit=1')
       .then(r => r.json())
       .then(d => setActiveCount(d.total ?? 0))
       .catch(() => setActiveCount(0))
