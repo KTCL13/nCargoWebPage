@@ -1,13 +1,7 @@
 import type { Metadata } from 'next';
 import { Navbar } from '@/components/landing/Navbar';
 import { Hero } from '@/components/landing/Hero';
-import dynamic from 'next/dynamic';
-
-const Benefits = dynamic(() => import('@/components/landing/Benefits').then(mod => mod.Benefits), { ssr: false });
-const HowItWorks = dynamic(() => import('@/components/landing/HowItWorks').then(mod => mod.HowItWorks), { ssr: false });
-const Destinations = dynamic(() => import('@/components/landing/Destinations').then(mod => mod.Destinations), { ssr: false });
-const CTASection = dynamic(() => import('@/components/landing/CTASection').then(mod => mod.CTASection), { ssr: false });
-const Footer = dynamic(() => import('@/components/landing/Footer').then(mod => mod.Footer), { ssr: false });
+import { LandingLazyWrapper } from '@/components/landing/LandingLazyWrapper';
 import { ScrollReveal } from '@/components/layout/ScrollReveal';
 
 export const metadata: Metadata = {
@@ -28,12 +22,8 @@ export default function LandingPage() {
             <Navbar />
             <main id="main-content" className="min-h-screen" tabIndex={-1}>
                 <Hero />
-                <Benefits />
-                <HowItWorks />
-                <Destinations />
-                <CTASection />
+                <LandingLazyWrapper />
             </main>
-            <Footer />
         </ScrollReveal>
     );
 }

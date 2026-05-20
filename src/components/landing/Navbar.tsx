@@ -1,5 +1,6 @@
 'use client'
 import Link from 'next/link';
+import Image from 'next/image';
 import { useState, useEffect, useId } from 'react';
 import { Icons } from '@/components/ui/Icons';
 
@@ -45,7 +46,7 @@ export const Navbar = () => {
                 className={`fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-5 lg:px-[6%] h-[80px] transition-all duration-300 border-b ${navStyle}`}
             >
                 <Link href="/" aria-label="N-Cargo" className="rounded-[var(--radius-md)] focus-visible:ring-3 focus-visible:ring-[var(--color-primary)] outline-none">
-                    <img src="/images/logos/77.PNG" alt="N-Cargo" className="h-[60px] w-auto object-contain rounded-[var(--radius-md)]" width={120} height={60} />
+                    <Image src="/images/logos/77.PNG" alt="N-Cargo" className="h-[60px] w-auto object-contain rounded-[var(--radius-md)]" width={202} height={60} />
                 </Link>
 
                 <ul className="hidden md:flex items-center gap-1">

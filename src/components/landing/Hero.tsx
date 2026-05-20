@@ -1,7 +1,6 @@
 import Link from 'next/link';
 import Image from 'next/image';
-import dynamic from 'next/dynamic';
-const Calculator = dynamic(() => import('@/components/landing/ShippingCalculator').then(mod => mod.Calculator), { ssr: false });
+import { Calculator } from '@/components/landing/ShippingCalculator';
 import { Icons } from '@/components/ui/Icons';
 
 export const Hero = () => (
@@ -16,8 +15,9 @@ export const Hero = () => (
                 src="/images/website/45.PNG"
                 alt="Fondo N-Cargo"
                 fill
-                priority
+                priority={true}
                 fetchPriority="high"
+                loading="eager"
                 quality={70}
                 sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                 className="object-cover object-center"

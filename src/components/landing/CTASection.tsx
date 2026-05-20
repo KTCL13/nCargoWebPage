@@ -1,5 +1,5 @@
-// components/landing/CTASection.tsx
 import Link from 'next/link';
+import Image from 'next/image';
 
 /* ── Constantes ────────────────────────────────────────────────────── */
 const BG_OVERLAY = 'linear-gradient(135deg, rgba(4,6,38,.92) 0%, rgba(12,30,140,.85) 60%, rgba(4,6,38,.90) 100%)';
@@ -13,7 +13,17 @@ export const CTASection = () => (
         className="relative py-20 px-5 lg:px-[5%] text-center overflow-hidden"
     >
         {/* Fondo y Overlay */}
-        <div className="absolute inset-0 bg-cover bg-center -z-20" style={{ backgroundImage: "url('/images/website/54.PNG')" }} role="presentation" />
+        <div className="absolute inset-0 -z-20" role="presentation">
+            <Image
+                src="/images/website/54.PNG"
+                alt="Fondo CTA"
+                fill
+                priority
+                sizes="100vw"
+                quality={75}
+                className="object-cover object-center -z-20"
+            />
+        </div>
         <div className="absolute inset-0 -z-10" style={{ background: BG_OVERLAY }} aria-hidden="true" />
 
         <div className="relative z-10 max-w-2xl mx-auto animate-fade-in-up">
