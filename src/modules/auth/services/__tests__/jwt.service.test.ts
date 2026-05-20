@@ -26,12 +26,12 @@ describe('jwt.service', () => {
 
         it('G3 rejects known weak secret values at runtime', () => {
             process.env.JWT_SECRET = 'ncargo_secret_key_change_in_production'
-            expect(() => jwtService.sign({ id: 1, email: 'x', role: 'ADMIN' })).toThrow(/débil/)
+            expect(() => jwtService.sign({ id: 1, email: 'x', role: 'ADMIN' })).toThrow(/inseguro/)
         })
 
-        it('G4 rejects short secrets (<32 chars)', () => {
+        it('G4 rejects short secrets (<32 chars) and reports the length received', () => {
             process.env.JWT_SECRET = 'too-short'
-            expect(() => jwtService.sign({ id: 1, email: 'x', role: 'ADMIN' })).toThrow(/débil|32 bytes/)
+            expect(() => jwtService.sign({ id: 1, email: 'x', role: 'ADMIN' })).toThrow(/demasiado corto.*9 chars/)
         })
     })
 
