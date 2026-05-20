@@ -87,6 +87,19 @@ export default function ReportesPage() {
     const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `reporte-ncargo-${new Date().toISOString().slice(0, 10)}.csv`; a.click(); URL.revokeObjectURL(url)
   }
 
+  const handleExportPDF = () => {
+    const win = window.open('', '_blank', 'width=960,height=720')
+    if (!win) return
+    const dateRange = [appliedFilters.from ? `Desde: ${appliedFilters.from}` : '', appliedFilters.to ? `Hasta: ${appliedFilters.to}` : ''].filter(Boolean).join(' · ') || 'Todo el período'
+    const perfStart = perfTotal === 0 ? 0 : perfPage * PERF_LIMIT + 1
+    const perfEnd = Math.min((perfPage + 1) * PERF_LIMIT, perfTotal)
+    const tr = (cells: string[]) => `<tr>${cells.map(c => `<td>${c}</td>`).join('')}</tr>`
+    const perfRows = sortedPerformance.map(p => tr([p.employeeName, String(p.tasksCompleted), fmt(p.avgCompletionMinutes), `${p.totalWorkedHours}h`, String(p.notDoneCount)])).join('') || '<tr><td colspan="5" style="text-align:center;color:#999">Sin datos</td></tr>'
+    const wlRows = sortedWorkload.map(w => tr([w.employeeName, String(w.totalTasks), String(w.pendingCount), String(w.inProgressCount), String(w.completedCount), String(w.notDoneCount)])).join('') || '<tr><td colspan="6" style="text-align:center;color:#999">Sin datos</td></tr>'
+    win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Reporte nCargo</title><style>body{font-family:Arial,sans-serif;font-size:12px;color:#333;margin:24px}h1{font-size:20px;margin:0 0 2px}.sub{font-size:11px;color:#666;margin:0 0 20px}h2{font-size:13px;margin:20px 0 6px;padding-bottom:4px;border-bottom:2px solid #eee;text-transform:uppercase}table{width:100%;border-collapse:collapse;margin-bottom:16px}th{background:#f5f5f5;font-weight:bold;padding:6px 8px;border:1px solid #ddd;font-size:11px;text-align:left}td{padding:5px 8px;border:1px solid #eee}tr:nth-child(even){background:#fafafa}@media print{body{margin:0}}</style></head><body><h1>Reportes y Analítica — nCargo</h1><p class="sub">Generado el ${new Date().toLocaleString('es')} · ${dateRange}</p><h2>Rendimiento de Empleados (${perfStart}–${perfEnd} de ${perfTotal})</h2><table><thead><tr><th>Empleado</th><th>Tareas</th><th>Tiempo prom.</th><th>Horas</th><th>No completadas</th></tr></thead><tbody>${perfRows}</tbody></table><h2>Distribución de Carga</h2><table><thead><tr><th>Empleado</th><th>Total</th><th>Pendientes</th><th>En progreso</th><th>Completadas</th><th>No hechas</th></tr></thead><tbody>${wlRows}</tbody></table><script>window.onload=function(){window.print()}</script></body></html>`)
+    win.document.close()
+  }
+
   return (
     <DashboardLayout pageTitle="Reportes" navItems={NAV_ITEMS} onReload={fetchMain}>
       <div className="space-y-8">
@@ -126,6 +139,7 @@ export default function ReportesPage() {
             <div className="flex items-center gap-2">
               <button onClick={() => setAppliedFilters({ from: fromDate, to: toDate, employeeId: selectedEmployeeId })} className="px-3 py-1.5 rounded-lg bg-[var(--color-primary)] text-white text-xs font-bold hover:opacity-90 transition shadow-sm">🔄 Filtrar</button>
               <button onClick={handleExportCSV} className="px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-bold hover:opacity-90 transition shadow-sm">📊 Excel</button>
+              <button onClick={handleExportPDF} className="px-3 py-1.5 rounded-lg bg-rose-600 text-white text-xs font-bold hover:opacity-90 transition shadow-sm">📄 PDF</button>
             </div>
           </div>
         </div>
