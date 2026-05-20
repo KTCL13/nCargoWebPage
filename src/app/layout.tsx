@@ -2,7 +2,6 @@
 import type { Metadata } from "next";
 import { leagueSpartan, poppins, montserrat } from "@/lib/fonts";
 import "./globals.css";
-import "leaflet/dist/leaflet.css";
 import { AuthProvider } from '@/context/AuthContext';
 
 export const metadata: Metadata = {

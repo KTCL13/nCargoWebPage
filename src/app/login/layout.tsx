@@ -5,7 +5,7 @@ export const metadata: Metadata = {
     description:
         'Accede a tu cuenta N-Cargo para gestionar envíos, cotizaciones y operaciones de carga internacional desde Estados Unidos.',
     keywords: ['login N-Cargo', 'acceso plataforma', 'gestión envíos'],
-    robots: { index: false, follow: false },
+    robots: { index: true, follow: true },
 };
 
 export default function LoginLayout({ children }: { children: React.ReactNode }) {
