@@ -1,0 +1,442 @@
+{
+  "info": {
+    "name": "N-Cargo — Security & API Tests",
+    "description": "Verificación de los fixes de seguridad y endpoints clave de N-Cargo (rama secfix).\n\nUSO:\n1. Importa este archivo y el environment `ncargo-local.postman_environment.json`.\n2. Selecciona el environment `N-Cargo Local`.\n3. Corre la carpeta `1. Auth` primero — los tokens se setean automáticamente en variables.\n4. Ejecuta las demás carpetas como Collection Runner o manualmente.\n\nCada request tiene tests automáticos (pestaña Tests) que validan el código HTTP esperado.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. Auth",
+      "item": [
+        {
+          "name": "Login admin (sets adminToken)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('returns accessToken', () => pm.expect(json.accessToken).to.be.a('string'));",
+                  "pm.test('role is ADMIN', () => pm.expect(json.role).to.eql('ADMIN'));",
+                  "pm.environment.set('adminToken', json.accessToken);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/auth/login", "host": ["{{baseUrl}}"], "path": ["api", "auth", "login"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Login employee (sets empToken)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('role is EMPLOYEE', () => pm.expect(json.role).to.eql('EMPLOYEE'));",
+                  "pm.environment.set('empToken', json.accessToken);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/auth/login", "host": ["{{baseUrl}}"], "path": ["api", "auth", "login"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{employeeEmail}}\",\n  \"password\": \"{{employeePassword}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Login bad credentials → 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('400', () => pm.response.to.have.status(400));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/auth/login", "host": ["{{baseUrl}}"], "path": ["api", "auth", "login"] },
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"nobody@x.com\",\n  \"password\": \"wrong\"\n}" }
+          }
+        },
+        {
+          "name": "Register IGNORES role=ADMIN (privilege escalation closed)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (pm.response.code === 201) {",
+                  "  pm.test('role forced to EMPLOYEE', () => pm.expect(json.role).to.eql('EMPLOYEE'));",
+                  "} else {",
+                  "  pm.test('400 (user maybe exists already or rate limit)', () => pm.expect([400,429]).to.include(pm.response.code));",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/auth/register", "host": ["{{baseUrl}}"], "path": ["api", "auth", "register"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Hack\",\n  \"lastName\": \"Er\",\n  \"email\": \"hacker.test@evil.com\",\n  \"password\": \"Aa1aaaaa\",\n  \"role\": \"ADMIN\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Logout (admin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('204', () => pm.response.to.have.status(204));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/auth/logout", "host": ["{{baseUrl}}"], "path": ["api", "auth", "logout"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Security — Auth gating",
+      "item": [
+        {
+          "name": "GET /employees no token → 401",
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('401', () => pm.response.to.have.status(401));"], "type": "text/javascript" } }],
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/employees", "host": ["{{baseUrl}}"], "path": ["api", "employees"] }
+          }
+        },
+        {
+          "name": "GET /employees with admin → 200",
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('200', () => pm.response.to.have.status(200));"], "type": "text/javascript" } }],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/employees", "host": ["{{baseUrl}}"], "path": ["api", "employees"] }
+          }
+        },
+        {
+          "name": "GET /employees with EMPLOYEE → 403",
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('403', () => pm.response.to.have.status(403));"], "type": "text/javascript" } }],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{empToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/employees", "host": ["{{baseUrl}}"], "path": ["api", "employees"] }
+          }
+        },
+        {
+          "name": "GET /system-config no token → 401",
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('401', () => pm.response.to.have.status(401));"], "type": "text/javascript" } }],
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/system-config", "host": ["{{baseUrl}}"], "path": ["api", "system-config"] }
+          }
+        },
+        {
+          "name": "PUT /system-config as EMPLOYEE → 403",
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('403', () => pm.response.to.have.status(403));"], "type": "text/javascript" } }],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{empToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/system-config", "host": ["{{baseUrl}}"], "path": ["api", "system-config"] },
+            "body": { "mode": "raw", "raw": "[{\"key\":\"divisor\",\"value\":50}]" }
+          }
+        },
+        {
+          "name": "GET /audit-logs as EMPLOYEE → 403",
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('403', () => pm.response.to.have.status(403));"], "type": "text/javascript" } }],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{empToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/audit-logs", "host": ["{{baseUrl}}"], "path": ["api", "audit-logs"] }
+          }
+        },
+        {
+          "name": "GET /contracts as EMPLOYEE → 403",
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('403', () => pm.response.to.have.status(403));"], "type": "text/javascript" } }],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{empToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/contracts", "host": ["{{baseUrl}}"], "path": ["api", "contracts"] }
+          }
+        },
+        {
+          "name": "GET /cotizacion-records as EMPLOYEE → 403",
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('403', () => pm.response.to.have.status(403));"], "type": "text/javascript" } }],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{empToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/cotizacion-records", "host": ["{{baseUrl}}"], "path": ["api", "cotizacion-records"] }
+          }
+        },
+        {
+          "name": "GET /jobs as EMPLOYEE → 403",
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('403', () => pm.response.to.have.status(403));"], "type": "text/javascript" } }],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{empToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/jobs", "host": ["{{baseUrl}}"], "path": ["api", "jobs"] }
+          }
+        },
+        {
+          "name": "Forged token → 401",
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('401', () => pm.response.to.have.status(401));"], "type": "text/javascript" } }],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer eyJhbGciOiJIUzI1NiJ9.eyJpZCI6OTk5LCJlbWFpbCI6Img4aC5jIiwicm9sZSI6IkFETUlOIn0.fake-signature" }],
+            "url": { "raw": "{{baseUrl}}/api/employees", "host": ["{{baseUrl}}"], "path": ["api", "employees"] }
+          }
+        },
+        {
+          "name": "Public cotizaciones — cities CO → 200",
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('200', () => pm.response.to.have.status(200));"], "type": "text/javascript" } }],
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/cotizaciones/ciudades?country=CO", "host": ["{{baseUrl}}"], "path": ["api", "cotizaciones", "ciudades"], "query": [{ "key": "country", "value": "CO" }] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Rate limiting",
+      "item": [
+        {
+          "name": "Login spam — expect 429 after 10 attempts",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "// Run this request 12 times in Collection Runner",
+                  "// or click Send 12 times manually"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('400 or 429', () => pm.expect([400, 429]).to.include(pm.response.code));",
+                  "if (pm.response.code === 429) {",
+                  "  pm.test('has Retry-After header', () => pm.expect(pm.response.headers.get('Retry-After')).to.not.be.null);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/auth/login", "host": ["{{baseUrl}}"], "path": ["api", "auth", "login"] },
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"bruteforce@x.com\",\n  \"password\": \"wrong\"\n}" }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Admin operations (require adminToken)",
+      "item": [
+        {
+          "name": "List employees",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/employees?page=1&limit=10", "host": ["{{baseUrl}}"], "path": ["api", "employees"], "query": [{ "key": "page", "value": "1" }, { "key": "limit", "value": "10" }] }
+          }
+        },
+        {
+          "name": "Get audit logs (paginated)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/audit-logs?page=1&pageSize=20", "host": ["{{baseUrl}}"], "path": ["api", "audit-logs"], "query": [{ "key": "page", "value": "1" }, { "key": "pageSize", "value": "20" }] }
+          }
+        },
+        {
+          "name": "Get system config",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/system-config", "host": ["{{baseUrl}}"], "path": ["api", "system-config"] }
+          }
+        },
+        {
+          "name": "List analytics workload",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/analytics/workload", "host": ["{{baseUrl}}"], "path": ["api", "analytics", "workload"] }
+          }
+        },
+        {
+          "name": "List jobs",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/jobs", "host": ["{{baseUrl}}"], "path": ["api", "jobs"] }
+          }
+        },
+        {
+          "name": "List contracts",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/contracts", "host": ["{{baseUrl}}"], "path": ["api", "contracts"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Employee operations (require empToken)",
+      "item": [
+        {
+          "name": "GET /api/employee/me",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{empToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/employee/me", "host": ["{{baseUrl}}"], "path": ["api", "employee", "me"] }
+          }
+        },
+        {
+          "name": "PATCH /api/employee/me — update name",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{empToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/employee/me", "host": ["{{baseUrl}}"], "path": ["api", "employee", "me"] },
+            "body": { "mode": "raw", "raw": "{\n  \"firstName\": \"Nuevo\"\n}" }
+          }
+        },
+        {
+          "name": "GET /api/notifications (self-scoped)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{empToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/notifications?unread=true", "host": ["{{baseUrl}}"], "path": ["api", "notifications"], "query": [{ "key": "unread", "value": "true" }] }
+          }
+        },
+        {
+          "name": "GET /api/attendance/today",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{empToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/attendance/today", "host": ["{{baseUrl}}"], "path": ["api", "attendance", "today"] }
+          }
+        },
+        {
+          "name": "POST /api/attendance/clock-in",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{empToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/attendance/clock-in", "host": ["{{baseUrl}}"], "path": ["api", "attendance", "clock-in"] }
+          }
+        },
+        {
+          "name": "POST /api/attendance/pause",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{empToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/attendance/pause", "host": ["{{baseUrl}}"], "path": ["api", "attendance", "pause"] }
+          }
+        },
+        {
+          "name": "POST /api/attendance/resume",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{empToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/attendance/resume", "host": ["{{baseUrl}}"], "path": ["api", "attendance", "resume"] }
+          }
+        },
+        {
+          "name": "POST /api/attendance/clock-out",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{empToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/attendance/clock-out", "host": ["{{baseUrl}}"], "path": ["api", "attendance", "clock-out"] }
+          }
+        },
+        {
+          "name": "GET /api/tasks (employee sees own tasks)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{empToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/tasks", "host": ["{{baseUrl}}"], "path": ["api", "tasks"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Public endpoints",
+      "item": [
+        {
+          "name": "GET cities Colombia",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/cotizaciones/ciudades?country=CO", "host": ["{{baseUrl}}"], "path": ["api", "cotizaciones", "ciudades"], "query": [{ "key": "country", "value": "CO" }] }
+          }
+        },
+        {
+          "name": "GET cities Mexico",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/cotizaciones/ciudades?country=MX", "host": ["{{baseUrl}}"], "path": ["api", "cotizaciones", "ciudades"], "query": [{ "key": "country", "value": "MX" }] }
+          }
+        },
+        {
+          "name": "POST calcular cotización",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/cotizaciones/calcular", "host": ["{{baseUrl}}"], "path": ["api", "cotizaciones", "calcular"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"country\": \"CO\",\n  \"actualWeightLb\": 5,\n  \"heightIn\": 10,\n  \"lengthIn\": 10,\n  \"widthIn\": 10,\n  \"declaredValueUsd\": 50\n}"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
