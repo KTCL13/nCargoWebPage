@@ -18,7 +18,7 @@ export const metadata = {
 
 const SafeImage = ({ src, fill, ...props }: any) =>
   src ? (
-    <Image src={src} fill={fill} {...props} />
+    <Image src={src} fill={fill} sizes="(max-width: 1024px) 100vw, 55vw" {...props} />
   ) : (
     <div
       {...props}

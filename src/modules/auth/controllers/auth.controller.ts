@@ -48,10 +48,16 @@ class AuthController {
             })
             return response
         } catch (error) {
-            return NextResponse.json(
-                { message: error instanceof Error ? error.message : 'Error interno del servidor' },
-                { status: 400 },
-            )
+            const message = error instanceof Error ? error.message : 'Error interno del servidor';
+            let status = 400; // Por defecto: Bad Request (ej. validación fallida)
+
+            if (message === 'Credenciales inválidas' || message.includes('inactiva')) {
+                status = 401; // Unauthorized
+            } else if (!message.includes('obligatori') && !message.includes('Credenciales') && !message.includes('Token')) {
+                status = 500; // Internal Server Error (ej. timeout de DB)
+            }
+
+            return NextResponse.json({ message }, { status });
         }
     }
 

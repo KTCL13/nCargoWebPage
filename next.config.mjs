@@ -1,6 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  productionBrowserSourceMaps: true,
 
   serverExternalPackages: ["@prisma/client", "prisma", "pdfkit", "exceljs"],
 

@@ -15,7 +15,7 @@ const FONTS = {
 
 const CLASSES = {
   input:
-    "w-full px-4 py-3 rounded-xl border border-gray-200 bg-[#F9FAFB] text-sm text-[#040626] outline-none focus:border-[#FF003B] focus:ring-2 focus:ring-[#FF003B]/25 transition-all",
+    "w-full px-4 py-3 rounded-xl border border-gray-200 bg-[#F9FAFB] text-sm text-[#040626] outline-none focus:border-[#FF003B] focus:ring-2 focus:ring-[#FF003B]/25 transition-[border-color,box-shadow] duration-200",
   label:
     "text-xs font-semibold text-gray-700 uppercase tracking-widest mb-1 block",
 };
@@ -80,7 +80,7 @@ export default function ForgotPasswordClient() {
       <button
         type="submit"
         disabled={loading}
-        className="py-3 mt-2 rounded-xl font-bold text-white bg-gradient-to-r from-[#040626] to-[#FF003B] transition-all hover:opacity-90 disabled:opacity-50"
+        className="py-3 mt-2 rounded-xl font-bold text-white bg-gradient-to-r from-[#040626] to-[#FF003B] transition-[opacity,transform] duration-200 hover:opacity-90 disabled:opacity-50"
         style={{ fontFamily: FONTS.title }}
       >
         {loading ? 'Enviando...' : 'Enviar enlace'}
