@@ -5,7 +5,10 @@ import { DashboardLayout } from '@/components/layout/DashboardLayout'
 import { NAV_ITEMS } from '@/components/layout/nav-config'
 import { useAuth } from '@/context/AuthContext'
 import { Pagination } from '@/components/ui/Pagination'
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as ReTooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts'
+import dynamic from 'next/dynamic'
+
+const LazyPieChart = dynamic(() => import('./_components/LazyPieChart'), { ssr: false, loading: () => <LoadingSkeleton rows={1} /> })
+const LazyBarChart = dynamic(() => import('./_components/LazyBarChart'), { ssr: false, loading: () => <LoadingSkeleton rows={1} /> })
 import { useReports } from '@/lib/admin/reports/useReports'
 import { SEVERITY_ORDER, SEVERITY_STYLES, SEVERITY_LABEL, TYPE_LABEL } from '@/types/admin/reports'
 import { EmployeeSearch } from '@/components/ui/EmployeeSearch'
@@ -144,25 +147,25 @@ export default function ReportesPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 min-h-[120px]">
           <KpiCard icon="🚨" label="Alertas" value={loading.alerts ? '—' : alerts.length} accent="bg-red-50 border-red-100" />
           <KpiCard icon="✅" label="Tareas OK" value={loading.performance ? '—' : performance.reduce((s, p) => s + p.tasksCompleted, 0)} />
           <KpiCard icon="⚡" label="En proceso" value={loading.workload ? '—' : workload.reduce((s, w) => s + w.inProgressCount, 0)} />
           <KpiCard icon="⏱️" label="Horas" value={loading.performance ? '—' : Math.round(performance.reduce((s, p) => s + p.totalWorkedHours, 0))} />
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 min-h-[360px]">
           <Section title="📊 Estado Global">
             <div className="h-[300px] w-full relative">
               {loading.workload ? <LoadingSkeleton rows={1} /> : pieData.length > 0 ? (
-                <ResponsiveContainer width="100%" height={300} minWidth={0} minHeight={0} debounce={50}><PieChart><Pie data={pieData} innerRadius={60} outerRadius={100} paddingAngle={5} dataKey="value">{pieData.map((entry, i) => <Cell key={i} fill={entry.color} />)}</Pie><ReTooltip /><Legend /></PieChart></ResponsiveContainer>
+                <LazyPieChart data={pieData} />
               ) : <EmptyState message="Sin datos." />}
             </div>
           </Section>
           <Section title="🏆 Top Rendimiento">
             <div className="h-[240px] w-full relative">
               {loading.performance ? <LoadingSkeleton rows={1} /> : barData.length > 0 ? (
-                <ResponsiveContainer width="100%" height={240} minWidth={0} minHeight={0} debounce={50}><BarChart data={barData}><CartesianGrid strokeDasharray="3 3" vertical={false} /><XAxis dataKey="name" fontSize={10} tickLine={false} axisLine={false} /><YAxis fontSize={10} tickLine={false} axisLine={false} /><Tooltip cursor={{ fill: '#f9fafb' }} /><Legend /><Bar dataKey="completadas" name="Tareas" fill="var(--color-primary)" radius={[4, 4, 0, 0]} /><Bar dataKey="horas" name="Horas" fill="var(--color-secondary)" radius={[4, 4, 0, 0]} /></BarChart></ResponsiveContainer>
+                <LazyBarChart data={barData} />
               ) : <EmptyState message="Sin datos." />}
             </div>
           </Section>
@@ -175,9 +178,11 @@ export default function ReportesPage() {
         </Section>
 
         <Section title="📈 Rendimiento" actions={<SortSelect value={perfSort} onChange={v => setPerfSort(v)} options={[{ value: 'tasksCompleted_desc', label: 'Tareas' }, { value: 'totalWorkedHours_desc', label: 'Horas' }]} />}>
+          <div className="min-h-[300px]">
           {loading.performance ? <LoadingSkeleton /> : sortedPerformance.length === 0 ? <EmptyState message="Sin datos." /> : (
             <><div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="text-left text-xs text-gray-400 uppercase border-b border-gray-100"><th className="pb-3 pr-4">Empleado</th><th className="pb-3 pr-4 text-right">Tareas</th><th className="pb-3 pr-4 text-right">Promedio</th><th className="pb-3 pr-4 text-right">Horas</th><th className="pb-3 text-right">No hechas</th></tr></thead><tbody className="divide-y divide-gray-50">{sortedPerformance.map(p => (<tr key={p.employeeId} className="hover:bg-gray-50 transition-colors"><td className="py-3 pr-4 font-medium">{p.employeeName}</td><td className="py-3 pr-4 text-right text-green-600 font-bold">{p.tasksCompleted}</td><td className="py-3 pr-4 text-right text-gray-600">{fmt(p.avgCompletionMinutes)}</td><td className="py-3 pr-4 text-right text-gray-600">{p.totalWorkedHours}h</td><td className="py-3 text-right">{p.notDoneCount > 0 ? <span className="px-2 py-0.5 rounded-full bg-red-100 text-red-600 text-xs font-bold">{p.notDoneCount}</span> : <span className="text-gray-300 text-xs">0</span>}</td></tr>))}</tbody></table></div><div className="mt-4 pt-4 border-t border-gray-50"><Pagination page={perfPage} pageSize={PERF_LIMIT} totalItems={perfTotal} onPageChange={handlePerfPageChange} onPageSizeChange={() => {}} /></div></>
           )}
+          </div>
         </Section>
       </div>
     </DashboardLayout>

@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { ReactNode } from 'react'
+import Image from 'next/image'
 
 export interface NavItem {
   label: string
@@ -58,7 +59,7 @@ export function Sidebar({
         {/* Logo */}
         <div className="h-[80px] px-5 border-b border-white/10 flex items-center shrink-0">
           <Link href="/" aria-label="N-Cargo" className="rounded-[var(--radius-md)] focus-visible:ring-3 focus-visible:ring-[var(--color-primary)] outline-none block w-full">
-            <img src="/images/logos/77.PNG" alt="N-Cargo Admin" className="h-[45px] w-auto object-contain rounded-[var(--radius-md)]" width={100} height={45} />
+            <Image src="/images/logos/77.PNG" alt="N-Cargo Admin" className="object-contain rounded-[var(--radius-md)]" width={97} height={29} sizes="97px" priority />
           </Link>
         </div>
 

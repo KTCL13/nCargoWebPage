@@ -7,7 +7,9 @@ import { NAV_ITEMS } from '@/components/layout/nav-config'
 import { useAuth } from '@/context/AuthContext'
 import { useEmployeeReports } from '@/lib/admin/reports/useEmployeeReports'
 import { MetricCards } from './_components/MetricCards'
-import { Charts } from './_components/Charts'
+import dynamic from 'next/dynamic'
+
+const Charts = dynamic(() => import('./_components/Charts').then(mod => mod.Charts), { ssr: false, loading: () => <div className="animate-pulse h-[300px] bg-gray-100 rounded-xl" /> })
 import { EmployeeTable } from './_components/EmployeeTable'
 import { EmployeeSearch } from '@/components/ui/EmployeeSearch'
 
@@ -43,7 +45,7 @@ export default function EmployeeReportsPage() {
       ) : records.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 gap-4"><span className="text-5xl">📊</span><p className="font-bold text-gray-400">Sin datos para este período</p></div>
       ) : (
-        <div className="space-y-6 mt-6">
+        <div className="space-y-6 mt-6 min-h-[600px]">
           <MetricCards metrics={metrics} />
           <Charts timeSeries={timeSeries} />
           <EmployeeTable rows={employeeRows} />

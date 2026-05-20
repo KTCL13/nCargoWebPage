@@ -5,6 +5,10 @@ const nextConfig = {
 
   serverExternalPackages: ["@prisma/client", "prisma", "pdfkit", "exceljs"],
 
+  experimental: {
+    optimizePackageImports: ['recharts']
+  },
+
   images: {
     remotePatterns: [
       {

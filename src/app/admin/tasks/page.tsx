@@ -169,8 +169,8 @@ export default function GestionTareasPage() {
       )}
     </DashboardLayout>
 
-    <div aria-live="polite" className="fixed bottom-5 right-5 z-[9999] flex flex-col gap-2 pointer-events-none">
-      {toasts.map(t => <div key={t.id} className="pointer-events-auto flex items-center gap-3 bg-[var(--color-foreground)] text-white pl-4 pr-5 py-3.5 rounded-[var(--radius-lg)] shadow-lg text-sm font-medium animate-in slide-in-from-right-full">✅ <span>{t.text}</span></div>)}
+    <div role="status" className="fixed bottom-5 right-5 z-[9999] flex flex-col gap-2 pointer-events-none">
+      {toasts.map(t => <div key={t.id} aria-live="polite" aria-atomic="true" className="pointer-events-auto flex items-center gap-3 bg-[var(--color-foreground)] text-white pl-4 pr-5 py-3.5 rounded-[var(--radius-lg)] shadow-lg text-sm font-medium animate-in slide-in-from-right-full">✅ <span>{t.text}</span></div>)}
     </div>
     </>
   )

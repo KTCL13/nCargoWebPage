@@ -5,7 +5,7 @@ export const metadata: Metadata = {
     description:
         'Accede al portal de empleados N-Cargo para gestionar tu jornada laboral, tareas asignadas, envíos de casilleros y reportes de productividad.',
     keywords: ['portal empleado N-Cargo', 'jornada laboral', 'mis tareas', 'mis envíos'],
-    robots: { index: false, follow: false },
+    robots: { index: false, follow: false, nocache: true },
 };
 
 export default function EmployeeLayout({ children }: { children: React.ReactNode }) {
