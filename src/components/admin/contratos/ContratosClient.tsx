@@ -5,6 +5,8 @@ import { NAV_ITEMS } from '@/components/layout/nav-config'
 import { Pagination } from '@/components/ui/Pagination'
 import { useContracts } from '@/lib/admin/contracts/useContracts'
 import { contractsClient } from '@/lib/api-client/contracts'
+import { ContractExportButtons } from '@/components/contracts/ContractExportButtons'
+import { useAuth } from '@/context/AuthContext'
 
 function fmt(date: string | null) {
   if (!date) return '—'
@@ -12,9 +14,10 @@ function fmt(date: string | null) {
 }
 
 export function ContratosClient() {
+  const { user, token } = useAuth()
   const {
     contracts, total, page, setPage, search, setSearch, pageSize, setPageSize, loading,
-    dirty, selected, setSelected, saving, historyOpen, setHistoryOpen, historyList, historyLoading, historyEmpName,
+    dirty, selected, setSelected, saving, historyOpen, setHistoryOpen, historyList, historyLoading, historyEmpId, historyEmpName,
     fetchContracts, toggleActive, saveRow, saveAll, openHistory
   } = useContracts()
 
@@ -60,7 +63,27 @@ export function ContratosClient() {
 
       {historyOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="history-title">
-          <div className="bg-white rounded-2xl w-full max-w-xl max-h-[80vh] flex flex-col p-6"><div className="flex justify-between items-center mb-4"><div><h2 id="history-title" className="font-bold text-lg">Historial: {historyEmpName}</h2></div><button onClick={() => setHistoryOpen(false)} aria-label="Cerrar modal" className="text-gray-600 text-xl">×</button></div><div className="overflow-y-auto space-y-3">{historyLoading ? <p aria-live="polite">Cargando...</p> : historyList.map(hc => (<div key={hc.id} className="border p-3 rounded-lg"><div className="flex justify-between font-bold text-sm"><span>{hc.job.title}</span><span className={hc.isActive ? 'text-green-600' : 'text-gray-600'}>{hc.isActive ? 'Activo' : 'Cerrado'}</span></div><div className="grid grid-cols-2 text-xs text-gray-500 mt-1"><span>{hc.contractType.name}</span><span>{fmt(hc.startDate)} - {fmt(hc.endDate)}</span></div></div>))}</div></div>
+          <div className="bg-white rounded-2xl w-full max-w-xl max-h-[80vh] flex flex-col p-6">
+            <div className="flex justify-between items-center mb-4">
+              <div>
+                <h2 id="history-title" className="font-bold text-lg">Historial: {historyEmpName}</h2>
+              </div>
+              <button onClick={() => setHistoryOpen(false)} aria-label="Cerrar modal" className="text-gray-600 text-xl">×</button>
+            </div>
+
+            {historyEmpId !== null && user?.id && token && (
+              <div className="mb-4 pb-4 border-b border-gray-100">
+                <ContractExportButtons
+                  employeeId={historyEmpId}
+                  employeeName={historyEmpName}
+                  generatedBy={user.id}
+                  token={token}
+                />
+              </div>
+            )}
+
+            <div className="overflow-y-auto space-y-3">{historyLoading ? <p aria-live="polite">Cargando...</p> : historyList.map(hc => (<div key={hc.id} className="border p-3 rounded-lg"><div className="flex justify-between font-bold text-sm"><span>{hc.job.title}</span><span className={hc.isActive ? 'text-green-600' : 'text-gray-600'}>{hc.isActive ? 'Activo' : 'Cerrado'}</span></div><div className="grid grid-cols-2 text-xs text-gray-500 mt-1"><span>{hc.contractType.name}</span><span>{fmt(hc.startDate)} - {fmt(hc.endDate)}</span></div></div>))}</div>
+          </div>
         </div>
       )}
     </DashboardLayout>

@@ -19,6 +19,7 @@ export function useContracts() {
   const [historyOpen, setHistoryOpen] = useState(false)
   const [historyList, setHistoryList] = useState<Contract[]>([])
   const [historyLoading, setHistoryLoading] = useState(false)
+  const [historyEmpId, setHistoryEmpId] = useState<number | null>(null)
   const [historyEmpName, setHistoryEmpName] = useState('')
 
   const fetchContracts = useCallback(async () => {
@@ -52,7 +53,7 @@ export function useContracts() {
   const saveAll = async () => { await Promise.all(Object.keys(dirty).map(id => saveRow(Number(id)))) }
 
   const openHistory = async (empId: number, empName: string) => {
-    setHistoryOpen(true); setHistoryEmpName(empName); setHistoryLoading(true); setHistoryList([])
+    setHistoryOpen(true); setHistoryEmpId(empId); setHistoryEmpName(empName); setHistoryLoading(true); setHistoryList([])
     try {
       const data = await contractsClient.getEmployeeContractsHistory(empId)
       setHistoryList(Array.isArray(data) ? data : (data.data ?? []))
@@ -61,7 +62,7 @@ export function useContracts() {
 
   return {
     contracts, total, page, setPage, search, setSearch, pageSize, setPageSize, loading,
-    dirty, setDirty, selected, setSelected, saving, historyOpen, setHistoryOpen, historyList, historyLoading, historyEmpName,
+    dirty, setDirty, selected, setSelected, saving, historyOpen, setHistoryOpen, historyList, historyLoading, historyEmpId, historyEmpName,
     fetchContracts, toggleActive, saveRow, saveAll, openHistory
   }
 }
