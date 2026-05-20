@@ -26,7 +26,7 @@ export const Hero = () => (
                     <h1 id="hero-heading" className="font-titles font-black text-white tracking-tighter leading-[1.05] text-3xl md:text-4xl lg:text-6xl">
                         Envíos rápidos a Colombia y México
                     </h1>
-                    <p className="font-body text-lg md:text-xl text-gray-400 leading-relaxed max-w-2xl mt-4">
+                    <p className="font-body text-lg md:text-xl text-gray-600 leading-relaxed max-w-2xl mt-4">
                         Compra en tus tiendas favoritas de EE.UU. y recibe en casa de forma segura.
                     </p>
                 </div>

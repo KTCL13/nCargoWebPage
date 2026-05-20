@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { analyticsService } from '../services/analytics.service'
-import { getAuthEmployee } from '@/lib/auth-guard'
+import { requireAdmin } from '@/lib/auth-guard'
 
 class AnalyticsController {
     private parseDate(value: string | null): Date | undefined {
@@ -11,7 +11,7 @@ class AnalyticsController {
 
     async getEmployeePerformance(req: NextRequest): Promise<NextResponse> {
         try {
-            getAuthEmployee(req)
+            requireAdmin(req)
             const { searchParams } = new URL(req.url)
             const employeeId = searchParams.get('employeeId')
                 ? Number(searchParams.get('employeeId'))
@@ -25,14 +25,14 @@ class AnalyticsController {
             return NextResponse.json(data)
         } catch (err: unknown) {
             const message = err instanceof Error ? err.message : 'Error'
-            const status = message.includes('Token') ? 401 : 400
+            const status = message.startsWith('Forbidden') ? 403 : message.includes('Token') ? 401 : 400
             return NextResponse.json({ message }, { status })
         }
     }
 
     async getTaskCompletionTimes(req: NextRequest): Promise<NextResponse> {
         try {
-            getAuthEmployee(req)
+            requireAdmin(req)
             const { searchParams } = new URL(req.url)
             const employeeId = searchParams.get('employeeId')
                 ? Number(searchParams.get('employeeId'))
@@ -44,14 +44,14 @@ class AnalyticsController {
             return NextResponse.json(data)
         } catch (err: unknown) {
             const message = err instanceof Error ? err.message : 'Error'
-            const status = message.includes('Token') ? 401 : 400
+            const status = message.startsWith('Forbidden') ? 403 : message.includes('Token') ? 401 : 400
             return NextResponse.json({ message }, { status })
         }
     }
 
     async getWorkloadDistribution(req: NextRequest): Promise<NextResponse> {
         try {
-            getAuthEmployee(req)
+            requireAdmin(req)
             const { searchParams } = new URL(req.url)
             const from = this.parseDate(searchParams.get('from'))
             const to = this.parseDate(searchParams.get('to'))
@@ -60,14 +60,14 @@ class AnalyticsController {
             return NextResponse.json(data)
         } catch (err: unknown) {
             const message = err instanceof Error ? err.message : 'Error'
-            const status = message.includes('Token') ? 401 : 400
+            const status = message.startsWith('Forbidden') ? 403 : message.includes('Token') ? 401 : 400
             return NextResponse.json({ message }, { status })
         }
     }
 
     async aggregateKPIs(req: NextRequest): Promise<NextResponse> {
         try {
-            getAuthEmployee(req)
+            requireAdmin(req)
             const body = await req.json().catch(() => ({}))
             const result = await analyticsService.aggregateKPIs({
                 employeeId: body.employeeId ? Number(body.employeeId) : undefined,
@@ -78,19 +78,23 @@ class AnalyticsController {
             return NextResponse.json(result)
         } catch (err: unknown) {
             const message = err instanceof Error ? err.message : 'Error'
-            const status = message.includes('Token') ? 401 : 400
+            const status = message.startsWith('Forbidden') ? 403 : message.includes('Token') ? 401 : 400
             return NextResponse.json({ message }, { status })
         }
     }
 
     async getAlerts(req: NextRequest): Promise<NextResponse> {
         try {
-            getAuthEmployee(req)
-            const data = await analyticsService.getAlerts()
+            requireAdmin(req)
+            const { searchParams } = new URL(req.url)
+            const from = this.parseDate(searchParams.get('from'))
+            const to = this.parseDate(searchParams.get('to'))
+
+            const data = await analyticsService.getAlerts({ from, to })
             return NextResponse.json(data)
         } catch (err: unknown) {
             const message = err instanceof Error ? err.message : 'Error'
-            const status = message.includes('Token') ? 401 : 400
+            const status = message.startsWith('Forbidden') ? 403 : message.includes('Token') ? 401 : 400
             return NextResponse.json({ message }, { status })
         }
     }

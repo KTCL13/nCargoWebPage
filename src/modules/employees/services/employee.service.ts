@@ -201,8 +201,15 @@ class EmployeeService {
     }
 
     async update(id: number, data: UpdateEmployeeDto): Promise<EmployeeResponseDto> {
-        const { roleIds, ...rest } = data
-        const updatedEmployee = await employeeRepository.updateEmployee(id, rest)
+        const { roleIds, password, ...rest } = data
+        const repoData: Parameters<typeof employeeRepository.updateEmployee>[1] = {
+            ...rest,
+            ...(rest.email && { email: rest.email.trim().toLowerCase() }),
+        }
+        if (password) {
+            repoData.passwordHash = await hashService.hash(password)
+        }
+        const updatedEmployee = await employeeRepository.updateEmployee(id, repoData)
 
         if (rest.status === 'INACTIVE') {
             const today = new Date()

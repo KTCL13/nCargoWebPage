@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getAuthEmployee } from '@/lib/auth-guard'
+import { getAuthEmployee, requireAdmin } from '@/lib/auth-guard'
 import { locationService } from '../services/location.service'
 
 function errStatus(msg: string) {
-  return msg.toLowerCase().includes('unauthorized') || msg.toLowerCase().includes('token') ? 401 : 500
+  if (msg.startsWith('Forbidden')) return 403
+  if (msg.toLowerCase().includes('unauthorized') || msg.toLowerCase().includes('token')) return 401
+  return 500
 }
 
 class LocationController {
@@ -25,7 +27,7 @@ class LocationController {
 
   async create(req: NextRequest) {
     try {
-      getAuthEmployee(req)
+      requireAdmin(req)
       const { name, code } = await req.json()
       if (!name || !code) {
         return NextResponse.json({ message: 'name y code son requeridos' }, { status: 400 })
@@ -43,7 +45,7 @@ class LocationController {
 
   async update(req: NextRequest, id: number) {
     try {
-      getAuthEmployee(req)
+      requireAdmin(req)
       const { name } = await req.json()
       if (!name || typeof name !== 'string' || !name.trim()) {
         return NextResponse.json({ message: 'name es requerido' }, { status: 400 })

@@ -16,13 +16,17 @@ class AuthService {
         const lastName  = data.lastName?.trim()
         const email     = data.email?.trim().toLowerCase()
         const password  = data.password?.trim()
-        const roleName  = data.role
+        // Public self-signup must NEVER trust client-supplied role.
+        // Admin accounts are provisioned via the protected employees endpoint.
+        const roleName: RoleType = 'EMPLOYEE'
 
         if (!firstName) throw new Error('El nombre es obligatorio')
         if (!lastName)  throw new Error('El apellido es obligatorio')
         if (!email)     throw new Error('El email es obligatorio')
         if (!password)  throw new Error('La contraseña es obligatoria')
-        if (!roleName)  throw new Error('El rol es obligatorio')
+        if (password.length < 8 || !/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/[0-9]/.test(password)) {
+            throw new Error('La contraseña debe tener al menos 8 caracteres, una mayúscula, una minúscula y un número')
+        }
 
         const existingUser = await userRepository.findByEmail(email)
         if (existingUser) throw new Error('Ya existe un usuario con ese email')
@@ -126,12 +130,27 @@ class AuthService {
         if (!data.token)    throw new Error('Token inválido')
         if (!data.password) throw new Error('La contraseña es obligatoria')
 
+        const pwd = data.password
+        if (pwd.length < 8 || !/[A-Z]/.test(pwd) || !/[a-z]/.test(pwd) || !/[0-9]/.test(pwd)) {
+            throw new Error('La contraseña debe tener al menos 8 caracteres, una mayúscula, una minúscula y un número')
+        }
+
         const record = await passwordResetRepository.findValid(data.token)
         if (!record) throw new Error('El enlace ha expirado o ya fue usado')
 
-        const passwordHash = await hashService.hash(data.password)
+        const passwordHash = await hashService.hash(pwd)
         await userRepository.updatePassword(record.employeeId, passwordHash)
         await passwordResetRepository.markUsed(record.id)
+
+        // Invalidate any open sessions so a previously-compromised access is severed
+        await sessionRepository.closeAllActiveByEmployee(record.employeeId, new Date())
+
+        await auditLog({
+            entityType: 'Employee',
+            entityId: record.employeeId,
+            action: 'PASSWORD_RESET',
+            performedBy: record.employeeId,
+        })
     }
 }
 

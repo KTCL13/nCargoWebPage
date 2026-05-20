@@ -65,20 +65,20 @@ import { auditLog } from '@/lib/audit-logger'
 const mocked = <T extends (...args: any) => any>(fn: T) => fn as unknown as jest.Mock
 
 describe('authService.register', () => {
-  const baseData = { firstName: 'Alice', lastName: 'Smith', identificationTypeId: 1, email: 'Alice@Example.COM', password: 'secret123', role: 'ADMIN' as const }
+  const baseData = { firstName: 'Alice', lastName: 'Smith', identificationTypeId: 1, email: 'Alice@Example.COM', password: 'Secret123' }
 
-  it('happy path: creates user, assigns role, returns DTO with JWT', async () => {
+  it('happy path: creates user, assigns EMPLOYEE role (ignores any client-supplied role), returns DTO with JWT', async () => {
     mocked(userRepository.findByEmail).mockResolvedValue(null)
     mocked(hashService.hash).mockResolvedValue('hashed')
     mocked(userRepository.create).mockResolvedValue({ id: 1, firstName: 'Alice', lastName: 'Smith', email: 'alice@example.com' })
-    mocked(roleRepository.findByName).mockResolvedValue({ id: 2, name: 'ADMIN' })
+    mocked(roleRepository.findByName).mockResolvedValue({ id: 2, name: 'EMPLOYEE' })
     mocked(roleRepository.assignRoleToEmployee).mockResolvedValue({ employeeId: 1, roleId: 2 })
     mocked(jwtService.sign).mockReturnValue('jwt-token')
 
-    const result = await authService.register(baseData)
+    const result = await authService.register({ ...baseData, role: 'ADMIN' } as any)
 
     expect(userRepository.findByEmail).toHaveBeenCalledWith('alice@example.com')
-    expect(hashService.hash).toHaveBeenCalledWith('secret123')
+    expect(hashService.hash).toHaveBeenCalledWith('Secret123')
     expect(userRepository.create).toHaveBeenCalledWith({
       firstName: 'Alice',
       lastName: 'Smith',
@@ -87,10 +87,10 @@ describe('authService.register', () => {
       email: 'alice@example.com',
       passwordHash: 'hashed',
     })
-    expect(roleRepository.findByName).toHaveBeenCalledWith('ADMIN')
+    expect(roleRepository.findByName).toHaveBeenCalledWith('EMPLOYEE')
     expect(roleRepository.assignRoleToEmployee).toHaveBeenCalledWith(1, 2)
-    expect(jwtService.sign).toHaveBeenCalledWith({ id: 1, email: 'alice@example.com', role: 'ADMIN' })
-    expect(result).toEqual({ accessToken: 'jwt-token', role: 'ADMIN', email: 'alice@example.com', name: 'Alice Smith' })
+    expect(jwtService.sign).toHaveBeenCalledWith({ id: 1, email: 'alice@example.com', role: 'EMPLOYEE' })
+    expect(result).toEqual({ accessToken: 'jwt-token', role: 'EMPLOYEE', email: 'alice@example.com', name: 'Alice Smith' })
   })
 
   it('rejects with "El nombre es obligatorio" when firstName is blank', async () => {
@@ -107,8 +107,8 @@ describe('authService.register', () => {
     await expect(authService.register({ ...baseData, password: '  ' })).rejects.toThrow('La contraseña es obligatoria')
   })
 
-  it('rejects with "El rol es obligatorio" when role is missing', async () => {
-    await expect(authService.register({ ...baseData, role: undefined as any })).rejects.toThrow('El rol es obligatorio')
+  it('rejects weak password (no uppercase)', async () => {
+    await expect(authService.register({ ...baseData, password: 'weakpass1' })).rejects.toThrow(/mayúscula/)
   })
 
   it('rejects with duplicate email message when user already exists', async () => {
@@ -118,7 +118,7 @@ describe('authService.register', () => {
     expect(userRepository.create).not.toHaveBeenCalled()
   })
 
-  it('rejects when role does not exist', async () => {
+  it('rejects when EMPLOYEE role does not exist in DB', async () => {
     mocked(userRepository.findByEmail).mockResolvedValue(null)
     mocked(hashService.hash).mockResolvedValue('hashed')
     mocked(userRepository.create).mockResolvedValue({ id: 1, firstName: 'Alice', lastName: 'Smith', email: 'alice@example.com' })

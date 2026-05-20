@@ -28,6 +28,32 @@ class AttendanceRepository {
         })
     }
 
+    async findStaleOpenByEmployee(employeeId: number, timezone: string): Promise<Attendance[]> {
+        return prisma.attendance.findMany({
+            where: {
+                employeeId,
+                startedAt: { lt: getStartOfDayForEmployee(timezone) },
+                status: { in: ['OPEN', 'PAUSED'] },
+            },
+            orderBy: { startedAt: 'asc' },
+        })
+    }
+
+    // Returns every OPEN/PAUSED attendance whose calendar day (in its stored
+    // timezone) is already over — used by the midnight cron to close them.
+    // We can't compare per-row timezones in a single SQL query, so we filter
+    // in JS after pulling all open/paused rows.
+    async findAllStaleOpen(): Promise<Attendance[]> {
+        const rows = await prisma.attendance.findMany({
+            where: { status: { in: ['OPEN', 'PAUSED'] } },
+            orderBy: { startedAt: 'asc' },
+        })
+        return rows.filter((a) => {
+            const tz = a.timezone || 'America/Bogota'
+            return a.startedAt < getStartOfDayForEmployee(tz)
+        })
+    }
+
     async create(data: { employeeId: number; startedAt: Date; timezone: string }): Promise<Attendance> {
         return prisma.attendance.create({ data: { ...data, status: 'OPEN' } })
     }
@@ -70,10 +96,9 @@ class AttendanceRepository {
     }): Promise<{ data: Attendance[]; total: number }> {
         const where: any = {}
         if (filters.date) {
-            const start = new Date(filters.date)
-            start.setHours(0, 0, 0, 0)
-            const end = new Date(filters.date)
-            end.setHours(23, 59, 59, 999)
+            // Append time to force local-day parsing and avoid UTC shifts
+            const start = new Date(filters.date + 'T00:00:00')
+            const end = new Date(filters.date + 'T23:59:59.999')
             where.startedAt = { gte: start, lte: end }
         }
         if (filters.employeeId) where.employeeId = filters.employeeId

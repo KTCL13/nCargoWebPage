@@ -33,6 +33,10 @@ jest.mock('../../services/job.service', () => ({
   },
 }))
 
+jest.mock('@/lib/auth-guard', () => ({
+  requireAdmin: jest.fn().mockReturnValue({ id: 1, email: 'admin@ncargo.com', role: 'ADMIN' }),
+}))
+
 import { jobController } from '../job.controller'
 import { jobService } from '../../services/job.service'
 
@@ -54,7 +58,7 @@ describe('jobController.findAll (GET /jobs)', () => {
     const jobs = [{ id: 1, title: 'Dev', description: null }]
     mocked(jobService.findAll).mockResolvedValue(jobs)
 
-    const res: any = await jobController.findAll()
+    const res: any = await jobController.findAll(makeReq())
 
     expect(res.status).toBe(200)
     await expect(res.json()).resolves.toEqual(jobs)
@@ -63,7 +67,7 @@ describe('jobController.findAll (GET /jobs)', () => {
   it('G2 error de negocio: servicio lanza → 400 con mensaje', async () => {
     mocked(jobService.findAll).mockRejectedValue(new Error('DB unavailable'))
 
-    const res: any = await jobController.findAll()
+    const res: any = await jobController.findAll(makeReq())
 
     expect(res.status).toBe(400)
     await expect(res.json()).resolves.toEqual({ message: 'DB unavailable' })
@@ -73,7 +77,7 @@ describe('jobController.findAll (GET /jobs)', () => {
     // caso inválido controlado
     mocked(jobService.findAll).mockResolvedValue([])
 
-    const res: any = await jobController.findAll()
+    const res: any = await jobController.findAll(makeReq())
 
     expect(res.status).toBe(200)
     await expect(res.json()).resolves.toEqual([])

@@ -7,15 +7,38 @@ import { ReassignTaskDto } from '../dtos/reassign-task.dto'
 import { BulkAssignTaskDto } from '../dtos/bulk-assign-task.dto'
 import { FilterTaskDto } from '../dtos/filter-task.dto'
 import { TaskStatusName } from '../dtos/task-status.type'
-import { getAuthEmployee } from '@/lib/auth-guard'
+import { getAuthEmployee, requireAdmin } from '@/lib/auth-guard'
+
+function authErrorResponse(error: unknown) {
+    const status =
+        error instanceof Error && error.message.startsWith('Forbidden')
+            ? 403
+            : error instanceof Error && error.message.includes('Token')
+                ? 401
+                : 400
+    return NextResponse.json(
+        { message: error instanceof Error ? error.message : 'No autorizado' },
+        { status },
+    )
+}
 
 class TaskController {
     async findById(req: NextRequest) {
+        let auth
+        try {
+            auth = getAuthEmployee(req)
+        } catch (error) {
+            return authErrorResponse(error)
+        }
         const url = new URL(req.url)
         const id = Number(url.searchParams.get('id'))
 
         try {
             const result = await taskService.findById(id)
+            // Employees may only read their own tasks
+            if (auth.role !== 'ADMIN' && result?.employeeId !== auth.id) {
+                return NextResponse.json({ message: 'Forbidden' }, { status: 403 })
+            }
             return NextResponse.json(result, { status: 200 })
         } catch (error: unknown) {
             return NextResponse.json(
@@ -26,14 +49,25 @@ class TaskController {
     }
 
     async findAll(req: NextRequest) {
+        let auth
+        try {
+            auth = getAuthEmployee(req)
+        } catch (error) {
+            return authErrorResponse(error)
+        }
         const url = new URL(req.url)
         const page = Number(url.searchParams.get('page') ?? '1')
         const limit = Number(url.searchParams.get('limit') ?? '10')
         const status = url.searchParams.get('status') as TaskStatusName | null
-        const employeeId = url.searchParams.get('employeeId')
+        const requestedEmployeeId = url.searchParams.get('employeeId')
+
+        // Non-admins can only list their own tasks regardless of the query param
+        const employeeId = auth.role === 'ADMIN'
+            ? (requestedEmployeeId ? Number(requestedEmployeeId) : undefined)
+            : auth.id
 
         const filter: FilterTaskDto = {
-            employeeId: employeeId ? Number(employeeId) : undefined,
+            employeeId,
             status: status ?? undefined,
             page,
             limit,
@@ -101,6 +135,11 @@ class TaskController {
 
     async remove(req: NextRequest) {
         try {
+            requireAdmin(req)
+        } catch (error) {
+            return authErrorResponse(error)
+        }
+        try {
             const url = new URL(req.url)
             const id = Number(url.searchParams.get('id'))
 
@@ -131,7 +170,12 @@ class TaskController {
 
 
 
-    async checkOverdue(_req: NextRequest) {
+    async checkOverdue(req: NextRequest) {
+        try {
+            requireAdmin(req)
+        } catch (error) {
+            return authErrorResponse(error)
+        }
         try {
             await taskService.markOverdueTasksAsNotDone()
             return NextResponse.json({ message: 'Overdue tasks processed' }, { status: 200 })

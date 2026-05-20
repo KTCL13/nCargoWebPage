@@ -37,6 +37,11 @@ jest.mock('../../services/employee.service', () => ({
   },
 }))
 
+jest.mock('@/lib/auth-guard', () => ({
+  getAuthEmployee: jest.fn().mockReturnValue({ id: 1, email: 'admin@ncargo.com', role: 'ADMIN' }),
+  requireAdmin: jest.fn().mockReturnValue({ id: 1, email: 'admin@ncargo.com', role: 'ADMIN' }),
+}))
+
 import { employeeController } from '../employee.controller'
 import { employeeService } from '../../services/employee.service'
 

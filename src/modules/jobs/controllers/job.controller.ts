@@ -2,11 +2,34 @@ import { NextRequest, NextResponse } from 'next/server'
 import { jobService } from '../services/job.service'
 import { CreateJobDto } from '../dtos/create-job.dto'
 import { UpdateJobDto } from '../dtos/update-job.dto'
+import { requireAdmin } from '@/lib/auth-guard'
+
+function authErrorResponse(error: unknown) {
+    const status =
+        error instanceof Error && error.message.startsWith('Forbidden')
+            ? 403
+            : error instanceof Error && error.message.includes('Token')
+                ? 401
+                : 400
+    return NextResponse.json(
+        { message: error instanceof Error ? error.message : 'No autorizado' },
+        { status },
+    )
+}
 
 class JobController {
-    async findAll() {
+    async findAll(req: NextRequest) {
         try {
-            const result = await jobService.findAll()
+            requireAdmin(req)
+        } catch (error) {
+            return authErrorResponse(error)
+        }
+        const url = new URL(req.url)
+        const page = Number(url.searchParams.get('page')) || 1
+        const limit = Number(url.searchParams.get('limit')) || 10
+
+        try {
+            const result = await jobService.findAll(page, limit)
             return NextResponse.json(result, { status: 200 })
         } catch (error: unknown) {
             return NextResponse.json(
@@ -17,6 +40,11 @@ class JobController {
     }
 
     async findOne(req: NextRequest) {
+        try {
+            requireAdmin(req)
+        } catch (error) {
+            return authErrorResponse(error)
+        }
         const url = new URL(req.url)
         const id = Number(url.searchParams.get('id'))
 
@@ -32,6 +60,11 @@ class JobController {
     }
 
     async create(req: NextRequest) {
+        try {
+            requireAdmin(req)
+        } catch (error) {
+            return authErrorResponse(error)
+        }
         const body: CreateJobDto = await req.json()
 
         try {
@@ -46,6 +79,11 @@ class JobController {
     }
 
     async update(req: NextRequest) {
+        try {
+            requireAdmin(req)
+        } catch (error) {
+            return authErrorResponse(error)
+        }
         const url = new URL(req.url)
         const id = Number(url.searchParams.get('id'))
         const body: UpdateJobDto = await req.json()
@@ -62,6 +100,11 @@ class JobController {
     }
 
     async remove(req: NextRequest) {
+        try {
+            requireAdmin(req)
+        } catch (error) {
+            return authErrorResponse(error)
+        }
         const url = new URL(req.url)
         const id = Number(url.searchParams.get('id'))
 

@@ -16,6 +16,9 @@ jest.mock('../../repositories/employee.repository', () => ({
     getEmployees: jest.fn(),
     updateEmployee: jest.fn(),
     deleteEmployee: jest.fn(),
+    findByIdentification: jest.fn(),
+    findByEmailExcluding: jest.fn(),
+    findByPhone: jest.fn(),
   },
 }))
 
@@ -55,6 +58,10 @@ jest.mock('@/lib/prisma', () => ({
   prisma: {
     job: { findUnique: jest.fn() },
     contractType: { findUnique: jest.fn() },
+    systemConfig: { findUnique: jest.fn() },
+    contract: { updateMany: jest.fn() },
+    jobHistory: { updateMany: jest.fn() },
+    employeeRole: { deleteMany: jest.fn() },
     $transaction: jest.fn(),
   },
 }))
@@ -179,53 +186,72 @@ describe('employeeService.create', () => {
     identificationNumber: '123456',
     identificationTypeId: 1,
     email: 'a@b.c',
-    password: 'pw',
+    password: 'Secret123',
     status: 'ACTIVE' as const,
     roleIds: [1, 2],
   }
 
+  function primeTxMock() {
+    const employeeCreate = jest.fn().mockResolvedValue(fakeEmployee)
+    const employeeRoleCreate = jest.fn().mockResolvedValue({})
+    const contractCreate = jest.fn().mockResolvedValue({ id: 99, jobId: 1, startDate: new Date() })
+    const jobHistoryCreate = jest.fn().mockResolvedValue({})
+    mocked(prisma.$transaction).mockImplementation(async (cb: any) =>
+      cb({
+        employee: { create: employeeCreate },
+        employeeRole: { create: employeeRoleCreate },
+        contract: { create: contractCreate },
+        jobHistory: { create: jobHistoryCreate },
+      }),
+    )
+    return { employeeCreate, employeeRoleCreate, contractCreate, jobHistoryCreate }
+  }
+
   it('G1 happy path: hashea password, crea empleado y asigna todos los roles', async () => {
     primeResponseDtoMocks()
+    mocked(employeeRepository.findByIdentification).mockResolvedValue(null)
+    mocked(employeeRepository.findByEmailExcluding).mockResolvedValue(null)
     mocked(hashService.hash).mockResolvedValue('hashed-pw')
-    mocked(employeeRepository.create).mockResolvedValue(fakeEmployee)
-    mocked(roleRepository.assignRoleToEmployee).mockResolvedValue({ employeeId: 1, roleId: 1 })
+    const tx = primeTxMock()
 
     const result = await employeeService.create(validData)
 
-    expect(hashService.hash).toHaveBeenCalledWith('pw')
-    expect(employeeRepository.create).toHaveBeenCalledWith({
-      firstName: 'Alice',
-      lastName: 'Smith',
-      identificationNumber: '123456',
-      identificationTypeId: 1,
-      email: 'a@b.c',
-      passwordHash: 'hashed-pw',
-      status: 'ACTIVE',
-      metadata: {},
-    })
-    expect(roleRepository.assignRoleToEmployee).toHaveBeenCalledTimes(2)
-    expect(roleRepository.assignRoleToEmployee).toHaveBeenNthCalledWith(1, 1, 1)
-    expect(roleRepository.assignRoleToEmployee).toHaveBeenNthCalledWith(2, 1, 2)
+    expect(hashService.hash).toHaveBeenCalledWith('Secret123')
+    expect(tx.employeeCreate).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        firstName: 'Alice',
+        lastName: 'Smith',
+        identificationNumber: '123456',
+        identificationTypeId: 1,
+        email: 'a@b.c',
+        passwordHash: 'hashed-pw',
+        status: 'ACTIVE',
+      }),
+    }))
+    expect(tx.employeeRoleCreate).toHaveBeenCalledTimes(2)
+    expect(tx.employeeRoleCreate).toHaveBeenNthCalledWith(1, { data: { employeeId: 1, roleId: 1 } })
+    expect(tx.employeeRoleCreate).toHaveBeenNthCalledWith(2, { data: { employeeId: 1, roleId: 2 } })
     expect(result.id).toBe(1)
   })
 
   it('G2 error de negocio: email duplicado en repo → propaga', async () => {
-    mocked(hashService.hash).mockResolvedValue('hashed-pw')
-    mocked(employeeRepository.create).mockRejectedValue(new Error('Unique constraint failed on email'))
+    mocked(employeeRepository.findByIdentification).mockResolvedValue(null)
+    mocked(employeeRepository.findByEmailExcluding).mockResolvedValue({ id: 99, email: 'a@b.c' } as any)
 
-    await expect(employeeService.create(validData)).rejects.toThrow('Unique constraint failed on email')
-    expect(roleRepository.assignRoleToEmployee).not.toHaveBeenCalled()
+    await expect(employeeService.create(validData)).rejects.toThrow(/ya está registrado/)
+    expect(prisma.$transaction).not.toHaveBeenCalled()
   })
 
-  it('G3 caso inválido controlado: roleIds=[] → no se invoca assignRoleToEmployee', async () => {
-    // caso inválido controlado
+  it('G3 caso inválido controlado: roleIds=[] → no se invoca employeeRole.create', async () => {
     primeResponseDtoMocks()
+    mocked(employeeRepository.findByIdentification).mockResolvedValue(null)
+    mocked(employeeRepository.findByEmailExcluding).mockResolvedValue(null)
     mocked(hashService.hash).mockResolvedValue('hashed-pw')
-    mocked(employeeRepository.create).mockResolvedValue(fakeEmployee)
+    const tx = primeTxMock()
 
     const result = await employeeService.create({ ...validData, roleIds: [] })
 
-    expect(roleRepository.assignRoleToEmployee).not.toHaveBeenCalled()
+    expect(tx.employeeRoleCreate).not.toHaveBeenCalled()
     expect(result.id).toBe(1)
   })
 })
@@ -265,22 +291,25 @@ describe('employeeService.update', () => {
 // remove (soft-delete)
 // =====================================================================
 describe('employeeService.remove', () => {
-  it('G1 happy path: llama al repo para soft-delete', async () => {
+  it('G1 happy path: cierra contratos/jobHistory y llama al repo para soft-delete', async () => {
+    mocked(prisma.$transaction).mockResolvedValue([])
     mocked(employeeRepository.deleteEmployee).mockResolvedValue(undefined)
 
     await employeeService.remove(1)
 
+    expect(prisma.$transaction).toHaveBeenCalled()
     expect(employeeRepository.deleteEmployee).toHaveBeenCalledWith(1)
   })
 
   it('G2 error de negocio: empleado no existe → propaga', async () => {
+    mocked(prisma.$transaction).mockResolvedValue([])
     mocked(employeeRepository.deleteEmployee).mockRejectedValue(new Error('Employee not found'))
 
     await expect(employeeService.remove(999)).rejects.toThrow('Employee not found')
   })
 
   it('G3 caso inválido controlado: id=NaN → repo recibe NaN sin crash propio', async () => {
-    // caso inválido controlado
+    mocked(prisma.$transaction).mockResolvedValue([])
     mocked(employeeRepository.deleteEmployee).mockResolvedValue(undefined)
 
     await employeeService.remove(NaN)

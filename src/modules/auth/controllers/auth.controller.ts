@@ -2,9 +2,21 @@ import { NextRequest, NextResponse } from 'next/server'
 import { authService } from '../services/auth.service'
 import { getIp } from '@/lib/get-ip'
 import { getAuthEmployee } from '@/lib/auth-guard'
+import { rateLimit } from '@/lib/rate-limiter'
+
+function rateLimited(bucket: string, identifier: string, limit: number, windowMs: number) {
+    const r = rateLimit({ bucket, identifier, limit, windowMs })
+    if (r.allowed) return null
+    return NextResponse.json(
+        { message: 'Demasiados intentos. Intenta de nuevo más tarde.' },
+        { status: 429, headers: { 'Retry-After': String(r.retryAfterSeconds) } },
+    )
+}
 
 class AuthController {
     async register(req: NextRequest) {
+        const limited = rateLimited('register', getIp(req), 5, 60 * 60_000)
+        if (limited) return limited
         try {
             const body = await req.json()
             const result = await authService.register(body)
@@ -18,9 +30,11 @@ class AuthController {
     }
 
     async login(req: NextRequest) {
+        const ip = getIp(req)
+        const limited = rateLimited('login', ip, 10, 15 * 60_000)
+        if (limited) return limited
         try {
             const body = await req.json()
-            const ip = getIp(req)
             const userAgent = req.headers.get('user-agent') ?? undefined
             const result = await authService.login(body, ip, userAgent)
 
@@ -56,6 +70,8 @@ class AuthController {
     }
 
     async forgotPassword(req: NextRequest) {
+        const limited = rateLimited('forgot-password', getIp(req), 5, 60 * 60_000)
+        if (limited) return limited
         try {
             const body = await req.json()
             await authService.forgotPassword(body)
@@ -72,6 +88,8 @@ class AuthController {
     }
 
     async resetPassword(req: NextRequest) {
+        const limited = rateLimited('reset-password', getIp(req), 10, 60 * 60_000)
+        if (limited) return limited
         try {
             const body = await req.json()
             await authService.resetPassword(body)

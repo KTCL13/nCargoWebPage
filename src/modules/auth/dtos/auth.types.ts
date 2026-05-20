@@ -12,7 +12,6 @@ export type RegisterDto = {
     identificationTypeId?: number
     email: string
     password: string
-    role: RoleType
 }
 
 export type AuthResponseDto = {

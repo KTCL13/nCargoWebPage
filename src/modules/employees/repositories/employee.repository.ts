@@ -85,11 +85,18 @@ class EmployeeRepository {
             email?: string
             status?: EmployeeStatus
             metadata?: Record<string, any>
+            passwordHash?: string
         },
     ) {
+        const { identificationTypeId, ...rest } = data
         return prisma.employee.update({
             where: { id },
-            data,
+            data: {
+                ...rest,
+                ...(identificationTypeId !== undefined && {
+                    identificationType: { connect: { id: identificationTypeId } },
+                }),
+            },
             include: identificationTypeInclude,
         })
     }

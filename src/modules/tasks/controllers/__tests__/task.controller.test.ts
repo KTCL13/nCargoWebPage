@@ -37,6 +37,7 @@ jest.mock('../../services/task.service', () => ({
 
 jest.mock('@/lib/auth-guard', () => ({
   getAuthEmployee: jest.fn().mockReturnValue({ id: 1, email: 'admin@ncargo.com', role: 'ADMIN' }),
+  requireAdmin: jest.fn().mockReturnValue({ id: 1, email: 'admin@ncargo.com', role: 'ADMIN' }),
 }))
 
 import { taskController } from '../task.controller'
@@ -229,7 +230,7 @@ describe('taskController.update (PUT /tasks?id=X)', () => {
     )
 
     expect(res.status).toBe(200)
-    expect(taskService.update).toHaveBeenCalledWith(3, { status: 'COMPLETED' })
+    expect(taskService.update).toHaveBeenCalledWith(3, { status: 'COMPLETED', actorId: 1 })
   })
 
   it('G2 error de negocio: tarea no existe → 400', async () => {

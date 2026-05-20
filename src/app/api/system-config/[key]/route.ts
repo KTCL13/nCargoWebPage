@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { getAuthEmployee } from '@/lib/auth-guard'
+import { requireAdmin } from '@/lib/auth-guard'
 
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ key: string }> },
 ) {
   try {
-    getAuthEmployee(req)
+    requireAdmin(req)
     const { key } = await params
     const body = await req.json()
     if (body.value === undefined) {

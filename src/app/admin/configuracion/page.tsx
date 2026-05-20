@@ -1,24 +1,12 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
+import { useState } from 'react'
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
 import { NAV_ITEMS } from '@/components/layout/nav-config'
 import { useAuth } from '@/context/AuthContext'
-
-type Rate = {
-  id: number
-  destination: { id: number; city: string; region: string | null; regionId: number | null; country: string }
-  basePrice: number
-}
-type Location = { id: number; city: string; region: string | null; country: string }
-type Country = { id: number; name: string; code: string }
-type ConfigEntry = { key: string; value: unknown; description: string | null }
-
-function flagEmoji(code: string) {
-  return code.toUpperCase().replace(/./g, c =>
-    String.fromCodePoint(c.codePointAt(0)! + 127397)
-  )
-}
+import { useConfig } from '@/lib/admin/config/useConfig'
+import { RatesTable } from '@/components/admin/configuracion/RatesTable'
+import { CONFIG_LABELS, CONTRACT_CONFIG_KEYS, Country } from '@/types/admin/config'
 
 const CLS = {
   card: 'bg-white rounded-xl p-5 mb-6 shadow',
@@ -28,691 +16,27 @@ const CLS = {
   label: 'text-sm text-gray-600 font-medium',
 }
 
-const CONFIG_LABELS: Record<string, string> = {
-  divisor:               'Divisor peso volumétrico (in³/lb)',
-  insurance_rate:        'Tasa seguro (ej. 0.10 = 10%)',
-  customs_rate:          'Arancel aduanal >$200 (ej. 0.31)',
-  customs_threshold:     'Umbral aduanas (USD)',
-  pickup_base:           'Costo base recogida (USD)',
-  pickup_per_extra_mile: 'Costo por milla extra (USD)',
-  pickup_free_miles:     'Millas incluidas en base',
+function flagEmoji(code: string) {
+  return code.toUpperCase().replace(/./g, c => String.fromCodePoint(c.codePointAt(0)! + 127397))
 }
-
-const FLAT_RATE_KEYS = new Set([
-  'co_flat_rate_enabled', 'co_flat_rate_price',
-  'mx_flat_rate_enabled', 'mx_flat_rate_price',
-])
-
-const PAGE_SIZE = 20
-
-// ── CityCombobox ─────────────────────────────────────────────────────────────
-
-function CityCombobox({
-  locations,
-  value,
-  onChange,
-}: {
-  locations: Location[]
-  value: string
-  onChange: (id: string) => void
-}) {
-  const [open,   setOpen]   = useState(false)
-  const [search, setSearch] = useState('')
-  const [page,   setPage]   = useState(0)
-  const ref = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    if (!open) return
-    function handleOutside(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener('mousedown', handleOutside)
-    return () => document.removeEventListener('mousedown', handleOutside)
-  }, [open])
-
-  const filtered   = locations.filter(l =>
-    `${l.city} ${l.region ?? ''}`.toLowerCase().includes(search.toLowerCase())
-  )
-  const pageCount  = Math.ceil(filtered.length / PAGE_SIZE)
-  const visible    = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
-  const selectedLoc = locations.find(l => String(l.id) === value)
-  const triggerLabel = selectedLoc
-    ? `${selectedLoc.city}${selectedLoc.region ? ` — ${selectedLoc.region}` : ''}`
-    : 'Seleccionar ciudad...'
-
-  return (
-    <div ref={ref} className="relative flex-1">
-      <button
-        type="button"
-        onClick={() => { setOpen(o => !o); setSearch(''); setPage(0) }}
-        className={`${CLS.input} text-left truncate ${!selectedLoc ? 'text-gray-400' : ''}`}
-      >
-        {triggerLabel}
-      </button>
-
-      {open && (
-        <div className="absolute left-0 right-0 top-full mt-1 z-50 bg-white border rounded-lg shadow-lg overflow-hidden">
-          <div className="p-2 border-b">
-            <input
-              autoFocus
-              type="text"
-              placeholder="Buscar ciudad..."
-              value={search}
-              onChange={e => { setSearch(e.target.value); setPage(0) }}
-              className="w-full px-2 py-1.5 text-sm border rounded focus:outline-none focus:border-blue-500"
-            />
-          </div>
-
-          <div className="max-h-60 overflow-y-auto divide-y">
-            {visible.length === 0 && (
-              <p className="text-sm text-gray-400 text-center py-3">Sin resultados</p>
-            )}
-            {visible.map(l => (
-              <button
-                key={l.id}
-                type="button"
-                onClick={() => { onChange(String(l.id)); setOpen(false) }}
-                className={`w-full text-left px-3 py-2 hover:bg-gray-50 flex justify-between items-baseline gap-2 ${
-                  String(l.id) === value ? 'bg-blue-50' : ''
-                }`}
-              >
-                <span className="text-sm font-medium truncate">{l.city}</span>
-                {l.region && <span className="text-xs text-gray-400 shrink-0">{l.region}</span>}
-              </button>
-            ))}
-          </div>
-
-          {pageCount > 1 && (
-            <div className="flex items-center justify-between px-3 py-2 border-t bg-gray-50 text-xs text-gray-500">
-              <button
-                type="button"
-                disabled={page === 0}
-                onClick={() => setPage(p => p - 1)}
-                className="px-2 py-1 rounded hover:bg-gray-200 disabled:opacity-40"
-              >
-                ‹ Anterior
-              </button>
-              <span>{page + 1} / {pageCount}</span>
-              <button
-                type="button"
-                disabled={page >= pageCount - 1}
-                onClick={() => setPage(p => p + 1)}
-                className="px-2 py-1 rounded hover:bg-gray-200 disabled:opacity-40"
-              >
-                Siguiente ›
-              </button>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  )
-}
-
-// ── RatesTable ───────────────────────────────────────────────────────────────
-
-const TABLE_PAGE_SIZE = 20
-
-function buildPageRange(current: number, total: number): (number | '...')[] {
-  if (total <= 7) return Array.from({ length: total }, (_, i) => i)
-  const left  = Math.max(1, current - 1)
-  const right = Math.min(total - 2, current + 1)
-  const items: (number | '...')[] = [0]
-  if (left > 1) items.push('...')
-  for (let i = left; i <= right; i++) items.push(i)
-  if (right < total - 2) items.push('...')
-  items.push(total - 1)
-  return items
-}
-
-type RowEdit = { price?: string; city?: string; region?: string }
-
-function RatesTable({
-  rates,
-  locations,
-  newRate,
-  onNewRateChange,
-  onSaveRate,
-  onSaveLocation,
-  onDeleteRate,
-  onAddRate,
-  addSaving,
-}: {
-  rates: Rate[]
-  locations: Location[]
-  newRate: { destId: string; price: string }
-  onNewRateChange: (r: { destId: string; price: string }) => void
-  onSaveRate: (id: number, price: number) => Promise<void>
-  onSaveLocation: (locationId: number, name: string) => Promise<void>
-  onDeleteRate: (id: number) => void
-  onAddRate: () => void
-  addSaving: boolean
-}) {
-  const [sortField, setSortField] = useState<'city' | 'region' | 'price'>('city')
-  const [sortDir,   setSortDir]   = useState<'asc' | 'desc'>('asc')
-  const [page,      setPage]      = useState(0)
-  const [search,    setSearch]    = useState('')
-  const [deptFilter, setDeptFilter] = useState('')
-  const [editing,   setEditing]   = useState<Record<number, RowEdit>>({})
-  const [saved,     setSaved]     = useState<Set<number>>(new Set())
-  const [savingRow, setSavingRow] = useState<number | null>(null)
-
-  const departments = useMemo(
-    () => [...new Set(rates.map(r => r.destination.region).filter(Boolean))].sort() as string[],
-    [rates],
-  )
-
-  const filtered = useMemo(() => {
-    const q = search.toLowerCase()
-    const result = rates.filter(r => {
-      const matchSearch = !q
-        || r.destination.city.toLowerCase().includes(q)
-        || (r.destination.region ?? '').toLowerCase().includes(q)
-      const matchDept = !deptFilter || r.destination.region === deptFilter
-      return matchSearch && matchDept
-    })
-    return [...result].sort((a, b) => {
-      let va: string | number
-      let vb: string | number
-      if (sortField === 'city')   { va = a.destination.city;              vb = b.destination.city }
-      else if (sortField === 'region') { va = a.destination.region ?? ''; vb = b.destination.region ?? '' }
-      else                        { va = Number(a.basePrice);             vb = Number(b.basePrice) }
-      if (va < vb) return sortDir === 'asc' ? -1 : 1
-      if (va > vb) return sortDir === 'asc' ?  1 : -1
-      return 0
-    })
-  }, [rates, search, deptFilter, sortField, sortDir])
-
-  const pageCount = Math.ceil(filtered.length / TABLE_PAGE_SIZE)
-  const pageItems = filtered.slice(page * TABLE_PAGE_SIZE, (page + 1) * TABLE_PAGE_SIZE)
-  const dirtyCount = Object.keys(editing).length
-  const showStart  = filtered.length === 0 ? 0 : page * TABLE_PAGE_SIZE + 1
-  const showEnd    = Math.min((page + 1) * TABLE_PAGE_SIZE, filtered.length)
-
-  function toggleSort(field: 'city' | 'region' | 'price') {
-    if (sortField === field) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
-    else { setSortField(field); setSortDir('asc') }
-    setPage(0)
-  }
-
-  async function handleSave(rateId: number) {
-    const edit = editing[rateId]
-    if (!edit) return
-    const rate = rates.find(r => r.id === rateId)
-    if (!rate) return
-    setSavingRow(rateId)
-    try {
-      const saves: Promise<void>[] = []
-      if (edit.price !== undefined) {
-        const price = Number(edit.price)
-        if (!isNaN(price)) saves.push(onSaveRate(rateId, price))
-      }
-      if (edit.city !== undefined && edit.city.trim()) {
-        saves.push(onSaveLocation(rate.destination.id, edit.city.trim()))
-      }
-      if (edit.region !== undefined && edit.region.trim() && rate.destination.regionId != null) {
-        saves.push(onSaveLocation(rate.destination.regionId, edit.region.trim()))
-      }
-      await Promise.all(saves)
-      setEditing(prev => { const next = { ...prev }; delete next[rateId]; return next })
-      setSaved(prev => new Set(prev).add(rateId))
-      setTimeout(() => setSaved(prev => { const next = new Set(prev); next.delete(rateId); return next }), 2000)
-    } finally {
-      setSavingRow(null)
-    }
-  }
-
-  function handleDiscard(rateId: number) {
-    setEditing(prev => { const next = { ...prev }; delete next[rateId]; return next })
-  }
-
-  const thCls = 'px-3 py-2.5 text-left text-[11px] font-bold text-[#8b949e] uppercase tracking-wider cursor-pointer select-none hover:text-[#c9d1d9] transition-colors whitespace-nowrap'
-  const arrow  = (f: string) => sortField === f ? (sortDir === 'asc' ? ' ↑' : ' ↓') : ' ↕'
-  const pageBtnCls = 'px-2 py-1 text-xs rounded bg-[#21262d] text-[#8b949e] hover:bg-[#30363d] hover:text-[#c9d1d9] disabled:opacity-30 disabled:pointer-events-none transition-colors'
-  const numInputCls = 'w-20 px-2 py-1 text-sm font-mono rounded bg-[#0d1117] border border-[#30363d] text-[#3fb950] outline-none focus:border-[#1f6feb] transition-colors [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none'
-  const txtInputCls = 'w-full px-2 py-1 text-sm rounded bg-[#0d1117] border border-[#30363d] text-[#c9d1d9] outline-none focus:border-[#1f6feb] transition-colors'
-
-  return (
-    <div className="rounded-xl border border-[#30363d] bg-[#0d1117] overflow-hidden">
-
-      {/* Toolbar */}
-      <div className="flex flex-wrap items-center gap-2 px-4 py-3 border-b border-[#30363d] bg-[#161b22]">
-        <div className="relative flex-1 min-w-[160px]">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8b949e] text-base pointer-events-none">⌕</span>
-          <input
-            type="text"
-            placeholder="Buscar ciudad o departamento..."
-            value={search}
-            onChange={e => { setSearch(e.target.value); setPage(0) }}
-            className="w-full pl-8 pr-7 py-1.5 text-sm rounded-md bg-[#0d1117] border border-[#30363d] text-[#c9d1d9] placeholder-[#484f58] outline-none focus:border-[#1f6feb] transition-colors"
-          />
-          {search && (
-            <button
-              onClick={() => setSearch('')}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-[#8b949e] hover:text-[#c9d1d9] text-base leading-none"
-            >×</button>
-          )}
-        </div>
-
-        {departments.length > 0 && (
-          <select
-            value={deptFilter}
-            onChange={e => { setDeptFilter(e.target.value); setPage(0) }}
-            className="py-1.5 px-3 text-sm rounded-md bg-[#0d1117] border border-[#30363d] text-[#c9d1d9] outline-none focus:border-[#1f6feb] transition-colors"
-          >
-            <option value="">Todos los departamentos</option>
-            {departments.map(d => <option key={d} value={d}>{d}</option>)}
-          </select>
-        )}
-
-        <span className="text-xs text-[#8b949e] whitespace-nowrap">
-          {filtered.length === 0 ? 'Sin resultados' : `${showStart}–${showEnd} de ${filtered.length.toLocaleString('es-CO')}`}
-        </span>
-
-        <span className={`ml-auto px-2 py-1 rounded text-xs font-semibold ${
-          dirtyCount > 0
-            ? 'bg-[#b08800]/20 text-[#e3b341] border border-[#b08800]/40'
-            : 'bg-[#238636]/20 text-[#3fb950] border border-[#238636]/40'
-        }`}>
-          {dirtyCount > 0 ? `${dirtyCount} sin guardar` : 'Todo guardado'}
-        </span>
-      </div>
-
-      {/* Table */}
-      <div className="overflow-x-auto">
-        <table className="w-full border-collapse text-sm">
-          <thead>
-            <tr className="border-b border-[#30363d] bg-[#161b22]">
-              <th className="w-10 px-3 py-2.5 text-[11px] font-bold text-[#8b949e] uppercase tracking-wider text-center">#</th>
-              <th className={thCls} onClick={() => toggleSort('city')}>Ciudad{arrow('city')}</th>
-              <th className={thCls} onClick={() => toggleSort('region')}>Departamento{arrow('region')}</th>
-              <th className={thCls} onClick={() => toggleSort('price')}>Precio USD{arrow('price')}</th>
-              <th className="px-3 py-2.5 text-[11px] font-bold text-[#8b949e] uppercase tracking-wider text-right">Acciones</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-[#21262d]">
-            {pageItems.length === 0 && (
-              <tr>
-                <td colSpan={5} className="px-4 py-10 text-center text-[#484f58] text-sm">
-                  Sin resultados
-                </td>
-              </tr>
-            )}
-            {pageItems.map((rate, idx) => {
-              const isDirty  = rate.id in editing
-              const isSaved  = saved.has(rate.id)
-              const isSaving = savingRow === rate.id
-
-              return (
-                <tr
-                  key={rate.id}
-                  className={`transition-colors ${
-                    isDirty  ? 'bg-[#1c2128] border-l-2 border-l-[#e3b341]' :
-                    isSaved  ? 'bg-[#0f2a1a] border-l-2 border-l-[#3fb950]' :
-                    idx % 2 === 0 ? 'bg-[#0d1117] hover:bg-[#161b22]' : 'bg-[#0a0e14] hover:bg-[#161b22]'
-                  }`}
-                >
-                  <td className="px-3 py-2 text-center text-[11px] text-[#484f58] tabular-nums">
-                    {page * TABLE_PAGE_SIZE + idx + 1}
-                  </td>
-                  <td className="px-3 py-2">
-                    <input
-                      type="text"
-                      value={editing[rate.id]?.city ?? rate.destination.city}
-                      onChange={e => setEditing(prev => ({
-                        ...prev,
-                        [rate.id]: { ...prev[rate.id], city: e.target.value },
-                      }))}
-                      className={`${txtInputCls} font-semibold`}
-                    />
-                  </td>
-                  <td className="px-3 py-2">
-                    <input
-                      type="text"
-                      value={editing[rate.id]?.region ?? (rate.destination.region ?? '')}
-                      onChange={e => setEditing(prev => ({
-                        ...prev,
-                        [rate.id]: { ...prev[rate.id], region: e.target.value },
-                      }))}
-                      placeholder="—"
-                      className={txtInputCls}
-                    />
-                  </td>
-                  <td className="px-3 py-2">
-                    <div className="flex items-center gap-1">
-                      <span className="text-[#3fb950] font-mono text-xs font-bold shrink-0">$</span>
-                      <input
-                        type="number"
-                        step="0.5"
-                        value={editing[rate.id]?.price ?? String(rate.basePrice)}
-                        onChange={e => setEditing(prev => ({
-                          ...prev,
-                          [rate.id]: { ...prev[rate.id], price: e.target.value },
-                        }))}
-                        className={numInputCls}
-                      />
-                    </div>
-                  </td>
-                  <td className="px-3 py-2">
-                    <div className="flex items-center justify-end gap-1.5">
-                      {isSaved && !isDirty ? (
-                        <span className="text-xs text-[#3fb950] font-semibold">✓ Guardado</span>
-                      ) : isDirty ? (
-                        <>
-                          <button
-                            onClick={() => handleSave(rate.id)}
-                            disabled={isSaving}
-                            className="px-2.5 py-1 text-xs font-semibold rounded bg-[#1f6feb] hover:bg-[#388bfd] text-white disabled:opacity-50 transition-colors"
-                          >
-                            {isSaving ? '...' : 'Guardar'}
-                          </button>
-                          <button
-                            onClick={() => handleDiscard(rate.id)}
-                            disabled={isSaving}
-                            className="px-2 py-1 text-xs rounded bg-[#21262d] hover:bg-[#30363d] text-[#8b949e] disabled:opacity-50 transition-colors"
-                          >
-                            ✕
-                          </button>
-                        </>
-                      ) : (
-                        <>
-                          <span className="text-[#484f58] text-xs select-none">—</span>
-                          <button
-                            onClick={() => onDeleteRate(rate.id)}
-                            title="Eliminar tarifa"
-                            className="w-6 h-6 flex items-center justify-center text-xs rounded text-[#6e7681] hover:text-[#f85149] hover:bg-[#21262d] transition-colors"
-                          >
-                            ✕
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Pagination */}
-      {pageCount > 1 && (
-        <div className="flex items-center justify-between gap-2 px-4 py-2.5 border-t border-[#30363d] bg-[#161b22]">
-          <span className="text-xs text-[#8b949e]">Página {page + 1} de {pageCount}</span>
-          <div className="flex items-center gap-1">
-            <button onClick={() => setPage(0)} disabled={page === 0} className={pageBtnCls}>«</button>
-            <button onClick={() => setPage(p => Math.max(0, p - 1))} disabled={page === 0} className={pageBtnCls}>‹</button>
-
-            {buildPageRange(page, pageCount).map((p, i) =>
-              p === '...'
-                ? <span key={`el-${i}`} className="px-1 text-xs text-[#484f58]">…</span>
-                : <button
-                    key={p}
-                    onClick={() => setPage(p as number)}
-                    className={`w-7 h-7 text-xs rounded transition-colors ${
-                      p === page
-                        ? 'bg-[#1f6feb] text-white font-semibold'
-                        : 'bg-[#21262d] text-[#8b949e] hover:bg-[#30363d] hover:text-[#c9d1d9]'
-                    }`}
-                  >
-                    {(p as number) + 1}
-                  </button>
-            )}
-
-            <button onClick={() => setPage(p => Math.min(pageCount - 1, p + 1))} disabled={page >= pageCount - 1} className={pageBtnCls}>›</button>
-            <button onClick={() => setPage(pageCount - 1)} disabled={page >= pageCount - 1} className={pageBtnCls}>»</button>
-          </div>
-        </div>
-      )}
-
-      {/* Add new rate */}
-      <div className="flex flex-wrap items-center gap-2 px-4 py-3 border-t border-[#30363d] bg-[#161b22]">
-        <CityCombobox
-          locations={locations}
-          value={newRate.destId}
-          onChange={id => onNewRateChange({ ...newRate, destId: id })}
-        />
-        <div className="flex items-center gap-1">
-          <span className="text-[#3fb950] font-mono text-sm font-bold">$</span>
-          <input
-            type="number"
-            placeholder="0.00"
-            step="0.5"
-            value={newRate.price}
-            onChange={e => onNewRateChange({ ...newRate, price: e.target.value })}
-            className={numInputCls}
-          />
-        </div>
-        <button
-          onClick={onAddRate}
-          disabled={addSaving || !newRate.destId || !newRate.price}
-          className="px-3 py-1.5 text-sm font-semibold rounded bg-[#1f6feb] hover:bg-[#388bfd] text-white disabled:opacity-40 transition-colors whitespace-nowrap"
-        >
-          {addSaving ? '...' : '➕ Agregar'}
-        </button>
-      </div>
-    </div>
-  )
-}
-
-// ── ConfiguracionPage ─────────────────────────────────────────────────────────
-
-const CONTRACT_CONFIG_KEYS = [
-  { key: 'smlv',                   label: 'SMLV – Salario Mínimo Legal Vigente',        hint: 'Salario mensual mínimo legal. Los contratos no pueden tener un salario inferior.',  step: '1',    prefix: '$' },
-  { key: 'min_hourly_rate',        label: 'Tarifa mínima por hora',                      hint: 'Valor mínimo permitido para la tarifa horaria en cualquier contrato.',              step: '0.01', prefix: '$' },
-  { key: 'daily_hours',            label: 'Jornada diaria legal (horas)',                 hint: 'Número de horas que constituyen la jornada laboral ordinaria. Ej: 8.',             step: '0.5',  prefix: ''  },
-  { key: 'extra_hour_multiplier',  label: 'Multiplicador hora extra',                    hint: 'Factor que se aplica sobre la tarifa hora al calcular horas extras. Ej: 1.5.',     step: '0.01', prefix: ''  },
-]
 
 export default function ConfiguracionPage() {
   const { token } = useAuth()
-
-  const authHeader = {
-    Authorization: `Bearer ${token ?? ''}`,
-    'Content-Type': 'application/json',
-  }
+  const {
+    providers, countries, ratesByCountry, locsByCountry, flatByCountry, setFlatByCountry,
+    newRateByCountry, setNewRateByCountry, configs, loading, saving,
+    providerId, setProviderId, contractCfg, setContractCfg, savingCfgKey,
+    load, saveFlatRate, saveRate, saveLocation, deleteRate, addRate, saveConfig, saveContractCfg
+  } = useConfig(token)
 
   const [activeTab, setActiveTab] = useState<'cotizaciones' | 'contratos'>('cotizaciones')
 
-  const [providers,        setProviders]        = useState<{ id: number; name: string }[]>([])
-  const [countries,        setCountries]        = useState<Country[]>([])
-  const [ratesByCountry,   setRatesByCountry]   = useState<Record<string, Rate[]>>({})
-  const [locsByCountry,    setLocsByCountry]    = useState<Record<string, Location[]>>({})
-  const [flatByCountry,    setFlatByCountry]    = useState<Record<string, { enabled: boolean; price: string }>>({})
-  const [newRateByCountry, setNewRateByCountry] = useState<Record<string, { destId: string; price: string }>>({})
-  const [configs,          setConfigs]          = useState<ConfigEntry[]>([])
-  const [loading,          setLoading]          = useState(true)
-  const [ratesLoading,     setRatesLoading]     = useState(false)
-  const [saving,           setSaving]           = useState<string | null>(null)
-  const [providerId,       setProviderId]       = useState<number | null>(null)
-  const [contractCfg,      setContractCfg]      = useState<Record<string, string>>({})
-  const [savingCfgKey,     setSavingCfgKey]     = useState<string | null>(null)
-  const [showAddCountry,   setShowAddCountry]   = useState(false)
-  const [newCountry,       setNewCountry]       = useState({ name: '', code: '' })
-  const [addingCountry,    setAddingCountry]    = useState(false)
-
-  const loadRates = useCallback(async (pid: number, countryList: Country[]) => {
-    setRatesLoading(true)
-    try {
-      const [rateRes, ...locResponses] = await Promise.all([
-        fetch(`/api/shipping-providers/${pid}/rates`, { headers: authHeader }).then(r => r.json()),
-        ...countryList.map(c => fetch(`/api/locations?country=${c.code}`, { headers: authHeader }).then(r => r.json())),
-      ])
-
-      const all: Rate[] = rateRes.data ?? []
-      const byCountry: Record<string, Rate[]> = {}
-      for (const c of countryList) byCountry[c.code] = all.filter(r => r.destination.country === c.code)
-      setRatesByCountry(byCountry)
-
-      const byLoc: Record<string, Location[]> = {}
-      countryList.forEach((c, i) => {
-        const rateDestIds = new Set(byCountry[c.code].map(r => r.destination.id))
-        byLoc[c.code] = (locResponses[i].data ?? []).filter((l: Location) => !rateDestIds.has(l.id))
-      })
-      setLocsByCountry(byLoc)
-
-      const newRateInit: Record<string, { destId: string; price: string }> = {}
-      for (const c of countryList) newRateInit[c.code] = { destId: '', price: '' }
-      setNewRateByCountry(newRateInit)
-    } finally {
-      setRatesLoading(false)
-    }
-  }, [token]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  const load = useCallback(async () => {
-    setLoading(true)
-    try {
-      const [provRes, cfgRes, countryRes] = await Promise.all([
-        fetch('/api/shipping-providers', { headers: authHeader }).then(r => r.json()),
-        fetch('/api/system-config').then(r => r.json()),
-        fetch('/api/locations', { headers: authHeader }).then(r => r.json()),
-      ])
-
-      const provList: { id: number; name: string }[] = provRes.data ?? []
-      setProviders(provList)
-      const pid: number | null = provList[0]?.id ?? null
-      setProviderId(pid)
-
-      const allCountries: Country[] = (countryRes.data ?? []).filter((c: Country & { code: string | null }) => c.code)
-      setCountries(allCountries)
-
-      const cfgMap: Record<string, unknown> = {}
-      for (const { key, value } of cfgRes.data ?? []) cfgMap[key] = value
-
-      const flatInit: Record<string, { enabled: boolean; price: string }> = {}
-      for (const c of allCountries) {
-        const k = c.code.toLowerCase()
-        flatInit[c.code] = {
-          enabled: Boolean(cfgMap[`${k}_flat_rate_enabled`]),
-          price: String(cfgMap[`${k}_flat_rate_price`] ?? '0'),
-        }
-      }
-      setFlatByCountry(flatInit)
-
-      const globals = (cfgRes.data ?? []).filter(
-        (e: ConfigEntry) => CONFIG_LABELS[e.key as string] && !FLAT_RATE_KEYS.has(e.key as string),
-      )
-      setConfigs(globals)
-
-      const contractKeys = new Set(CONTRACT_CONFIG_KEYS.map(c => c.key))
-      const contractMap: Record<string, string> = {}
-      for (const { key, value } of cfgRes.data ?? []) {
-        if (contractKeys.has(key as string)) contractMap[key as string] = String(value)
-      }
-      setContractCfg(contractMap)
-
-      if (pid) await loadRates(pid, allCountries)
-    } finally {
-      setLoading(false)
-    }
-  }, [token]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => { load() }, [load])
-
-  const handleProviderChange = async (pid: number) => {
-    setProviderId(pid)
-    await loadRates(pid, countries)
-  }
-
-  const handleAddCountry = async () => {
-    if (!newCountry.name.trim() || !newCountry.code.trim()) return
-    setAddingCountry(true)
-    try {
-      const res = await fetch('/api/locations', {
-        method: 'POST',
-        headers: authHeader,
-        body: JSON.stringify({ name: newCountry.name.trim(), code: newCountry.code.trim().toUpperCase() }),
-      })
-      if (!res.ok) { const e = await res.json(); alert(e.message); return }
-      setShowAddCountry(false)
-      setNewCountry({ name: '', code: '' })
-      load()
-    } finally {
-      setAddingCountry(false)
-    }
-  }
-
-  const patchConfig = async (key: string, value: unknown) => {
-    await fetch(`/api/system-config/${key}`, {
-      method: 'PATCH',
-      headers: authHeader,
-      body: JSON.stringify({ value }),
-    })
-  }
-
-  const saveFlatRate = async (countryCode: string) => {
-    const flat = flatByCountry[countryCode]
-    if (!flat) return
-    const k = countryCode.toLowerCase()
-    setSaving(`flat-${countryCode}`)
-    try {
-      await patchConfig(`${k}_flat_rate_enabled`, flat.enabled)
-      await patchConfig(`${k}_flat_rate_price`, Number(flat.price))
-      alert(`Tarifa plana ${countryCode} guardada`)
-    } catch { alert('Error al guardar') }
-    finally { setSaving(null) }
-  }
-
-  const saveRate = async (rateId: number, price: number) => {
-    if (!providerId) return
-    await fetch(`/api/shipping-providers/${providerId}/rates/${rateId}`, {
-      method: 'PATCH',
-      headers: authHeader,
-      body: JSON.stringify({ basePrice: price }),
-    })
-  }
-
-  const saveLocation = async (locationId: number, name: string) => {
-    await fetch(`/api/locations/${locationId}`, {
-      method: 'PATCH',
-      headers: authHeader,
-      body: JSON.stringify({ name }),
-    })
-    if (providerId) await loadRates(providerId, countries)
-  }
-
-  const deleteRate = async (rateId: number) => {
-    if (!providerId || !confirm('¿Eliminar esta tarifa?')) return
-    await fetch(`/api/shipping-providers/${providerId}/rates/${rateId}`, {
-      method: 'DELETE',
-      headers: authHeader,
-    })
-    loadRates(providerId, countries)
-  }
-
-  const addRate = async (countryCode: string) => {
-    if (!providerId) return
-    const nr = newRateByCountry[countryCode]
-    if (!nr?.destId || !nr?.price) return
-    setSaving(`add-${countryCode}`)
-    try {
-      await fetch(`/api/shipping-providers/${providerId}/rates`, {
-        method: 'POST',
-        headers: authHeader,
-        body: JSON.stringify({ destinationId: Number(nr.destId), basePrice: Number(nr.price), countryCode }),
-      })
-      loadRates(providerId, countries)
-    } finally { setSaving(null) }
-  }
-
-  const saveConfig = async (key: string, value: unknown) => {
-    setSaving(`cfg-${key}`)
-    try {
-      await patchConfig(key, Number(value))
-      alert(`${CONFIG_LABELS[key] ?? key} guardado`)
-    } catch { alert('Error al guardar') }
-    finally { setSaving(null) }
-  }
-
-  const saveContractCfg = async (key: string) => {
-    const val = contractCfg[key]
-    if (val === undefined || val === '') return
-    setSavingCfgKey(key)
-    try {
-      await patchConfig(key, Number(val))
-      alert('Guardado correctamente')
-    } catch { alert('Error al guardar') }
-    finally { setSavingCfgKey(null) }
+  if (loading) {
+    return (
+      <DashboardLayout pageTitle="Configuración" navItems={NAV_ITEMS}>
+        <p className="text-gray-400 animate-pulse">Cargando configuración...</p>
+      </DashboardLayout>
+    )
   }
 
   const RatesSection = ({ c }: { c: Country }) => {
@@ -723,65 +47,28 @@ export default function ConfiguracionPage() {
     return (
       <div className={`${CLS.card} !p-0 overflow-hidden`}>
         <div className="flex items-center justify-between px-5 py-4 border-b">
-          <h3 className="font-bold">
-            {flagEmoji(c.code)} Tarifas USA → {c.name}
-          </h3>
+          <h3 className="font-bold">{flagEmoji(c.code)} Tarifas USA → {c.name}</h3>
           <span className="text-xs text-gray-400 font-mono">{c.code}</span>
         </div>
-
         <div className="flex items-center gap-3 px-5 py-3 bg-gray-50 border-b">
           <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={flat.enabled}
-              onChange={e => setFlatByCountry(prev => ({ ...prev, [c.code]: { ...flat, enabled: e.target.checked } }))}
-              className="w-4 h-4"
-            />
+            <input type="checkbox" checked={flat.enabled} onChange={e => setFlatByCountry(prev => ({ ...prev, [c.code]: { ...flat, enabled: e.target.checked } }))} className="w-4 h-4" />
             <span className="text-sm font-semibold">Tarifa plana</span>
           </label>
-          {flat.enabled && (
-            <input
-              type="number"
-              value={flat.price}
-              onChange={e => setFlatByCountry(prev => ({ ...prev, [c.code]: { ...flat, price: e.target.value } }))}
-              className={`${CLS.input} w-28`}
-              placeholder="USD"
-              step="0.01"
-            />
-          )}
-          <button
-            onClick={() => saveFlatRate(c.code)}
-            disabled={saving === `flat-${c.code}`}
-            className={`${CLS.btn} bg-green-600 disabled:opacity-50`}
-          >
-            {saving === `flat-${c.code}` ? '...' : '💾 Guardar'}
-          </button>
+          {flat.enabled && <input type="number" value={flat.price} onChange={e => setFlatByCountry(prev => ({ ...prev, [c.code]: { ...flat, price: e.target.value } }))} className={`${CLS.input} w-28`} placeholder="USD" step="0.01" />}
+          <button onClick={() => saveFlatRate(c.code)} disabled={saving === `flat-${c.code}`} className={`${CLS.btn} bg-green-600 disabled:opacity-50`}>{saving === `flat-${c.code}` ? '...' : '💾 Guardar'}</button>
         </div>
-
         {!flat.enabled && (
           <div className="p-4">
             <RatesTable
-              rates={rates}
-              locations={locations}
-              newRate={nr}
+              rates={rates} locations={locations} newRate={nr}
               onNewRateChange={r => setNewRateByCountry(prev => ({ ...prev, [c.code]: r }))}
-              onSaveRate={saveRate}
-              onSaveLocation={saveLocation}
-              onDeleteRate={id => deleteRate(id)}
-              onAddRate={() => addRate(c.code)}
-              addSaving={saving === `add-${c.code}`}
+              onSaveRate={saveRate} onSaveLocation={saveLocation} onDeleteRate={deleteRate}
+              onAddRate={() => addRate(c.code)} addSaving={saving === `add-${c.code}`}
             />
           </div>
         )}
       </div>
-    )
-  }
-
-  if (loading) {
-    return (
-      <DashboardLayout pageTitle="Configuración" navItems={NAV_ITEMS}>
-        <p className="text-gray-400 animate-pulse">Cargando configuración...</p>
-      </DashboardLayout>
     )
   }
 
@@ -792,175 +79,35 @@ export default function ConfiguracionPage() {
         <p className="text-gray-500 text-sm">Gestión de tarifas, variables de contratos y constantes globales</p>
       </div>
 
-      {/* Tabs */}
       <div className="flex gap-1 bg-gray-100 p-1 rounded-xl w-fit mb-6">
         {([['cotizaciones', '📦 Cotizaciones'], ['contratos', '📄 Variables de Contratos']] as const).map(([t, label]) => (
-          <button
-            key={t}
-            onClick={() => setActiveTab(t)}
-            className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
-              activeTab === t ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            {label}
-          </button>
+          <button key={t} onClick={() => setActiveTab(t)} className={`px-4 py-2 rounded-lg text-sm font-bold transition ${activeTab === t ? 'bg-white shadow text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}>{label}</button>
         ))}
       </div>
 
-      {/* ── Cotizaciones tab ── */}
-      {activeTab === 'cotizaciones' && (
-        <>
-          {/* Provider selector */}
-          <div className="flex items-center gap-3 mb-5 flex-wrap">
-            <label className="text-sm font-semibold text-gray-600 whitespace-nowrap">Proveedor de envío:</label>
-            <div className="flex gap-2 flex-wrap">
-              {providers.map(p => (
-                <button
-                  key={p.id}
-                  onClick={() => handleProviderChange(p.id)}
-                  disabled={ratesLoading}
-                  className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition-all border ${
-                    providerId === p.id
-                      ? 'bg-[var(--color-primary)] text-white border-[var(--color-primary)]'
-                      : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400'
-                  } disabled:opacity-50`}
-                >
-                  {p.name}
-                </button>
-              ))}
-            </div>
-            {ratesLoading && <span className="text-xs text-gray-400 animate-pulse">Cargando tarifas...</span>}
-          </div>
-
-          {/* Dynamic country sections */}
-          {countries.map(c => <RatesSection key={c.code} c={c} />)}
-
+      {activeTab === 'cotizaciones' ? (
+        <div className="space-y-6">
           <div className={CLS.card}>
-            <h3 className="font-bold mb-4">⚙️ Constantes Globales</h3>
+            <h3 className="font-bold mb-4">Proveedor de Envíos & Constantes</h3>
             <div className={CLS.grid}>
-              {configs.map(({ key, value }) => (
-                <div key={key as string} className="flex flex-col gap-1">
-                  <label className={CLS.label}>{CONFIG_LABELS[key as string]}</label>
-                  <div className="flex gap-1">
-                    <input
-                      className={`${CLS.input} flex-1`}
-                      type="number"
-                      step="any"
-                      defaultValue={String(value)}
-                      id={`cfg-${key}`}
-                    />
-                    <button
-                      onClick={() => {
-                        const el = document.getElementById(`cfg-${key}`) as HTMLInputElement
-                        if (el) saveConfig(key as string, el.value)
-                      }}
-                      disabled={saving === `cfg-${key}`}
-                      className={`${CLS.btn} bg-green-600 disabled:opacity-50`}
-                    >
-                      {saving === `cfg-${key}` ? '...' : '✓'}
-                    </button>
-                  </div>
-                </div>
+              <div><label className={CLS.label}>Transportadora</label><select value={providerId ?? ''} onChange={e => setProviderId(Number(e.target.value))} className={CLS.input}>{providers.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select></div>
+              {configs.map(cfg => (
+                <div key={cfg.key}><label className={CLS.label}>{CONFIG_LABELS[cfg.key] ?? cfg.key}</label><div className="flex gap-2"><input type="number" step="0.01" defaultValue={String(cfg.value)} onBlur={e => saveConfig(cfg.key, e.target.value)} className={CLS.input} /><button className="bg-gray-100 p-2 rounded hover:bg-gray-200">💾</button></div></div>
               ))}
             </div>
           </div>
-
-          {/* Add Country */}
-          <div className="mb-6">
-            <button
-              onClick={() => setShowAddCountry(true)}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg border-2 border-dashed border-gray-300 text-gray-500 hover:border-[var(--color-primary)] hover:text-[var(--color-primary)] text-sm font-semibold transition-all"
-            >
-              + Agregar nuevo país de destino
-            </button>
-          </div>
-        </>
-      )}
-
-      {/* Add Country Modal */}
-      {showAddCountry && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm p-6">
-            <h2 className="font-bold text-lg mb-4">Agregar nuevo país de destino</h2>
-            <p className="text-xs text-gray-500 mb-4">
-              Crea el país en el sistema para poder agregar tarifas de envío hacia ese destino.
-            </p>
-            <div className="flex flex-col gap-3">
-              <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Nombre del país</label>
-                <input
-                  type="text"
-                  placeholder="Ej: Guatemala"
-                  value={newCountry.name}
-                  onChange={e => setNewCountry(p => ({ ...p, name: e.target.value }))}
-                  className="form-input w-full"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Código ISO (2 letras)</label>
-                <input
-                  type="text"
-                  placeholder="Ej: GT"
-                  maxLength={2}
-                  value={newCountry.code}
-                  onChange={e => setNewCountry(p => ({ ...p, code: e.target.value.toUpperCase() }))}
-                  className="form-input w-full font-mono uppercase"
-                />
-              </div>
-              {newCountry.code.length === 2 && (
-                <p className="text-2xl text-center">{flagEmoji(newCountry.code)} {newCountry.name}</p>
-              )}
-            </div>
-            <div className="flex gap-3 mt-5">
-              <button
-                onClick={() => { setShowAddCountry(false); setNewCountry({ name: '', code: '' }) }}
-                className="flex-1 py-2 rounded-lg border border-gray-200 text-sm font-bold text-gray-500 hover:bg-gray-50"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={handleAddCountry}
-                disabled={addingCountry || !newCountry.name.trim() || newCountry.code.length !== 2}
-                className="flex-1 py-2 rounded-lg bg-[var(--color-primary)] text-white text-sm font-bold hover:opacity-90 disabled:opacity-50"
-              >
-                {addingCountry ? 'Creando...' : 'Crear país'}
-              </button>
-            </div>
-          </div>
+          {countries.map(c => <RatesSection key={c.id} c={c} />)}
         </div>
-      )}
-
-      {/* ── Contratos tab ── */}
-      {activeTab === 'contratos' && (
+      ) : (
         <div className={CLS.card}>
-          <h3 className="font-bold mb-1">📄 Variables de Contratos</h3>
-          <p className="text-sm text-gray-500 mb-6">
-            Estos valores se usan para validar los contratos al momento de crearlos. Si un contrato no cumple con el mínimo, el sistema lo rechazará.
-          </p>
-
-          <div className="flex flex-col gap-6">
-            {CONTRACT_CONFIG_KEYS.map(({ key, label, hint, step, prefix }) => (
-              <div key={key} className="flex flex-col gap-1.5 max-w-sm">
-                <label className="text-sm font-semibold text-gray-700">{label}</label>
-                <p className="text-xs text-gray-400">{hint}</p>
-                <div className="flex gap-2 items-center mt-1">
-                  {prefix && <span className="text-gray-500 font-mono font-bold">{prefix}</span>}
-                  <input
-                    type="number"
-                    step={step}
-                    min="0"
-                    value={contractCfg[key] ?? ''}
-                    placeholder="Sin configurar"
-                    onChange={e => setContractCfg(prev => ({ ...prev, [key]: e.target.value }))}
-                    className={`${CLS.input} flex-1`}
-                  />
-                  <button
-                    onClick={() => saveContractCfg(key)}
-                    disabled={savingCfgKey === key || !contractCfg[key]}
-                    className={`${CLS.btn} bg-green-600 disabled:opacity-50 whitespace-nowrap`}
-                  >
-                    {savingCfgKey === key ? '...' : '💾 Guardar'}
-                  </button>
+          <h3 className="font-bold mb-4 text-gray-800">Variables de Nómina y Contratación</h3>
+          <div className="space-y-6">
+            {CONTRACT_CONFIG_KEYS.map(cfg => (
+              <div key={cfg.key} className="flex flex-col md:flex-row md:items-center gap-4 p-4 rounded-xl border border-gray-100 bg-gray-50/50">
+                <div className="flex-1"><label className="block text-sm font-bold text-gray-700 mb-0.5">{cfg.label}</label><p className="text-xs text-gray-500">{cfg.hint}</p></div>
+                <div className="flex items-center gap-2">
+                  <div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-mono text-sm">{cfg.prefix}</span><input type="number" step={cfg.step} value={contractCfg[cfg.key] ?? ''} onChange={e => setContractCfg(prev => ({ ...prev, [cfg.key]: e.target.value }))} className={`form-input w-40 ${cfg.prefix ? 'pl-7' : ''} font-mono text-right`} /></div>
+                  <button onClick={() => saveContractCfg(cfg.key)} disabled={savingCfgKey === cfg.key} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-bold disabled:opacity-50 transition">{savingCfgKey === cfg.key ? '...' : 'Guardar'}</button>
                 </div>
               </div>
             ))}

@@ -1,247 +1,30 @@
 'use client'
 
-import { useEffect, useState, useCallback, useMemo } from 'react'
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
 import { NAV_ITEMS } from '@/components/layout/nav-config'
 import { Pagination } from '@/components/ui/Pagination'
 import { useAuth } from '@/context/AuthContext'
 import { EmployeeSearch } from '@/components/ui/EmployeeSearch'
-
-// ── Types from OpenAPI spec (simplified) ──────────────────────────────
-export type TaskStatus = 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED' | 'NOT_DONE'
-
-interface Employee {
-  id: number
-  firstName: string
-  lastName: string
-  email: string
-}
-
-function empFullName(emp: Employee) {
-  return `${emp.firstName} ${emp.lastName}`
-}
-
-interface Task {
-  id: number
-  title: string
-  description: string | null
-  status: TaskStatus
-  employeeId: number
-  employee?: Employee // Populated by frontend or backend join
-  createdBy: number
-  assignedBy: number | null
-  startTime: string | null
-  endTime: string | null
-  createdAt: string
-}
-
-const LIMIT = 10
-
-const STATUS_LABELS: Record<TaskStatus, string> = {
-  PENDING: 'Pendiente',
-  IN_PROGRESS: 'En Proceso',
-  COMPLETED: 'Completado',
-  CANCELLED: 'Cancelado',
-  NOT_DONE: 'No Hecho',
-}
-
-const STATUS_COLORS: Record<TaskStatus, string> = {
-  PENDING: 'bg-yellow-100 text-yellow-700 border-yellow-200',
-  IN_PROGRESS: 'bg-blue-100 text-blue-700 border-blue-200',
-  COMPLETED: 'bg-green-100 text-green-700 border-green-200',
-  CANCELLED: 'bg-gray-100 text-gray-700 border-gray-200',
-  NOT_DONE: 'bg-red-100 text-red-700 border-red-200',
-}
-
-type ToastMsg = { id: number; text: string }
+import { TaskTable } from '@/components/admin/tasks/TaskTable'
+import { useTasks } from '@/lib/admin/tasks/useTasks'
+import { useTaskActions } from '@/lib/admin/tasks/useTaskActions'
+import { STATUS_LABELS, TaskStatus } from '@/types/admin/tasks'
+import { Calendar, Clock, AlertCircle } from 'lucide-react'
 
 export default function GestionTareasPage() {
-  const { user, token } = useAuth()
+  const { token } = useAuth()
+  const {
+    tasks, employees, total, page, setPage, pageSize, setPageSize, loading,
+    statusFilter, setStatusFilter, employeeFilter, setEmployeeFilter,
+    fetchData, handleDeleteTask, handleCheckOverdue
+  } = useTasks(token)
 
-  // ── State ────────────────────────────────────────────────────────────
-  const [tasks, setTasks] = useState<Task[]>([])
-  const [employees, setEmployees] = useState<Employee[]>([])
-  const [total, setTotal] = useState(0)
-  const [page, setPage] = useState(0)
-  const [loading, setLoading] = useState(false)
-
-  // Filters
-  const [statusFilter, setStatusFilter] = useState<TaskStatus | ''>('')
-  const [employeeFilter, setEmployeeFilter] = useState<string>('')
-
-  // Creation Modal
-  const [showCreateModal, setShowCreateModal] = useState(false)
-  const [isBulk, setIsBulk] = useState(false)
-  const [form, setForm] = useState({
-    title: '',
-    description: '',
-    employeeId: '',
-    employeeIds: [] as string[],
-    startTime: '',
-    endTime: '',
-  })
-  const [createLoading, setCreateLoading] = useState(false)
-
-  // Reassign Modal
-  const [reassignTask, setReassignTask] = useState<Task | null>(null)
-  const [newEmployeeId, setNewEmployeeId] = useState('')
-  const [reassignLoading, setReassignLoading] = useState(false)
-
-  // Admin toasts (transient, never persisted)
-  const [toasts, setToasts] = useState<ToastMsg[]>([])
-  const showToast = (text: string) => {
-    const id = Date.now()
-    setToasts(ts => [...ts, { id, text }])
-    setTimeout(() => setToasts(ts => ts.filter(t => t.id !== id)), 5000)
-  }
-
-  // ── Data Fetching ────────────────────────────────────────────────────
-  const fetchData = useCallback(async () => {
-    if (!token) return
-    setLoading(true)
-    const auth = { Authorization: `Bearer ${token}` }
-    try {
-      const taskParams = new URLSearchParams({
-        page: String(page + 1),
-        limit: String(LIMIT),
-        ...(statusFilter && { status: statusFilter }),
-        ...(employeeFilter && { employeeId: employeeFilter }),
-      })
-
-      const [tasksRes, empsRes] = await Promise.all([
-        fetch(`/api/tasks?${taskParams}`, { headers: auth }),
-        fetch('/api/employees?limit=100', { headers: auth }),
-      ])
-
-      const tasksData = await tasksRes.json()
-      const empsData = await empsRes.json()
-
-      const emps = Array.isArray(empsData) ? empsData : (empsData.data ?? [])
-      setEmployees(emps)
-
-      // Map employee names to tasks for the table
-      const tasksWithEmps = (tasksData.data ?? []).map((t: Task) => ({
-        ...t,
-        employee: emps.find((e: Employee) => e.id === t.employeeId)
-      }))
-
-      setTasks(tasksWithEmps)
-      setTotal(tasksData.total ?? 0)
-    } catch (err) {
-      console.error('Error fetching tasks:', err)
-    } finally {
-      setLoading(false)
-    }
-  }, [page, statusFilter, employeeFilter])
-
-  useEffect(() => { fetchData() }, [fetchData])
-
-  // ── Actions ──────────────────────────────────────────────────────────
-  const handleCheckOverdue = async () => {
-    if (!confirm('¿Deseas marcar todas las tareas pendientes vencidas como "No Hechas"?')) return
-    try {
-      const res = await fetch('/api/tasks/check-overdue', { method: 'POST' })
-      if (res.ok) {
-        alert('Tareas procesadas correctamente')
-        fetchData()
-      }
-    } catch (err) {
-      alert('Error al verificar tareas vencidas')
-    }
-  }
-
-  const handleCreateSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!token) return
-    setCreateLoading(true)
-    try {
-      const apiUrl = isBulk ? '/api/tasks/bulk-assign' : '/api/tasks'
-      const payload = isBulk
-        ? {
-          title: form.title,
-          description: form.description,
-          employeeIds: form.employeeIds.map(Number),
-          startTime: form.startTime || undefined,
-          endTime: form.endTime || undefined,
-        }
-        : {
-          title: form.title,
-          description: form.description,
-          employeeId: Number(form.employeeId),
-          startTime: form.startTime || undefined,
-          endTime: form.endTime || undefined,
-        }
-
-      const res = await fetch(apiUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify(payload),
-      })
-
-      if (res.ok) {
-        setShowCreateModal(false)
-        setForm({ title: '', description: '', employeeId: '', employeeIds: [], startTime: '', endTime: '' })
-        fetchData()
-        if (isBulk) {
-          showToast(`Tareas asignadas a ${form.employeeIds.length} empleados`)
-        } else {
-          const emp = employees.find(e => e.id === Number(form.employeeId))
-          showToast(`Asignaste la tarea "${form.title}" a ${emp ? empFullName(emp) : 'empleado'}`)
-        }
-      } else {
-        const err = await res.json()
-        alert(err.message || 'Error al crear tarea')
-      }
-    } finally {
-      setCreateLoading(false)
-    }
-  }
-
-  const handleReassign = async () => {
-    if (!reassignTask || !newEmployeeId || !token) return
-    setReassignLoading(true)
-    try {
-      const res = await fetch(`/api/tasks/reassign?id=${reassignTask.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ newEmployeeId: Number(newEmployeeId) }),
-      })
-      if (res.ok) {
-        const emp = employees.find(e => e.id === Number(newEmployeeId))
-        showToast(`Reasignaste "${reassignTask.title}" a ${emp ? empFullName(emp) : 'empleado'}`)
-        setReassignTask(null)
-        setNewEmployeeId('')
-        fetchData()
-      }
-    } finally {
-      setReassignLoading(false)
-    }
-  }
-
-  const handleDeleteTask = async (id: number) => {
-    if (!confirm('¿Deseas eliminar esta tarea permanentemente?') || !token) return
-    try {
-      const res = await fetch(`/api/tasks?id=${id}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      if (res.ok) fetchData()
-    } catch {
-      alert('Error al eliminar tarea')
-    }
-  }
-
-  // ── Stats ────────────────────────────────────────────────────────────
-  // (In a real app, these would come from an analytics endpoint)
-  const taskSummary = useMemo(() => {
-    return {
-      total: total,
-      pending: tasks.filter(t => t.status === 'PENDING').length, // This is only per-page, bad for stats but okay for demo if full stats not avail
-      inProgress: tasks.filter(t => t.status === 'IN_PROGRESS').length,
-    }
-  }, [total, tasks])
-
-  const pageCount = Math.ceil(total / LIMIT)
+  const {
+    showCreateModal, setShowCreateModal, isBulk, setIsBulk, form, setForm, createLoading,
+    reassignTask, setReassignTask, newEmployeeId, setNewEmployeeId, reassignLoading,
+    toasts, handleCreateSubmit, handleReassign,
+    isDateInvalid, dateError
+  } = useTaskActions(token, employees, fetchData)
 
   return (
     <>
@@ -251,30 +34,17 @@ export default function GestionTareasPage() {
       onReload={fetchData}
     >
       <div className="space-y-6">
-
-        {/* Header Actions */}
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <h1 className="font-titles text-2xl font-extrabold text-[var(--color-foreground)]">Control de Tareas</h1>
             <p className="text-gray-500 text-sm">Asignación y seguimiento global de actividades</p>
           </div>
           <div className="flex gap-2">
-            <button
-              onClick={handleCheckOverdue}
-              className="bg-red-50 text-red-600 text-sm font-subtitles font-bold border border-red-100 px-4 py-2 rounded-[var(--radius-lg)] hover:bg-red-100 transition"
-            >
-              ⏰ Limpiar Vencidas
-            </button>
-            <button
-              onClick={() => setShowCreateModal(true)}
-              className="bg-[var(--color-primary)] text-white text-sm font-subtitles font-bold px-4 py-2 rounded-[var(--radius-lg)] hover:opacity-90 transition"
-            >
-              + Nueva Tarea
-            </button>
+            <button onClick={handleCheckOverdue} className="bg-red-50 text-red-600 text-sm font-subtitles font-bold border border-red-100 px-4 py-2 rounded-[var(--radius-lg)] hover:bg-red-100 transition">⏰ Limpiar Vencidas</button>
+            <button onClick={() => setShowCreateModal(true)} className="bg-[var(--color-primary)] text-white text-sm font-subtitles font-bold px-4 py-2 rounded-[var(--radius-lg)] hover:opacity-90 transition">+ Nueva Tarea</button>
           </div>
         </div>
 
-        {/* Global Monitor Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <StatCard label="Total Tareas" value={total} color="bg-white border-gray-100" />
           <StatCard label="Pendientes" value={tasks.filter(t => t.status === 'PENDING').length} color="bg-yellow-50 border-yellow-100 text-yellow-700" />
@@ -282,114 +52,27 @@ export default function GestionTareasPage() {
           <StatCard label="No Hechas" value={tasks.filter(t => t.status === 'NOT_DONE').length} color="bg-red-50 border-red-100 text-red-700" />
         </div>
 
-        {/* Table Card */}
         <div className="bg-white rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] border border-gray-100 overflow-hidden">
-
-          {/* Filters Area */}
           <div className="px-5 py-4 border-b border-gray-100 bg-gray-50/50 flex flex-wrap gap-3">
             <div className="flex-1 min-w-[200px]">
-              <select
-                value={statusFilter}
-                onChange={e => { setStatusFilter(e.target.value as TaskStatus | ''); setPage(0) }}
-                className="form-input w-full bg-white"
-              >
+              <select value={statusFilter} onChange={e => { setStatusFilter(e.target.value as TaskStatus | ''); setPage(0) }} className="form-input w-full bg-white">
                 <option value="">Todos los estados</option>
-                {Object.entries(STATUS_LABELS).map(([val, lab]) => (
-                  <option key={val} value={val}>{lab}</option>
-                ))}
+                {Object.entries(STATUS_LABELS).map(([val, lab]) => <option key={val} value={val}>{lab}</option>)}
               </select>
             </div>
             <div className="flex-1 min-w-[300px]">
-              <EmployeeSearch
-                onSelect={emp => { setEmployeeFilter(emp ? String(emp.id) : ''); setPage(0) }}
-                placeholder="Filtrar por empleado (Nombre o ID)..."
-                className="bg-white"
-              />
+              <EmployeeSearch onSelect={emp => { setEmployeeFilter(emp ? String(emp.id) : ''); setPage(0) }} placeholder="Filtrar por empleado (Nombre o ID)..." className="bg-white" />
             </div>
           </div>
 
-          {/* Table */}
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-gray-100 bg-gray-50/50">
-                  <th className="px-5 py-3 text-left font-subtitles text-xs uppercase tracking-wide text-gray-500">ID</th>
-                  <th className="px-5 py-3 text-left font-subtitles text-xs uppercase tracking-wide text-gray-500">Tarea</th>
-                  <th className="px-5 py-3 text-left font-subtitles text-xs uppercase tracking-wide text-gray-500">Asignado a</th>
-                  <th className="px-5 py-3 text-left font-subtitles text-xs uppercase tracking-wide text-gray-500">Estado</th>
-                  <th className="px-5 py-3 text-left font-subtitles text-xs uppercase tracking-wide text-gray-500">Vencimiento</th>
-                  <th className="px-5 py-3 text-right font-subtitles text-xs uppercase tracking-wide text-gray-500">Acciones</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50">
-                {loading ? (
-                  <tr><td colSpan={6} className="text-center py-12 text-gray-400 font-subtitles">Cargando tareas...</td></tr>
-                ) : tasks.length === 0 ? (
-                  <tr><td colSpan={6} className="text-center py-12 text-gray-400 font-subtitles">No hay tareas que coincidan con los filtros</td></tr>
-                ) : tasks.map(task => (
-                  <tr key={task.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-5 py-4 font-mono text-xs text-gray-400">#{task.id}</td>
-                    <td className="px-5 py-4 min-w-[200px]">
-                      <p className="font-subtitles font-bold text-[var(--color-foreground)]">{task.title}</p>
-                      <p className="text-xs text-gray-500 truncate max-w-[200px]">{task.description || 'Sin descripción'}</p>
-                    </td>
-                    <td className="px-5 py-4">
-                      <div className="flex items-center gap-2">
-                        <div className="w-7 h-7 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-[10px] font-bold">
-                          {task.employee ? (task.employee.firstName[0] + task.employee.lastName[0]).toUpperCase() : '?'}
-                        </div>
-                        <span className="font-subtitles text-gray-700">{task.employee ? empFullName(task.employee) : 'Cargando...'}</span>
-                      </div>
-                    </td>
-                    <td className="px-5 py-4">
-                      <span className={`px-2 py-1 rounded-full text-[10px] font-bold border ${STATUS_COLORS[task.status]}`}>
-                        {STATUS_LABELS[task.status]}
-                      </span>
-                    </td>
-                    <td className="px-5 py-4 whitespace-nowrap">
-                      <p className="text-xs font-subtitles text-gray-600">
-                        {task.endTime ? new Date(task.endTime).toLocaleString('es-ES', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'Sin límite'}
-                      </p>
-                    </td>
-                    <td className="px-5 py-4 text-right">
-                      <div className="flex justify-end gap-2">
-                        <button
-                          onClick={() => setReassignTask(task)}
-                          className="p-2 rounded-lg bg-gray-50 text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition"
-                          title="Reasignar"
-                        >
-                          🔄
-                        </button>
-                        <button
-                          onClick={() => handleDeleteTask(task.id)}
-                          className="p-2 rounded-lg bg-gray-50 text-gray-400 hover:text-red-600 hover:bg-red-50 transition"
-                          title="Eliminar"
-                        >
-                          🗑️
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <TaskTable tasks={tasks} loading={loading} onReassign={setReassignTask} onDelete={handleDeleteTask} />
 
-          {/* Footer / Pagination */}
-          <div className="px-5 py-4 border-t border-gray-100 flex items-center justify-between">
-            <p className="text-xs text-gray-400 font-subtitles">
-              Mostrando {tasks.length} de {total} tareas
-            </p>
-            <Pagination
-              page={page}
-              pageCount={pageCount}
-              onPageChange={setPage}
-            />
+          <div className="px-5 py-4 border-t border-gray-100">
+            <Pagination page={page} pageSize={pageSize} totalItems={total} onPageChange={setPage} onPageSizeChange={setPageSize} />
           </div>
         </div>
       </div>
 
-      {/* ── Create Task Modal (Individual & Bulk) ────────────────────── */}
       {showCreateModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
           <div className="bg-white rounded-[var(--radius-xl)] shadow-2xl w-full max-w-lg animate-in fade-in zoom-in duration-200">
@@ -397,101 +80,69 @@ export default function GestionTareasPage() {
               <h2 className="font-titles text-xl font-extrabold text-[var(--color-foreground)]">Nueva Tarea</h2>
               <button onClick={() => setShowCreateModal(false)} className="text-gray-400 hover:text-gray-600">×</button>
             </div>
-
             <form onSubmit={handleCreateSubmit} className="p-6 space-y-4">
-              {/* Type Switch */}
               <div className="flex p-1 bg-gray-100 rounded-[var(--radius-lg)]">
-                <button
-                  type="button"
-                  onClick={() => setIsBulk(false)}
-                  className={`flex-1 py-1.5 text-xs font-bold rounded-[var(--radius-md)] transition ${!isBulk ? 'bg-white shadow text-[var(--color-primary)]' : 'text-gray-500'}`}
-                >
-                  Individual
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setIsBulk(true)}
-                  className={`flex-1 py-1.5 text-xs font-bold rounded-[var(--radius-md)] transition ${isBulk ? 'bg-white shadow text-[var(--color-primary)]' : 'text-gray-500'}`}
-                >
-                  Asignación Masiva
-                </button>
+                <button type="button" onClick={() => setIsBulk(false)} className={`flex-1 py-1.5 text-xs font-bold rounded-[var(--radius-md)] transition ${!isBulk ? 'bg-white shadow text-[var(--color-primary)]' : 'text-gray-500'}`}>Individual</button>
+                <button type="button" onClick={() => setIsBulk(true)} className={`flex-1 py-1.5 text-xs font-bold rounded-[var(--radius-md)] transition ${isBulk ? 'bg-white shadow text-[var(--color-primary)]' : 'text-gray-500'}`}>Asignación Masiva</button>
               </div>
-
               <div>
                 <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Título</label>
-                <input
-                  required
-                  type="text"
-                  value={form.title}
-                  onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
-                  className="form-input w-full"
-                  placeholder="Ej: Revisión de inventario"
-                />
+                <input required type="text" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} className="form-input w-full" placeholder="Ej: Revisión de inventario" />
               </div>
-
               <div>
                 <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Descripción</label>
-                <textarea
-                  value={form.description}
-                  onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
-                  className="form-input w-full h-20 resize-none"
-                  placeholder="Instrucciones detalladas..."
-                />
+                <textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} className="form-input w-full h-20 resize-none" placeholder="Instrucciones detalladas..." />
               </div>
-
-              {/* Employee Selector(s) */}
-              {isBulk ? (
-                <EmployeeSearch
-                  multi
-                  label="Empleados Responsables"
-                  onMultiSelect={emps => {
-                    setForm(f => ({ ...f, employeeIds: emps.map(e => String(e.id)) }))
-                  }}
-                  placeholder="Escribe para buscar y añadir empleados..."
-                />
-              ) : (
-                <EmployeeSearch
-                  label="Empleado Responsable"
-                  onSelect={emp => {
-                    setForm(f => ({ ...f, employeeId: emp ? String(emp.id) : '' }))
-                  }}
-                  placeholder="Escribe nombre o identificación..."
-                />
-              )}
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Inicio</label>
-                  <input
-                    type="datetime-local"
-                    value={form.startTime}
-                    onChange={e => setForm(f => ({ ...f, startTime: e.target.value }))}
-                    className="form-input w-full"
-                  />
+              {isBulk ? <EmployeeSearch multi label="Empleados Responsables" onMultiSelect={emps => setForm(f => ({ ...f, employeeIds: emps.map(e => String(e.id)) }))} placeholder="Escribe para buscar y añadir empleados..." /> : <EmployeeSearch label="Empleado Responsable" onSelect={emp => setForm(f => ({ ...f, employeeId: emp ? String(emp.id) : '' }))} placeholder="Escribe nombre o identificación..." />}
+              
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="flex items-center gap-1.5 text-xs font-bold text-gray-500 uppercase">
+                      <Calendar size={14} className="text-[var(--color-primary)]" /> Inicio
+                    </label>
+                    <div className="relative">
+                      <input 
+                        type="datetime-local" 
+                        value={form.startTime} 
+                        onChange={e => setForm(f => ({ ...f, startTime: e.target.value }))} 
+                        className={`form-input w-full transition-colors ${isDateInvalid ? 'border-red-500 focus:border-red-600 focus:ring-red-100' : ''}`} 
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="flex items-center gap-1.5 text-xs font-bold text-gray-500 uppercase">
+                      <Clock size={14} className="text-[var(--color-primary)]" /> Deadline
+                    </label>
+                    <div className="relative">
+                      <input 
+                        type="datetime-local" 
+                        value={form.endTime} 
+                        onChange={e => setForm(f => ({ ...f, endTime: e.target.value }))} 
+                        className={`form-input w-full transition-colors ${isDateInvalid ? 'border-red-500 focus:border-red-600 focus:ring-red-100' : ''}`} 
+                      />
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Deadline</label>
-                  <input
-                    type="datetime-local"
-                    value={form.endTime}
-                    onChange={e => setForm(f => ({ ...f, endTime: e.target.value }))}
-                    className="form-input w-full"
-                  />
-                </div>
+                
+                {isDateInvalid && (
+                  <div className="flex items-center gap-2 text-red-600 bg-red-50 p-2.5 rounded-[var(--radius-md)] border border-red-100 animate-in fade-in slide-in-from-top-1 duration-200">
+                    <AlertCircle size={16} className="shrink-0" />
+                    <p className="text-[11px] font-bold leading-tight">La fecha de fin no puede ser anterior a la de inicio.</p>
+                  </div>
+                )}
               </div>
 
               <div className="flex gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowCreateModal(false)}
-                  className="flex-1 py-2.5 rounded-[var(--radius-lg)] border border-gray-200 text-sm font-bold text-gray-500 hover:bg-gray-50 transition"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  disabled={createLoading}
-                  className="flex-1 py-2.5 rounded-[var(--radius-lg)] bg-[var(--color-primary)] text-white text-sm font-bold hover:opacity-90 transition disabled:opacity-50"
+                <button type="button" onClick={() => setShowCreateModal(false)} className="flex-1 py-2.5 rounded-[var(--radius-lg)] border border-gray-200 text-sm font-bold text-gray-500 hover:bg-gray-50 transition">Cancelar</button>
+                <button 
+                  type="submit" 
+                  disabled={createLoading || isDateInvalid} 
+                  className={`flex-1 py-2.5 rounded-[var(--radius-lg)] text-white text-sm font-bold transition flex items-center justify-center gap-2 ${
+                    isDateInvalid 
+                    ? 'bg-gray-400 cursor-not-allowed opacity-70' 
+                    : 'bg-[var(--color-primary)] hover:opacity-90 active:scale-[0.98]'
+                  }`}
                 >
                   {createLoading ? 'Creando...' : 'Crear Tarea'}
                 </button>
@@ -501,60 +152,25 @@ export default function GestionTareasPage() {
         </div>
       )}
 
-      {/* ── Reassign Modal ────────────────────────────────────────── */}
       {reassignTask && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
           <div className="bg-white rounded-[var(--radius-xl)] shadow-2xl w-full max-w-sm p-6">
             <h2 className="font-titles text-lg font-bold text-[var(--color-foreground)] mb-4">Reasignar Tarea</h2>
-            <p className="text-xs text-gray-500 mb-4 font-subtitles">
-              Vas a reasignar: <span className="font-bold text-gray-900">{reassignTask.title}</span>
-            </p>
-
+            <p className="text-xs text-gray-500 mb-4 font-subtitles">Vas a reasignar: <span className="font-bold text-gray-900">{reassignTask.title}</span></p>
             <div className="space-y-4">
-              <EmployeeSearch
-                label="Nuevo Responsable"
-                onSelect={emp => setNewEmployeeId(emp ? String(emp.id) : '')}
-                placeholder="Buscar nuevo responsable..."
-              />
-
+              <EmployeeSearch label="Nuevo Responsable" onSelect={emp => setNewEmployeeId(emp ? String(emp.id) : '')} placeholder="Buscar nuevo responsable..." />
               <div className="flex gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setReassignTask(null)}
-                  className="flex-1 py-2.5 rounded-[var(--radius-lg)] border border-gray-200 text-sm font-bold text-gray-500 hover:bg-gray-50 transition"
-                >
-                  Cancelar
-                </button>
-                <button
-                  onClick={handleReassign}
-                  disabled={reassignLoading || !newEmployeeId}
-                  className="flex-1 py-2.5 rounded-[var(--radius-lg)] bg-[var(--color-primary)] text-white text-sm font-bold hover:opacity-90 transition disabled:opacity-50"
-                >
-                  {reassignLoading ? 'Procesando...' : 'Confirmar'}
-                </button>
+                <button type="button" onClick={() => setReassignTask(null)} className="flex-1 py-2.5 rounded-[var(--radius-lg)] border border-gray-200 text-sm font-bold text-gray-500 hover:bg-gray-50 transition">Cancelar</button>
+                <button onClick={handleReassign} disabled={reassignLoading || !newEmployeeId} className="flex-1 py-2.5 rounded-[var(--radius-lg)] bg-[var(--color-primary)] text-white text-sm font-bold hover:opacity-90 transition disabled:opacity-50">{reassignLoading ? 'Procesando...' : 'Confirmar'}</button>
               </div>
             </div>
           </div>
         </div>
       )}
-
     </DashboardLayout>
 
-    {/* ── Admin toast stack ─────────────────────────────────────────── */}
-    <div
-      aria-live="polite"
-      className="fixed bottom-5 right-5 z-[9999] flex flex-col gap-2 pointer-events-none"
-    >
-      {toasts.map(t => (
-        <div
-          key={t.id}
-          className="pointer-events-auto flex items-center gap-3 bg-[var(--color-foreground)] text-white pl-4 pr-5 py-3.5 rounded-[var(--radius-lg)] shadow-lg text-sm font-medium"
-          style={{ animation: 'nb-slide-in 0.2s ease-out' }}
-        >
-          <span className="text-base shrink-0">✅</span>
-          <span>{t.text}</span>
-        </div>
-      ))}
+    <div aria-live="polite" className="fixed bottom-5 right-5 z-[9999] flex flex-col gap-2 pointer-events-none">
+      {toasts.map(t => <div key={t.id} className="pointer-events-auto flex items-center gap-3 bg-[var(--color-foreground)] text-white pl-4 pr-5 py-3.5 rounded-[var(--radius-lg)] shadow-lg text-sm font-medium animate-in slide-in-from-right-full">✅ <span>{t.text}</span></div>)}
     </div>
     </>
   )

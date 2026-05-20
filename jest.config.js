@@ -6,6 +6,7 @@ module.exports = {
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
   },
+  setupFilesAfterEnv: ['<rootDir>/src/lib/__mocks__/prisma.ts'],
   clearMocks: true,
   testPathIgnorePatterns: ['/node_modules/', '/.next/'],
 }

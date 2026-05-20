@@ -29,6 +29,14 @@ class SessionRepository {
             data: { logoutAt },
         })
     }
+
+    async closeAllActiveByEmployee(employeeId: number, logoutAt: Date): Promise<number> {
+        const result = await prisma.userSession.updateMany({
+            where: { employeeId, logoutAt: null },
+            data: { logoutAt },
+        })
+        return result.count
+    }
 }
 
 export const sessionRepository = new SessionRepository()

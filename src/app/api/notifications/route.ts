@@ -13,10 +13,8 @@ export async function GET(req: NextRequest) {
     const where = { employeeId: me.id, ...(unread ? { read: false } : {}) }
 
     if (pageSize > 0) {
-      const [data, total] = await Promise.all([
-        prisma.notification.findMany({ skip: (page-1)*pageSize, take: pageSize, where, orderBy: { createdAt: 'desc' } }),
-        prisma.notification.count({ where }),
-      ])
+      const data = await prisma.notification.findMany({ skip: (page-1)*pageSize, take: pageSize, where, orderBy: { createdAt: 'desc' } })
+      const total = await prisma.notification.count({ where })
       return NextResponse.json({ data, total, page, pageSize, totalPages: Math.ceil(total/pageSize) })
     }
 

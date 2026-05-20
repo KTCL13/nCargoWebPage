@@ -1,15 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getAuthEmployee } from '@/lib/auth-guard'
+import { getAuthEmployee, requireAdmin } from '@/lib/auth-guard'
 import { shippingProviderService } from '../services/shipping-provider.service'
 
 function errResponse(error: unknown) {
   const msg = error instanceof Error ? error.message : 'Error interno'
   const status =
-    msg.toLowerCase().includes('unauthorized') || msg.toLowerCase().includes('token')
-      ? 401
-      : msg.includes('no encontrad') || msg.includes('not found')
-      ? 404
-      : 500
+    msg.startsWith('Forbidden')
+      ? 403
+      : msg.toLowerCase().includes('unauthorized') || msg.toLowerCase().includes('token')
+        ? 401
+        : msg.includes('no encontrad') || msg.includes('not found')
+          ? 404
+          : 500
   return NextResponse.json({ message: msg }, { status })
 }
 
@@ -36,7 +38,7 @@ class ShippingProviderController {
 
   async createRate(req: NextRequest, providerId: number) {
     try {
-      getAuthEmployee(req)
+      requireAdmin(req)
       const dto = await req.json()
       if (dto.destinationId === undefined || dto.basePrice === undefined) {
         return NextResponse.json(
@@ -53,7 +55,7 @@ class ShippingProviderController {
 
   async updateRate(req: NextRequest, providerId: number, rateId: number) {
     try {
-      getAuthEmployee(req)
+      requireAdmin(req)
       const dto = await req.json()
       const result = await shippingProviderService.updateRate(providerId, rateId, dto)
       return NextResponse.json(result)
@@ -64,7 +66,7 @@ class ShippingProviderController {
 
   async deleteRate(req: NextRequest, providerId: number, rateId: number) {
     try {
-      getAuthEmployee(req)
+      requireAdmin(req)
       await shippingProviderService.deleteRate(providerId, rateId)
       return new NextResponse(null, { status: 204 })
     } catch (error: unknown) {
