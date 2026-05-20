@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
+import { authFetch } from '@/lib/api-client/auth-fetch'
 
 export function useOdooSearch() {
   const [query, setQuery] = useState('')
@@ -17,7 +18,7 @@ export function useOdooSearch() {
       setIsSearching(true)
       setError('')
       try {
-        const res = await fetch(`/api/odoo/customers?q=${encodeURIComponent(query)}`)
+        const res = await authFetch(`/api/odoo/customers?q=${encodeURIComponent(query)}`)
         const data = await res.json()
         if (!res.ok) {
           setError(data?.message || 'Error al buscar clientes')

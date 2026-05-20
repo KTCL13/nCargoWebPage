@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useAuth } from '@/context/AuthContext'
 import { Shipment, RowFeedback } from './types'
+import { authFetch } from '@/lib/api-client/auth-fetch'
 
 const DEFAULT_LIMIT = 10
 
@@ -44,7 +45,7 @@ export function useEnvios() {
       })
       if (debouncedSearch) params.set('search', debouncedSearch)
 
-      const res = await fetch(`/api/shipments?${params}`, {
+      const res = await authFetch(`/api/shipments?${params}`, {
         headers: { Authorization: `Bearer ${authToken}` },
       })
       const json = await res.json()
@@ -69,7 +70,7 @@ export function useEnvios() {
     if (!editValue.trim()) return
     setSaving(true)
     try {
-      const res = await fetch('/api/shipments', {
+      const res = await authFetch('/api/shipments', {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',

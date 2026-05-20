@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Task, TaskEmployee } from '@/types/admin/tasks'
+import { authFetch } from '@/lib/api-client/auth-fetch'
 // State to hold date validation error message
 
 
@@ -63,7 +64,7 @@ export function useTaskActions(token: string | null, employees: TaskEmployee[], 
           endTime: form.endTime || undefined,
         }
 
-      const res = await fetch(apiUrl, {
+      const res = await authFetch(apiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify(payload),
@@ -93,7 +94,7 @@ export function useTaskActions(token: string | null, employees: TaskEmployee[], 
     if (!reassignTask || !newEmployeeId || !token) return
     setReassignLoading(true)
     try {
-      const res = await fetch(`/api/tasks/reassign?id=${reassignTask.id}`, {
+      const res = await authFetch(`/api/tasks/reassign?id=${reassignTask.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ newEmployeeId: Number(newEmployeeId) }),

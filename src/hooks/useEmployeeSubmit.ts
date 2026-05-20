@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { EmployeeFormState } from '@/types/admin/employees'
 import { passwordStrength } from '@/lib/admin/employees/utils'
+import { authFetch } from '@/lib/api-client/auth-fetch'
 
 export function useEmployeeSubmit(
   form: EmployeeFormState, editingId: number | null, 
@@ -20,7 +21,7 @@ export function useEmployeeSubmit(
       if (phone) params.set('phone', phone)
       if (editingId) params.set('excludeId', String(editingId))
       try {
-        const res = await fetch(`/api/employees/check-duplicate?${params}`)
+        const res = await authFetch(`/api/employees/check-duplicate?${params}`)
         if (res.ok) {
           const { emailOwner, phoneOwner } = await res.json(); const parts = []
           if (emailOwner) parts.push(`el correo pertenece a ${emailOwner}`)
@@ -38,7 +39,7 @@ export function useEmployeeSubmit(
       if (!isEditing && form.jobId && form.contractTypeId) {
         body.initialContract = { jobId: Number(form.jobId), contractTypeId: Number(form.contractTypeId), salary: Number(form.salary) || 0, hourlyRate: Number(form.hourlyRate) || 0, startDate: form.startDate, ...(form.endDate && { endDate: form.endDate }) }
       }
-      const res = await fetch(url, { method: isEditing ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+      const res = await authFetch(url, { method: isEditing ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
       if (!res.ok) throw new Error((await res.json()).message || 'Error en operación')
       setShowModal(false); fetchEmployees()
     } catch (err: any) { setModalError(err.message || 'Error') } finally { setModalLoading(false) }

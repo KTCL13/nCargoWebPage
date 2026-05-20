@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { authFetch } from '@/lib/api-client/auth-fetch'
 
 type ExportFormat = 'xlsx' | 'pdf'
 
@@ -35,7 +36,7 @@ export function ContractExportButtons({
     setState({ loading: true, error: null })
 
     try {
-      const res = await fetch('/api/employees/contracts/export', {
+      const res = await authFetch('/api/employees/contracts/export', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

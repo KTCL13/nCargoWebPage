@@ -1,6 +1,8 @@
+import { authFetch } from './auth-fetch'
+
 export const shipmentsClient = {
   async updateShipment(token: string | null, data: { id: number, trackingNumber?: string, odooStageName?: string, comment?: string }) {
-    const res = await fetch('/api/shipments', {
+    const res = await authFetch('/api/shipments', {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
@@ -16,7 +18,7 @@ export const shipmentsClient = {
   },
   
   async createShipmentForLocker(token: string | null, lockerId: number, data: { name: string, description?: string }) {
-    const res = await fetch(`/api/lockers/${lockerId}/shipments`, {
+    const res = await authFetch(`/api/lockers/${lockerId}/shipments`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

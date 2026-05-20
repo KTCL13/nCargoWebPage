@@ -6,6 +6,7 @@ import { NAV_ITEMS } from '@/components/layout/nav-config'
 import { Pagination } from '@/components/ui/Pagination'
 import { useJobs } from '@/lib/admin/jobs/useJobs'
 import { Job } from '@/types/admin/jobs'
+import { authFetch } from '@/lib/api-client/auth-fetch'
 
 export default function CargosPage() {
   const { jobs, total, page, setPage, pageSize, setPageSize, loading, fetchJobs, deleteJob } = useJobs()
@@ -19,7 +20,7 @@ export default function CargosPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault(); setModalLoading(true); setModalError('')
     try {
-      const res = await fetch(modalMode === 'edit' ? `/api/jobs?id=${editingJobId}` : '/api/jobs', { method: modalMode === 'edit' ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) })
+      const res = await authFetch(modalMode === 'edit' ? `/api/jobs?id=${editingJobId}` : '/api/jobs', { method: modalMode === 'edit' ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) })
       if (!res.ok) throw new Error((await res.json()).message || 'Error')
       setShowModal(false); fetchJobs()
     } catch (err) { setModalError(err instanceof Error ? err.message : 'Error') } finally { setModalLoading(false) }

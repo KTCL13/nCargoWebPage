@@ -1,6 +1,7 @@
 'use client'
 import { useState, useCallback } from 'react'
 import { Breakdown, Country } from '@/types/cotizaciones'
+import { authFetch } from '@/lib/api-client/auth-fetch'
 
 export function useOdooSubmit() {
   const [isSending, setIsSending] = useState(false)
@@ -13,7 +14,7 @@ export function useOdooSubmit() {
     setSuccess('')
 
     try {
-      const res = await fetch('/api/odoo/quotes', {
+      const res = await authFetch('/api/odoo/quotes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

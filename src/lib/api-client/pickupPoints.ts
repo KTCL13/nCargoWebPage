@@ -1,11 +1,12 @@
 import { Office } from '@/types/admin/quotations';
+import { authFetch } from './auth-fetch';
 
 export const pickupPointsClient = {
   async saveOffice(token: string | null, form: any, editingOfficeId?: number) {
     const url = editingOfficeId ? `/api/pickup-points?id=${editingOfficeId}` : '/api/pickup-points';
     const method = editingOfficeId ? 'PATCH' : 'POST';
     
-    const res = await fetch(url, {
+    const res = await authFetch(url, {
       method,
       headers: { 
         'Content-Type': 'application/json',
@@ -26,7 +27,7 @@ export const pickupPointsClient = {
   },
 
   async toggleActive(token: string | null, id: number, currentStatus: boolean) {
-    const res = await fetch(`/api/pickup-points?id=${id}`, {
+    const res = await authFetch(`/api/pickup-points?id=${id}`, {
       method: 'PATCH',
       headers: { 
         'Content-Type': 'application/json',
@@ -42,7 +43,7 @@ export const pickupPointsClient = {
   },
 
   async deleteOffice(token: string | null, id: number) {
-    const res = await fetch(`/api/pickup-points?id=${id}`, {
+    const res = await authFetch(`/api/pickup-points?id=${id}`, {
       method: 'DELETE',
       headers: {
         ...(token ? { Authorization: `Bearer ${token}` } : {})

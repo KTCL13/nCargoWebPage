@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from 'react'
 import { CotizacionRecord, Office, QuotationTab } from '@/types/admin/quotations'
+import { authFetch } from '@/lib/api-client/auth-fetch'
 
 const LIMIT = 10
 
@@ -27,7 +28,7 @@ export function useQuotations(token: string | null) {
   const fetchPublica = useCallback(async () => {
     setPubLoading(true)
     try {
-      const res = await fetch(`/api/cotizacion-records?source=PUBLIC&page=${pubPage + 1}&pageSize=${pubPageSize}`)
+      const res = await authFetch(`/api/cotizacion-records?source=PUBLIC&page=${pubPage + 1}&pageSize=${pubPageSize}`)
       const data = await res.json()
       setPubRecords(data.data ?? [])
       setPubTotal(data.total ?? 0)
@@ -37,7 +38,7 @@ export function useQuotations(token: string | null) {
   const fetchEmpleados = useCallback(async () => {
     setEmpLoading(true)
     try {
-      const res = await fetch(`/api/cotizacion-records?source=EMPLOYEE&page=${empPage + 1}&pageSize=${empPageSize}`)
+      const res = await authFetch(`/api/cotizacion-records?source=EMPLOYEE&page=${empPage + 1}&pageSize=${empPageSize}`)
       const data = await res.json()
       setEmpRecords(data.data ?? [])
       setEmpTotal(data.total ?? 0)
@@ -47,7 +48,7 @@ export function useQuotations(token: string | null) {
   const fetchOffices = useCallback(async () => {
     setLoadingO(true)
     try {
-      const res = await fetch('/api/pickup-points')
+      const res = await authFetch('/api/pickup-points')
       const data = await res.json()
       setOffices(data.data ?? [])
     } catch { } finally { setLoadingO(false) }
