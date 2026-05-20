@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Employee } from '@/types/admin/employees'
+import { authFetch } from '@/lib/api-client/auth-fetch'
 
 export function useContractForm(fetchEmployees: () => void) {
   const [contractModalOpen, setContractModalOpen] = useState(false)
@@ -25,7 +26,7 @@ export function useContractForm(fetchEmployees: () => void) {
     setContractModalLoading(true)
     setContractModalError('')
     try {
-      const res = await fetch(`/api/employees/contracts?employeeId=${contractModalEmpId}`, {
+      const res = await authFetch(`/api/employees/contracts?employeeId=${contractModalEmpId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from 'react'
 import { Country, Rate, Location, ConfigEntry, CONFIG_LABELS, FLAT_RATE_KEYS, CONTRACT_CONFIG_KEYS } from '@/types/admin/config'
+import { authFetch } from '@/lib/api-client/auth-fetch'
 
 export function useConfig(token: string | null) {
   const authHeader = {
@@ -25,8 +26,8 @@ export function useConfig(token: string | null) {
     setRatesLoading(true)
     try {
       const [rateRes, ...locResponses] = await Promise.all([
-        fetch(`/api/shipping-providers/${pid}/rates`, { headers: authHeader }).then(r => r.json()),
-        ...countryList.map(c => fetch(`/api/locations?country=${c.code}`, { headers: authHeader }).then(r => r.json())),
+        authFetch(`/api/shipping-providers/${pid}/rates`, { headers: authHeader }).then(r => r.json()),
+        ...countryList.map(c => authFetch(`/api/locations?country=${c.code}`, { headers: authHeader }).then(r => r.json())),
       ])
 
       const all: Rate[] = rateRes.data ?? []
@@ -53,9 +54,9 @@ export function useConfig(token: string | null) {
     setLoading(true)
     try {
       const [provRes, cfgRes, countryRes] = await Promise.all([
-        fetch('/api/shipping-providers', { headers: authHeader }).then(r => r.json()),
-        fetch('/api/system-config').then(r => r.json()),
-        fetch('/api/locations', { headers: authHeader }).then(r => r.json()),
+        authFetch('/api/shipping-providers', { headers: authHeader }).then(r => r.json()),
+        authFetch('/api/system-config').then(r => r.json()),
+        authFetch('/api/locations', { headers: authHeader }).then(r => r.json()),
       ])
 
       const provList: { id: number; name: string }[] = provRes.data ?? []
@@ -100,7 +101,7 @@ export function useConfig(token: string | null) {
   useEffect(() => { load() }, [load])
 
   const patchConfig = async (key: string, value: unknown) => {
-    await fetch(`/api/system-config/${key}`, {
+    await authFetch(`/api/system-config/${key}`, {
       method: 'PATCH',
       headers: authHeader,
       body: JSON.stringify({ value }),
@@ -122,7 +123,7 @@ export function useConfig(token: string | null) {
 
   const saveRate = async (rateId: number, price: number) => {
     if (!providerId) return
-    await fetch(`/api/shipping-providers/${providerId}/rates/${rateId}`, {
+    await authFetch(`/api/shipping-providers/${providerId}/rates/${rateId}`, {
       method: 'PATCH',
       headers: authHeader,
       body: JSON.stringify({ basePrice: price }),
@@ -130,7 +131,7 @@ export function useConfig(token: string | null) {
   }
 
   const saveLocation = async (locationId: number, name: string) => {
-    await fetch(`/api/locations/${locationId}`, {
+    await authFetch(`/api/locations/${locationId}`, {
       method: 'PATCH',
       headers: authHeader,
       body: JSON.stringify({ name }),
@@ -140,7 +141,7 @@ export function useConfig(token: string | null) {
 
   const deleteRate = async (rateId: number) => {
     if (!providerId || !confirm('¿Eliminar esta tarifa?')) return
-    await fetch(`/api/shipping-providers/${providerId}/rates/${rateId}`, {
+    await authFetch(`/api/shipping-providers/${providerId}/rates/${rateId}`, {
       method: 'DELETE',
       headers: authHeader,
     })
@@ -153,7 +154,7 @@ export function useConfig(token: string | null) {
     if (!nr?.destId || !nr?.price) return
     setSaving(`add-${countryCode}`)
     try {
-      await fetch(`/api/shipping-providers/${providerId}/rates`, {
+      await authFetch(`/api/shipping-providers/${providerId}/rates`, {
         method: 'POST',
         headers: authHeader,
         body: JSON.stringify({ destinationId: Number(nr.destId), basePrice: Number(nr.price), countryCode }),

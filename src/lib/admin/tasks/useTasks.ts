@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from 'react'
 import { Task, TaskStatus, TaskEmployee } from '@/types/admin/tasks'
+import { authFetch } from '@/lib/api-client/auth-fetch'
 
 const DEFAULT_LIMIT = 10
 
@@ -26,8 +27,8 @@ export function useTasks(token: string | null) {
       })
 
       const [tasksRes, empsRes] = await Promise.all([
-        fetch(`/api/tasks?${taskParams}`, { headers: auth }),
-        fetch('/api/employees?limit=100', { headers: auth }),
+        authFetch(`/api/tasks?${taskParams}`, { headers: auth }),
+        authFetch('/api/employees?limit=100', { headers: auth }),
       ])
 
       const tasksData = await tasksRes.json()
@@ -55,7 +56,7 @@ export function useTasks(token: string | null) {
   const handleDeleteTask = async (id: number) => {
     if (!confirm('¿Deseas eliminar esta tarea permanentemente?') || !token) return
     try {
-      const res = await fetch(`/api/tasks?id=${id}`, {
+      const res = await authFetch(`/api/tasks?id=${id}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
       })
@@ -68,7 +69,7 @@ export function useTasks(token: string | null) {
   const handleCheckOverdue = async () => {
     if (!confirm('¿Deseas marcar todas las tareas pendientes vencidas como "No Hechas"?')) return
     try {
-      const res = await fetch('/api/tasks/check-overdue', { method: 'POST' })
+      const res = await authFetch('/api/tasks/check-overdue', { method: 'POST' })
       if (res.ok) {
         alert('Tareas procesadas correctamente')
         fetchData()

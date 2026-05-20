@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from 'react'
 import { Employee, Role, Job, ContractType, IdentificationType } from '@/types/admin/employees'
+import { authFetch } from '@/lib/api-client/auth-fetch'
 
 const DEFAULT_LIMIT = 10
 
@@ -36,7 +37,7 @@ export function useEmployees() {
         ...(filterStatus && { status: filterStatus }),
         ...(filterRole && { roleId: filterRole }),
       })
-      const res = await fetch(`/api/employees?${params}`)
+      const res = await authFetch(`/api/employees?${params}`)
       const data = await res.json()
       setEmployees(data.data ?? [])
       setTotal(data.total ?? 0)
@@ -49,10 +50,10 @@ export function useEmployees() {
 
   useEffect(() => {
     Promise.all([
-      fetch('/api/roles').then(x => x.json()),
-      fetch('/api/jobs').then(x => x.json()),
-      fetch('/api/contract-types').then(x => x.json()),
-      fetch('/api/identification-types').then(x => x.json()),
+      authFetch('/api/roles').then(x => x.json()),
+      authFetch('/api/jobs').then(x => x.json()),
+      authFetch('/api/contract-types').then(x => x.json()),
+      authFetch('/api/identification-types').then(x => x.json()),
     ]).then(([r, j, ct, it]) => {
       setRoles(r)
       setJobs(j.data ?? [])
@@ -71,7 +72,7 @@ export function useEmployees() {
     if (!status) return
     setSaving(s => new Set(s).add(id))
     try {
-      await fetch(`/api/employees?id=${id}`, {
+      await authFetch(`/api/employees?id=${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status }),
@@ -90,7 +91,7 @@ export function useEmployees() {
   const bulkUpdate = async (status: 'ACTIVE' | 'INACTIVE') => {
     await Promise.all(
       [...selected].map(id =>
-        fetch(`/api/employees?id=${id}`, {
+        authFetch(`/api/employees?id=${id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ status }),
