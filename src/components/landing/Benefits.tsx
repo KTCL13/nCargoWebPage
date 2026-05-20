@@ -1,4 +1,5 @@
 // components/landing/Benefits.tsx
+import Image from 'next/image';
 import { Icons } from '@/components/ui/Icons';
 
 /* ── Tipos ────────────────────────────────────────────────────────── */
@@ -49,7 +50,16 @@ const BenefitCard = ({ title, desc, icon, bg, color, index }: Benefit & { index:
 export const Benefits = () => (
     <section id="servicios" aria-labelledby="benefits-heading" className="relative py-20 px-5 lg:px-[5%] overflow-hidden">
         {/* Fondo y Overlay */}
-        <div className="absolute inset-0 bg-cover bg-center -z-20" style={{ backgroundImage: "url('/images/website/47.PNG')" }} role="presentation" aria-hidden="true" />
+        <div className="absolute inset-0 -z-20" role="presentation" aria-hidden="true">
+            <Image
+                src="/images/website/47.PNG"
+                alt="Fondo Beneficios"
+                fill
+                quality={70}
+                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                className="object-cover object-center -z-20"
+            />
+        </div>
         <div className="absolute inset-0 -z-10" style={{ background: 'rgba(255,255,255,.93)' }} aria-hidden="true" />
 
         <div className="max-w-[1280px] mx-auto">

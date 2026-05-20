@@ -1,4 +1,5 @@
 // components/landing/HowItWorks.tsx
+import Image from 'next/image';
 
 /* ── Constantes de Estilo ─────────────────────────────────────────── */
 const BG_OVERLAY = 'linear-gradient(160deg, rgba(4,6,38,.95) 0%, rgba(12,30,140,.80) 60%, rgba(4,6,38,.95) 100%)';
@@ -17,7 +18,15 @@ const steps = [
 export const HowItWorks = () => (
     <section id="como-funciona" aria-labelledby="hiw-heading" className="relative pt-16 pb-24 px-5 lg:px-[5%] overflow-hidden">
         {/* Fondo y Overlay */}
-        <div className="absolute inset-0 bg-cover bg-center -z-20" style={{ backgroundImage: "url('/images/website/48.PNG')" }} role="presentation" aria-hidden="true" />
+        <div className="absolute inset-0 -z-20" role="presentation" aria-hidden="true">
+            <Image
+                src="/images/website/48.PNG"
+                alt="Fondo Cómo Funciona"
+                fill
+                sizes="100vw"
+                className="object-cover object-center"
+            />
+        </div>
         <div className="absolute inset-0 -z-10" style={{ background: BG_OVERLAY }} aria-hidden="true" />
 
         <div className="max-w-[1280px] mx-auto relative z-10">

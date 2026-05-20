@@ -1,16 +1,18 @@
 // src/components/landing/Footer.tsx
 import React from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 
 /* ── Constantes de Estilos ───────────────────────────────────── */
 const LINK_STYLES = `
-    text-slate-400 hover:text-[var(--color-secondary)]
+    text-slate-100 hover:text-blue-400
     transition-colors duration-150
     focus-visible:outline-none focus-visible:ring-[3px]
-    focus-visible:ring-[var(--color-secondary)] focus-visible:rounded-sm
+    focus-visible:ring-blue-400 focus-visible:rounded-sm
+    inline-block p-2 -mx-2
 `;
 
-const CONTACT_ICON_STYLES = "w-5 h-5 mt-0.5 shrink-0 text-[var(--color-secondary)]";
+const CONTACT_ICON_STYLES = "w-5 h-5 mt-0.5 shrink-0 text-blue-400";
 
 /* ── Componentes de UI ───────────────────────────────────────── */
 
@@ -25,7 +27,7 @@ const SocialIcon: React.FC<{ href: string; path: string; label: string; hoverCla
         aria-label={`N-Cargo en ${label}`}
         className={`
             w-9 h-9 flex items-center justify-center rounded-[var(--radius-md)]
-            bg-white/5 border border-white/10 text-slate-400
+            bg-white/5 border border-white/10 text-slate-100
             ${hoverClass} transition-all duration-200
             hover:bg-white/10 hover:border-white/25 hover:scale-110
             focus-visible:outline-none focus-visible:ring-[3px]
@@ -69,25 +71,25 @@ const DATA_LINKS = {
 };
 
 const PAYMENT_METHODS = [
-    { label: 'VISA', color: 'text-slate-300' },
-    { label: 'Mastercard', color: 'text-slate-300' },
-    { label: 'AMEX', color: 'text-slate-300' },
-    { label: 'PayPal', color: 'text-slate-300' },
-    { label: 'Nequi', color: 'text-[var(--color-secondary)]' },
-    { label: 'Daviplata', color: 'text-[var(--color-secondary)]' },
-    { label: 'OXXO', color: 'text-[var(--color-primary-light)]' },
+    { label: 'VISA', color: 'text-slate-100' },
+    { label: 'Mastercard', color: 'text-slate-100' },
+    { label: 'AMEX', color: 'text-slate-100' },
+    { label: 'PayPal', color: 'text-slate-100' },
+    { label: 'Nequi', color: 'bg-[var(--color-secondary)] text-white px-1.5 py-0.5 rounded-sm' },
+    { label: 'Daviplata', color: 'bg-[var(--color-secondary)] text-white px-1.5 py-0.5 rounded-sm' },
+    { label: 'OXXO', color: 'bg-[var(--color-primary-light)] text-[var(--color-foreground)] px-1.5 py-0.5 rounded-sm' },
 ];
 
 /* ── Footer Principal ─────────────────────────────────────────── */
 export const Footer: React.FC = () => (
-    <footer className="bg-[var(--color-foreground)] text-slate-400 mt-auto" role="contentinfo" aria-label="Pie de página de N-Cargo">
+    <footer className="bg-[var(--color-foreground)] text-slate-100 mt-auto" role="contentinfo" aria-label="Pie de página de N-Cargo">
         <div className="max-w-[1280px] mx-auto px-6 py-14">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10">
 
                 {/* 1. Brand */}
                 <div className="space-y-5">
                     <Link href="/" aria-label="N-Cargo — Ir al inicio" className="focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-foreground)]">
-                        <img src="/images/logos/77.PNG" alt="N-Cargo" className="h-[60px] w-auto object-contain rounded-[var(--radius-md)]" width={120} height={60} />
+                        <Image src="/images/logos/77.PNG" alt="N-Cargo" className="h-[60px] w-auto object-contain rounded-[var(--radius-md)]" width={120} height={60} />
                     </Link>
                     <p className="text-sm leading-relaxed max-w-xs">
                         Tu casillero internacional de confianza. Conectando EE.UU. con Colombia y México de manera rápida, segura y transparente.
@@ -136,11 +138,11 @@ export const Footer: React.FC = () => (
         </div>
 
         {/* Barra inferior */}
-        <div className="border-t border-white/8" style={{ background: 'rgba(0,0,0,.35)' }}>
+        <div className="border-t border-white/20" style={{ background: 'rgba(0,0,0,.35)' }}>
             <div className="max-w-[1280px] mx-auto px-6 py-5 flex flex-col md:flex-row justify-between items-center gap-4">
-                <small className="text-xs text-slate-500 font-light not-italic">© 2026 N-Cargo International Logistics. Todos los derechos reservados.</small>
+                <small className="text-xs text-slate-200 font-normal not-italic">© 2026 N-Cargo International Logistics. Todos los derechos reservados.</small>
                 <div className="flex flex-wrap items-center gap-2 text-xs">
-                    <span className="text-slate-500 font-subtitles mr-1">Métodos de pago:</span>
+                    <span className="text-slate-200 font-subtitles mr-1">Métodos de pago:</span>
                     {PAYMENT_METHODS.map(({ label, color }) => (
                         <span key={label} className={`${color} font-bold tracking-tight`} aria-label={label}>{label}</span>
                     ))}
