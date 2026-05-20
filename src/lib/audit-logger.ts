@@ -4,7 +4,7 @@ type AuditLogParams = {
     entityType: string
     entityId: number
     action: string
-    performedBy?: number
+    performedBy?: number | null
     oldValues?: object
     newValues?: object
 }

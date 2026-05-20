@@ -39,6 +39,21 @@ class AttendanceRepository {
         })
     }
 
+    // Returns every OPEN/PAUSED attendance whose calendar day (in its stored
+    // timezone) is already over — used by the midnight cron to close them.
+    // We can't compare per-row timezones in a single SQL query, so we filter
+    // in JS after pulling all open/paused rows.
+    async findAllStaleOpen(): Promise<Attendance[]> {
+        const rows = await prisma.attendance.findMany({
+            where: { status: { in: ['OPEN', 'PAUSED'] } },
+            orderBy: { startedAt: 'asc' },
+        })
+        return rows.filter((a) => {
+            const tz = a.timezone || 'America/Bogota'
+            return a.startedAt < getStartOfDayForEmployee(tz)
+        })
+    }
+
     async create(data: { employeeId: number; startedAt: Date; timezone: string }): Promise<Attendance> {
         return prisma.attendance.create({ data: { ...data, status: 'OPEN' } })
     }

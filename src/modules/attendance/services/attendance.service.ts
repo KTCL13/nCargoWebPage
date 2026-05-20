@@ -4,6 +4,15 @@ import { employeeRepository } from '@/modules/employees/repositories/employee.re
 import { analyticsService } from '@/modules/analytics/services/analytics.service'
 import { auditLog } from '@/lib/audit-logger'
 import { Attendance, AttendanceEvent, AttendanceStatus } from '@prisma/client'
+import { toZonedTime, fromZonedTime } from 'date-fns-tz'
+import { endOfDay } from 'date-fns'
+
+// Returns the instant equal to 23:59:59.999 of `date`'s calendar day in `timezone`.
+function endOfDayInTimezone(date: Date, timezone: string): Date {
+    const zoned = toZonedTime(date, timezone)
+    const endZoned = endOfDay(zoned)
+    return fromZonedTime(endZoned, timezone)
+}
 
 type AttendanceWithEvents = Attendance & { events: AttendanceEvent[] }
 
@@ -30,37 +39,65 @@ function extractClockInIp(events: AttendanceEvent[]): string | null {
 }
 
 class AttendanceService {
+    // Closes ONE stale attendance, stamping CLOCK_OUT at end-of-day of the
+    // session's startedAt (in the given timezone), not at "now". This keeps
+    // workedHours and endedAt consistent whether the session is closed by the
+    // cron job at midnight or lazily on the employee's next interaction.
+    private async closeStaleAttendance(
+        attendance: Attendance,
+        timezone: string,
+        performedBy: number | null,
+    ): Promise<void> {
+        const endedAt = endOfDayInTimezone(attendance.startedAt, timezone)
+
+        await attendanceEventRepository.create({
+            attendanceId: attendance.id,
+            type: 'CLOCK_OUT',
+            locationMetadata: { autoClose: true, reason: 'Cierre automático a las 23:59 del día' },
+            timestamp: endedAt,
+        })
+
+        const events = await attendanceEventRepository.findByAttendance(attendance.id)
+        const workedHours = computeWorkedHours(events)
+
+        await attendanceRepository.updateStatus(attendance.id, 'CLOSED', {
+            endedAt,
+            workedHours,
+        })
+
+        await auditLog({
+            entityType: 'Attendance',
+            entityId: attendance.id,
+            action: 'AUTO_CLOSE',
+            performedBy,
+            newValues: { status: 'CLOSED', endedAt, workedHours, reason: 'Cierre automático fin de día' },
+        })
+
+        const day = new Date(attendance.startedAt)
+        day.setHours(0, 0, 0, 0)
+        analyticsService
+            .aggregateKPIs({ employeeId: attendance.employeeId, from: day, to: day })
+            .catch(() => {})
+    }
+
     private async autoCloseStaleSessions(employeeId: number, timezone: string): Promise<void> {
         const stale = await attendanceRepository.findStaleOpenByEmployee(employeeId, timezone)
         for (const attendance of stale) {
-            const now = new Date()
-            await attendanceEventRepository.create({
-                attendanceId: attendance.id,
-                type: 'CLOCK_OUT',
-                locationMetadata: { autoClose: true, reason: 'Cierre automático al cambiar de día' },
-                timestamp: now,
-            })
-
-            const events = await attendanceEventRepository.findByAttendance(attendance.id)
-            const workedHours = computeWorkedHours(events)
-
-            await attendanceRepository.updateStatus(attendance.id, 'CLOSED', {
-                endedAt: now,
-                workedHours,
-            })
-
-            await auditLog({
-                entityType: 'Attendance',
-                entityId: attendance.id,
-                action: 'AUTO_CLOSE',
-                performedBy: employeeId,
-                newValues: { status: 'CLOSED', endedAt: now, workedHours, reason: 'Día cambió' },
-            })
-
-            const day = new Date(attendance.startedAt)
-            day.setHours(0, 0, 0, 0)
-            analyticsService.aggregateKPIs({ employeeId: attendance.employeeId, from: day, to: day }).catch(() => {})
+            await this.closeStaleAttendance(attendance, timezone, employeeId)
         }
+    }
+
+    // Cron entry-point: closes every stale OPEN/PAUSED attendance across all
+    // employees, each one at 23:59:59 of its own day in its own timezone.
+    async closeAllStaleSessions(): Promise<{ closed: number }> {
+        const stale = await attendanceRepository.findAllStaleOpen()
+        let closed = 0
+        for (const row of stale) {
+            const tz = row.timezone || 'America/Bogota'
+            await this.closeStaleAttendance(row, tz, null)
+            closed++
+        }
+        return { closed }
     }
 
     async clockIn(employeeId: number, ip: string): Promise<AttendanceWithEvents> {
