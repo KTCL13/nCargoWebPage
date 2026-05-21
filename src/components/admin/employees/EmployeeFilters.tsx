@@ -22,9 +22,9 @@ export function EmployeeFilters({
 }: EmployeeFiltersProps) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 border-b border-gray-100 bg-gray-50/30">
-      <h3 className="font-titles text-lg font-bold text-[var(--color-foreground)]">
+      <h2 className="font-titles text-lg font-bold text-[var(--color-foreground)]">
         Listado de Empleados
-      </h3>
+      </h2>
       <div className="flex items-center gap-2 flex-wrap">
         <div className="flex items-center gap-2">
           <select

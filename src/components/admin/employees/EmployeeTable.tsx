@@ -21,13 +21,14 @@ export function EmployeeTable({
   openModal, openContractModal
 }: EmployeeTableProps) {
   return (
-    <div className="overflow-x-auto">
+    <div className="overflow-x-auto min-h-[400px]">
       <table role="grid" aria-label="Data table" className="w-full text-sm">
         <thead role="rowgroup">
           <tr role="row" className="border-b border-gray-100 bg-gray-50">
             <th role="columnheader" className="px-4 py-3 w-10">
               <input
                 type="checkbox"
+                aria-label="Seleccionar todas las filas"
                 checked={employees.length > 0 && selected.size === employees.length}
                 onChange={toggleSelectAll}
                 className="accent-[var(--color-primary)] w-4 h-4"
@@ -42,11 +43,24 @@ export function EmployeeTable({
         </thead>
         <tbody role="rowgroup">
           {loading ? (
-            <tr role="row">
-              <td role="gridcell" colSpan={6} className="text-center py-12 text-gray-600 font-subtitles text-sm">
-                Cargando...
-              </td>
-            </tr>
+            Array.from({ length: 5 }).map((_, i) => (
+              <tr role="row" key={i} className="border-b border-gray-50 animate-pulse">
+                <td role="gridcell" className="px-4 py-3"><div className="w-4 h-4 bg-gray-200 rounded"></div></td>
+                <td role="gridcell" className="px-4 py-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-gray-200 flex-shrink-0"></div>
+                    <div className="space-y-2">
+                      <div className="w-32 h-3 bg-gray-200 rounded"></div>
+                      <div className="w-24 h-2 bg-gray-200 rounded"></div>
+                    </div>
+                  </div>
+                </td>
+                <td role="gridcell" className="px-4 py-3"><div className="w-20 h-4 bg-gray-200 rounded"></div></td>
+                <td role="gridcell" className="px-4 py-3"><div className="w-24 h-6 bg-gray-200 rounded-[var(--radius-md)]"></div></td>
+                <td role="gridcell" className="px-4 py-3"><div className="w-10 h-5 bg-gray-200 rounded-full"></div></td>
+                <td role="gridcell" className="px-4 py-3 text-right"><div className="w-32 h-8 bg-gray-200 rounded-[var(--radius-lg)] ml-auto"></div></td>
+              </tr>
+            ))
           ) : employees.length === 0 ? (
             <tr role="row">
               <td role="gridcell" colSpan={6} className="text-center py-12 text-gray-600 font-subtitles text-sm">
@@ -63,6 +77,7 @@ export function EmployeeTable({
                 <td role="gridcell" className="px-4 py-3">
                   <input
                     type="checkbox"
+                    aria-label={`Seleccionar fila de ${emp.name || 'elemento'}`}
                     checked={selected.has(emp.id)}
                     onChange={() => toggleSelect(emp.id)}
                     className="accent-[var(--color-primary)] w-4 h-4"

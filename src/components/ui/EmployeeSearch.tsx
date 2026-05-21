@@ -157,42 +157,40 @@ export function EmployeeSearch({
           </button>
         </div>
       ) : (
-        <div className="relative">
-          <div className={`flex flex-wrap gap-2 p-1 border rounded-[var(--radius-lg)] bg-white transition-all focus-within:ring-2 focus-within:ring-[var(--color-primary)]/25 focus-within:border-[var(--color-primary)] ${error ? 'border-red-500' : 'border-gray-200'}`}>
-            {multi && selectedMulti.map(emp => (
-              <div key={emp.id} className="flex items-center gap-1.5 pl-1.5 pr-1 py-1 bg-gray-100 rounded-lg text-xs font-bold text-gray-700 animate-in fade-in zoom-in duration-200">
-                <span>{empFullName(emp)}</span>
-                <button
-                  type="button"
-                  onClick={() => handleRemove(emp.id)}
-                  className="w-4 h-4 flex items-center justify-center rounded-full hover:bg-gray-200 text-gray-600 hover:text-red-500 transition"
-                >
-                  ×
-                </button>
-              </div>
-            ))}
-            <input
-              type="text"
-              value={query}
-              onChange={(e) => {
-                setQuery(e.target.value)
-                setIsOpen(true)
-              }}
-              onFocus={() => setIsOpen(true)}
-              placeholder={multi && selectedMulti.length > 0 ? "" : placeholder}
-              className="flex-1 min-w-[120px] bg-transparent border-none shadow-none outline-none text-sm px-3 py-2 placeholder:text-gray-600"
-            />
-            <div className="flex items-center pr-3">
-              {loading ? (
-                <div className="w-4 h-4 border-2 border-gray-300 border-t-[var(--color-primary)] rounded-full animate-spin" />
-              ) : (
-                <span className="text-gray-500 text-xs">🔍</span>
-              )}
+        <search className={`flex flex-wrap gap-2 p-1 border rounded-[var(--radius-lg)] bg-white transition-all focus-within:ring-2 focus-within:ring-[var(--color-primary)]/25 focus-within:border-[var(--color-primary)] ${error ? 'border-red-500' : 'border-gray-200'}`}>
+          {multi && selectedMulti.map(emp => (
+            <div key={emp.id} className="flex items-center gap-1.5 pl-1.5 pr-1 py-1 bg-gray-100 rounded-lg text-xs font-bold text-gray-700 animate-in fade-in zoom-in duration-200">
+              <span>{empFullName(emp)}</span>
+              <button
+                type="button"
+                onClick={() => handleRemove(emp.id)}
+                className="w-4 h-4 flex items-center justify-center rounded-full hover:bg-gray-200 text-gray-600 hover:text-red-500 transition"
+              >
+                ×
+              </button>
             </div>
+          ))}
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => {
+              setQuery(e.target.value)
+              setIsOpen(true)
+            }}
+            onFocus={() => setIsOpen(true)}
+            placeholder={multi && selectedMulti.length > 0 ? "" : placeholder}
+            className="flex-1 min-w-[120px] bg-transparent border-none shadow-none outline-none text-sm px-3 py-2 placeholder:text-gray-600"
+          />
+          <div className="flex items-center pr-3">
+            {loading ? (
+              <div className="w-4 h-4 border-2 border-gray-300 border-t-[var(--color-primary)] rounded-full animate-spin" />
+            ) : (
+              <span className="text-gray-500 text-xs">🔍</span>
+            )}
           </div>
-
+          
           {isOpen && (query.length >= 2 || results.length > 0) && (
-            <div className="absolute z-[110] left-0 right-0 mt-2 bg-white rounded-xl shadow-2xl border border-gray-100 overflow-hidden animate-in slide-in-from-top-2 duration-200">
+            <div className="absolute z-[110] left-0 right-0 mt-10 bg-white rounded-xl shadow-2xl border border-gray-100 overflow-hidden animate-in slide-in-from-top-2 duration-200">
               {results.length > 0 ? (
                 <div className="max-h-60 overflow-y-auto p-2">
                   {results.map((emp) => {
@@ -224,7 +222,7 @@ export function EmployeeSearch({
               ) : null}
             </div>
           )}
-        </div>
+        </search>
       )}
 
       {error && <p className="mt-1 text-[10px] text-red-500 font-bold uppercase">{error}</p>}
