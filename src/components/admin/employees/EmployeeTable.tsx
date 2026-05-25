@@ -27,6 +27,8 @@ export function EmployeeTable({
           <tr role="row" className="border-b border-gray-100 bg-gray-50">
             <th role="columnheader" className="px-4 py-3 w-10">
               <input
+                id="selectAll"
+                name="selectAll"
                 type="checkbox"
                 aria-label="Seleccionar todas las filas"
                 checked={employees.length > 0 && selected.size === employees.length}
@@ -76,6 +78,8 @@ export function EmployeeTable({
               <tr role="row" key={emp.id} className="border-b border-gray-50 hover:bg-gray-50/50 transition">
                 <td role="gridcell" className="px-4 py-3">
                   <input
+                    id={`select-${emp.id}`}
+                    name={`select-${emp.id}`}
                     type="checkbox"
                     aria-label={`Seleccionar fila de ${emp.name || 'elemento'}`}
                     checked={selected.has(emp.id)}

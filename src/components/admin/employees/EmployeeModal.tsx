@@ -51,8 +51,10 @@ export function EmployeeModal({
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="sm:col-span-1">
-                <label className="block text-xs font-subtitles font-semibold text-gray-600 mb-1">Nombre <span className="text-red-500">*</span></label>
+                <label htmlFor="firstName" className="block text-xs font-subtitles font-semibold text-gray-600 mb-1">Nombre <span className="text-red-500">*</span></label>
                 <input
+                  id="firstName"
+                  name="firstName"
                   type="text" required placeholder="Ej: Carlos"
                   disabled={isViewOnly}
                   value={form.firstName} onChange={e => setForm((f: any) => ({ ...f, firstName: e.target.value }))}
@@ -60,8 +62,10 @@ export function EmployeeModal({
                 />
               </div>
               <div className="sm:col-span-1">
-                <label className="block text-xs font-subtitles font-semibold text-gray-600 mb-1">Apellido <span className="text-red-500">*</span></label>
+                <label htmlFor="lastName" className="block text-xs font-subtitles font-semibold text-gray-600 mb-1">Apellido <span className="text-red-500">*</span></label>
                 <input
+                  id="lastName"
+                  name="lastName"
                   type="text" required placeholder="Ej: Pérez"
                   disabled={isViewOnly}
                   value={form.lastName} onChange={e => setForm((f: any) => ({ ...f, lastName: e.target.value }))}
@@ -69,8 +73,10 @@ export function EmployeeModal({
                 />
               </div>
               <div>
-                <label className="block text-xs font-subtitles font-semibold text-gray-600 mb-1">Tipo de identificación <span className="text-red-500">*</span></label>
+                <label htmlFor="identificationTypeId" className="block text-xs font-subtitles font-semibold text-gray-600 mb-1">Tipo de identificación <span className="text-red-500">*</span></label>
                 <select
+                  id="identificationTypeId"
+                  name="identificationTypeId"
                   required
                   disabled={isViewOnly}
                   value={form.identificationTypeId}
@@ -84,8 +90,10 @@ export function EmployeeModal({
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-subtitles font-semibold text-gray-600 mb-1">Número de identificación <span className="text-red-500">*</span></label>
+                <label htmlFor="identificationNumber" className="block text-xs font-subtitles font-semibold text-gray-600 mb-1">Número de identificación <span className="text-red-500">*</span></label>
                 <input
+                  id="identificationNumber"
+                  name="identificationNumber"
                   type="text" required placeholder="Ej: 1234567890"
                   disabled={isViewOnly}
                   value={form.identificationNumber} onChange={e => setForm((f: any) => ({ ...f, identificationNumber: e.target.value }))}
@@ -93,8 +101,10 @@ export function EmployeeModal({
                 />
               </div>
               <div>
-                <label className="block text-xs font-subtitles font-semibold text-gray-600 mb-1">Correo electrónico <span className="text-red-500">*</span></label>
+                <label htmlFor="email" className="block text-xs font-subtitles font-semibold text-gray-600 mb-1">Correo electrónico <span className="text-red-500">*</span></label>
                 <input
+                  id="email"
+                  name="email"
                   type="email" required placeholder="usuario@dominio.com"
                   disabled={isViewOnly}
                   value={form.email} onChange={e => setForm((f: any) => ({ ...f, email: e.target.value }))}
@@ -104,9 +114,12 @@ export function EmployeeModal({
                 />
               </div>
               <div>
-                <label className="block text-xs font-subtitles font-semibold text-gray-600 mb-1">Teléfono <span className="text-red-500">*</span></label>
+                <label htmlFor="phoneCode" className="block text-xs font-subtitles font-semibold text-gray-600 mb-1">Teléfono <span className="text-red-500">*</span></label>
                 <div className="flex border border-gray-200 rounded-[var(--radius-lg)] overflow-hidden focus-within:border-[var(--color-primary)]">
                   <select
+                    id="phoneCode"
+                    name="phoneCode"
+                    aria-label="Código de país"
                     disabled={isViewOnly}
                     onChange={e => setForm((f: any) => ({ ...f, phone: e.target.value }))}
                     className="bg-gray-50 px-2 text-sm outline-none disabled:opacity-50"
@@ -114,6 +127,9 @@ export function EmployeeModal({
                     <option value="+57 ">🇨🇴 +57</option><option value="+1 ">🇺🇸 +1</option><option value="+34 ">🇪🇸 +34</option><option value="+52 ">🇲🇽 +52</option>
                   </select>
                   <input
+                    id="phoneNumber"
+                    name="phoneNumber"
+                    aria-label="Número de teléfono"
                     type="text" placeholder="000 000 0000"
                     disabled={isViewOnly}
                     value={form.phone.replace(/^\+\d+\s?/, '')}
@@ -123,7 +139,7 @@ export function EmployeeModal({
                 </div>
               </div>
               <div className="sm:col-span-2">
-                <label className="block text-xs font-subtitles font-semibold text-gray-600 mb-1">
+                <label htmlFor="password" className="block text-xs font-subtitles font-semibold text-gray-600 mb-1">
                   Contraseña{' '}
                   {editingId
                     ? <span className="text-gray-600 font-normal">(dejar en blanco para no cambiar)</span>
@@ -131,6 +147,8 @@ export function EmployeeModal({
                 </label>
                 <div className="relative">
                   <input
+                    id="password"
+                    name="password"
                     type={showPassword ? 'text' : 'password'}
                     required={!editingId}
                     placeholder="••••••••"
@@ -174,8 +192,10 @@ export function EmployeeModal({
                 )}
               </div>
               <div className="sm:col-span-2">
-                <label className="block text-xs font-subtitles font-semibold text-gray-600 mb-1">Tipo de trabajador <span className="text-red-500">*</span></label>
+                <label htmlFor="roleId" className="block text-xs font-subtitles font-semibold text-gray-600 mb-1">Tipo de trabajador <span className="text-red-500">*</span></label>
                 <select
+                  id="roleId"
+                  name="roleId"
                   required
                   disabled={isViewOnly}
                   value={form.roleId}

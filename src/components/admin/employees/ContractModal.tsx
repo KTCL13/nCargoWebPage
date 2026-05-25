@@ -41,8 +41,10 @@ export function ContractModal({
         <form onSubmit={handleContractSubmit} className="px-6 py-5 flex flex-col gap-5">
           <div className="grid grid-cols-2 gap-3">
             <div className="col-span-2 sm:col-span-1">
-              <label className="block text-xs font-subtitles font-semibold text-gray-600 mb-1">Cargo / Puesto</label>
+              <label htmlFor="jobId" className="block text-xs font-subtitles font-semibold text-gray-600 mb-1">Cargo / Puesto</label>
               <select
+                id="jobId"
+                name="jobId"
                 required
                 value={contractForm.jobId}
                 onChange={e => setContractForm((f: any) => ({ ...f, jobId: e.target.value }))}
@@ -53,8 +55,10 @@ export function ContractModal({
               </select>
             </div>
             <div className="col-span-2 sm:col-span-1">
-              <label className="block text-xs font-subtitles font-semibold text-gray-600 mb-1">Tipo de contrato</label>
+              <label htmlFor="contractTypeId" className="block text-xs font-subtitles font-semibold text-gray-600 mb-1">Tipo de contrato</label>
               <select
+                id="contractTypeId"
+                name="contractTypeId"
                 required
                 value={contractForm.contractTypeId}
                 onChange={e => setContractForm((f: any) => ({ ...f, contractTypeId: e.target.value }))}
@@ -65,10 +69,12 @@ export function ContractModal({
               </select>
             </div>
             <div className="col-span-2 sm:col-span-1">
-              <label className="block text-xs font-subtitles font-semibold text-gray-600 mb-1">
+              <label htmlFor="salaryRate" className="block text-xs font-subtitles font-semibold text-gray-600 mb-1">
                 {isHourlyContractType(contractForm.contractTypeId) ? 'Tarifa por hora ($)' : 'Salario mensual ($)'}
               </label>
               <input
+                id="salaryRate"
+                name="salaryRate"
                 type="number" required step="0.01" placeholder="0.00"
                 value={isHourlyContractType(contractForm.contractTypeId) ? contractForm.hourlyRate : contractForm.salary}
                 onChange={e => {
@@ -83,8 +89,10 @@ export function ContractModal({
               />
             </div>
             <div className="col-span-2 sm:col-span-1">
-              <label className="block text-xs font-subtitles font-semibold text-gray-600 mb-1">Fecha de inicio</label>
+              <label htmlFor="startDate" className="block text-xs font-subtitles font-semibold text-gray-600 mb-1">Fecha de inicio</label>
               <input
+                id="startDate"
+                name="startDate"
                 type="date" required
                 value={contractForm.startDate}
                 onChange={e => setContractForm((f: any) => ({ ...f, startDate: e.target.value }))}
