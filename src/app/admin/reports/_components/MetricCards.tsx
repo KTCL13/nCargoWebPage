@@ -48,7 +48,7 @@ export function MetricCards({ metrics }: { metrics: Metrics }) {
         return (
           <div
             key={card.key}
-            className="group bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex items-start gap-4 transition-all hover:shadow-md hover:translate-y-[-2px] hover:border-[var(--color-primary)]/20"
+            className="group bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex items-start gap-4 transition-[opacity,transform,box-shadow] hover:shadow-md hover:translate-y-[-2px] hover:border-[var(--color-primary)]/20"
             style={{ animationDelay: `${idx * 100}ms` }}
           >
             <div

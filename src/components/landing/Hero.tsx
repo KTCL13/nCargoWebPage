@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Image from 'next/image';
 import { Calculator } from '@/components/landing/ShippingCalculator';
 import { Icons } from '@/components/ui/Icons';
 
@@ -9,11 +10,19 @@ export const Hero = () => (
         className="relative min-h-screen lg:min-h-[90vh] flex flex-col justify-center px-5 lg:px-[5%] overflow-hidden mt-[80px]"
     >
         {/* Fondo */}
-        <div
-            className="absolute inset-0 -z-20 bg-cover bg-center"
-            style={{ backgroundImage: "url('/images/website/45.PNG')" }}
-            aria-hidden="true"
-        />
+        <div className="absolute inset-0 -z-20">
+            <Image
+                src="/images/website/45.PNG"
+                alt="Fondo N-Cargo"
+                fill
+                priority={true}
+                fetchPriority="high"
+                loading="eager"
+                quality={70}
+                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                className="object-cover object-center"
+            />
+        </div>
 
         {/* Overlay oscuro */}
         <div className="absolute inset-0 -z-10 bg-gradient-to-b from-[#040626]/90 via-[#040626]/80 to-[#040626]/95" />

@@ -130,8 +130,9 @@ export function Calculator() {
               ) : (
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className={lbl}>Departamento</label>
+                    <label htmlFor="dept" className={lbl}>Departamento</label>
                     <select
+                      id="dept"
                       value={dept}
                       onChange={e => { setDept(e.target.value); setCityId(''); setError('') }}
                       className={inp}
@@ -143,8 +144,9 @@ export function Calculator() {
                     </select>
                   </div>
                   <div>
-                    <label className={lbl}>Ciudad</label>
+                    <label htmlFor="city" className={lbl}>Ciudad</label>
                     <select
+                      id="city"
                       value={cityId}
                       onChange={e => { setCityId(e.target.value); setError('') }}
                       className={inp}
@@ -174,8 +176,9 @@ export function Calculator() {
                 const labels = { h: 'Alto', w: 'Ancho', l: 'Largo' }
                 return (
                   <div key={k}>
-                    <span className="block text-center text-[8px] text-slate-500">{labels[k]}</span>
+                    <label htmlFor={`dim-${k}`} className="block text-center text-[8px] text-slate-500">{labels[k]}</label>
                     <input
+                      id={`dim-${k}`}
                       value={dims[k]}
                       onChange={e => /^[0-9.,]*$/.test(e.target.value) && setDims(p => ({ ...p, [k]: e.target.value }))}
                       className={`${inp} text-center`}
@@ -188,16 +191,18 @@ export function Calculator() {
           <div className={sec}>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className={lbl}>Peso (lb)</label>
+                <label htmlFor="weight" className={lbl}>Peso (lb)</label>
                 <input
+                  id="weight"
                   value={weight}
                   onChange={e => /^[0-9.,]*$/.test(e.target.value) && setWeight(e.target.value)}
                   className={inp}
                 />
               </div>
               <div>
-                <label className={lbl}>Valor declarado (USD)</label>
+                <label htmlFor="declared" className={lbl}>Valor declarado (USD)</label>
                 <input
+                  id="declared"
                   type="number"
                   value={declared}
                   onChange={e => setDeclared(e.target.value)}

@@ -355,7 +355,6 @@ export function NotificationBell() {
       {/* ── Toast container ──────────────────────────────────────────────── */}
       <div
         aria-live="polite"
-        aria-label="Notificaciones emergentes"
         className="fixed bottom-5 right-5 z-[9999] flex flex-col gap-2 pointer-events-none"
       >
         {toasts.map(t => (

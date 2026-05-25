@@ -40,7 +40,7 @@ export default function EmpleadosPage() {
     >
       <EmployeeKPI employees={employees} />
 
-      <div className="bg-white rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] border border-gray-100 overflow-hidden">
+      <section className="bg-white rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] border border-gray-100 overflow-hidden">
         <EmployeeFilters
           filterStatus={filterStatus} setFilterStatus={setFilterStatus}
           filterRole={filterRole} setFilterRole={setFilterRole}
@@ -66,7 +66,7 @@ export default function EmpleadosPage() {
           saveRow={saveRow} openModal={openModal} openContractModal={openContractModal}
         />
 
-        <div className="px-5 py-4 border-t border-gray-100 flex flex-col gap-4">
+        <div className="px-5 py-4 border-t border-gray-100 flex flex-col gap-4 min-h-[100px]">
           {hasDirty && (
             <div className="flex justify-start">
               <button onClick={saveAll} className="text-sm px-4 py-2 rounded-[var(--radius-lg)] font-semibold font-subtitles bg-[var(--color-foreground)] text-white hover:opacity-80 transition shadow-sm">
@@ -76,7 +76,7 @@ export default function EmpleadosPage() {
           )}
           <Pagination page={page} pageSize={pageSize} totalItems={total} onPageChange={setPage} onPageSizeChange={setPageSize} />
         </div>
-      </div>
+      </section>
 
       <EmployeeModal
         showModal={showModal} setShowModal={setShowModal} isViewOnly={isViewOnly}

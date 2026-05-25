@@ -5,7 +5,7 @@ export const metadata: Metadata = {
     description:
         'Panel de administración de N-Cargo. Gestiona empleados, contratos, envíos, cotizaciones, reportes y configuración del sistema.',
     keywords: ['admin N-Cargo', 'panel administrativo', 'gestión empresarial'],
-    robots: { index: false, follow: false },
+    robots: { index: false, follow: false, nocache: true },
 };
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {

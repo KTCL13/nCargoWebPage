@@ -16,7 +16,7 @@ const FONTS = {
 
 const CLASSES = {
   input:
-    "w-full px-4 py-3 pr-11 rounded-xl border border-gray-200 bg-[#F9FAFB] text-sm text-[#040626] outline-none focus:border-[#FF003B] focus:ring-2 focus:ring-[#FF003B]/25 transition-all",
+    "w-full px-4 py-3 pr-12 rounded-xl border border-gray-200 bg-[#F9FAFB] text-sm text-[#040626] outline-none focus:border-[#FF003B] focus:ring-2 focus:ring-[#FF003B]/25 transition-all",
   label:
     "text-xs font-semibold text-gray-700 uppercase tracking-widest mb-1 block",
 };
@@ -24,7 +24,7 @@ const CLASSES = {
 /* ── Helpers ─────────────────────────────────────────────────────── */
 const SafeImage = ({ src, fill, ...props }: any) =>
   src ? (
-    <Image src={src} fill={fill} {...props} />
+    <Image src={src} fill={fill} sizes="(max-width: 1024px) 100vw, 55vw" {...props} />
   ) : (
     <div
       {...props}
@@ -75,24 +75,34 @@ export default function LoginPage() {
 
   /* ── Cargar assets (logo / fondo) ───────────────────────────── */
   useEffect(() => {
-    const url = process.env.NEXT_PUBLIC_STRAPI_URL;
-    if (!url) return;
+    const fetchAssets = async () => {
+      const url = process.env.NEXT_PUBLIC_STRAPI_URL;
+      if (!url) return;
 
-    fetch(`${url}/api/login-page?populate=*`)
-      .then((r) => r.json())
-      .then((res) => {
-        const d = res.data;
+      try {
+        const res = await fetch(`${url}/api/login-page?populate=*`);
+        if (!res.ok) throw new Error("Strapi no disponible");
+        
+        const json = await res.json();
+        const d = json.data;
         const base = url.replace(/\/$/, "");
 
         setUi((prev) => ({
           ...prev,
           assets: {
             logo: d?.logo?.url ? base + d.logo.url : "",
-            bg: d?.Fondo_login?.url ? base + d.Fondo_login.url : "",
+            bg: d?.Fondo_login?.url ? base + d.Fondo_login.url : "/images/website/55.PNG",
           },
         }));
-      })
-      .catch(() => { });
+      } catch (error) {
+        setUi((prev) => ({
+          ...prev,
+          assets: { logo: "", bg: "/images/website/55.PNG" },
+        }));
+      }
+    };
+
+    fetchAssets();
   }, []);
 
   /* ── Login Profesional ───────────────────────────────────────── */
@@ -183,8 +193,9 @@ export default function LoginPage() {
           <form onSubmit={handleLogin} className="flex flex-col gap-4">
             {/* Email */}
             <div>
-              <label className={CLASSES.label} style={{ fontFamily: FONTS.body }}>Email</label>
+              <label htmlFor="email" className={CLASSES.label} style={{ fontFamily: FONTS.body }}>Email</label>
               <input
+                id="email"
                 type="email"
                 value={data.email}
                 onChange={(e) => setData({ ...data, email: e.target.value })}
@@ -196,9 +207,10 @@ export default function LoginPage() {
 
             {/* Password */}
             <div>
-              <label className={CLASSES.label} style={{ fontFamily: FONTS.body }}>Contraseña</label>
+              <label htmlFor="password" className={CLASSES.label} style={{ fontFamily: FONTS.body }}>Contraseña</label>
               <div className="relative">
                 <input
+                  id="password"
                   type={ui.showPass ? "text" : "password"}
                   value={data.password}
                   onChange={(e) =>
@@ -210,10 +222,11 @@ export default function LoginPage() {
                 />
                 <button
                   type="button"
+                  aria-label="Mostrar u ocultar contraseña"
                   onClick={() =>
                     setUi((p) => ({ ...p, showPass: !p.showPass }))
                   }
-                  className="absolute right-3 top-1/2 -translate-y-1/2"
+                  className="absolute right-1 top-1/2 -translate-y-1/2 w-12 h-12 flex items-center justify-center text-gray-500 hover:text-[#040626] transition-colors"
                 >
                   <EyeIcon open={ui.showPass} />
                 </button>

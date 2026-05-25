@@ -63,7 +63,7 @@ export default function CotizacionesPage() {
                 if (!result) return setError('Primero realiza un cálculo antes de enviar a Odoo.')
                 setIsOdooModalOpen(true)
               }}
-              className={`flex-1 py-3 rounded-xl text-sm font-bold text-white transition-all hover:brightness-110 ${!result ? 'opacity-40 cursor-not-allowed' : 'active:scale-95 shadow-md'}`}
+              className={`flex-1 py-3 rounded-xl text-sm font-bold text-white transition-[opacity,transform] hover:brightness-110 ${!result ? 'opacity-40 cursor-not-allowed' : 'active:scale-95 shadow-md'}`}
               style={{ background: '#714B67' }}
             >
               Enviar a Odoo

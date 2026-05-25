@@ -24,7 +24,7 @@ export function DashboardLayout({
   const { user, logout } = useAuth()
 
   return (
-    <div className="flex min-h-screen bg-[var(--color-nc-white)] font-body pb-[65px] md:pb-0">
+    <div className="flex min-h-screen bg-[var(--color-nc-white)] text-gray-800 font-body pb-[65px] md:pb-0">
 
       <Sidebar
         items={navItems}

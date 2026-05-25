@@ -12,7 +12,7 @@ export function initials(name: string) {
 }
 
 export function avatarColor(name: string) {
-  const colors = ['bg-blue-500', 'bg-purple-500', 'bg-green-600', 'bg-orange-500', 'bg-pink-500']
+  const colors = ['bg-slate-700', 'bg-indigo-900', 'bg-emerald-800', 'bg-amber-900', 'bg-rose-900']
   return colors[name.charCodeAt(0) % colors.length]
 }
 
