@@ -54,6 +54,7 @@ export function Pagination({
           <label htmlFor="registros-por-pagina" className="sr-only">Mostrar registros por página</label>
           <select
             id="registros-por-pagina"
+            name="pageSize"
             value={pageSize}
             onChange={(e) => {
               onPageSizeChange(Number(e.target.value))

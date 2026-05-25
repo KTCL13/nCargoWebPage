@@ -18,7 +18,7 @@ jest.mock('next/server', () => {
       })
     }
   }
-  class NextRequest {}
+  class NextRequest { }
   return { NextResponse, NextRequest }
 })
 
@@ -85,7 +85,7 @@ describe('authController.login — escenarios inválidos', () => {
     expect(res.cookies.set).not.toHaveBeenCalled()
   })
 
-  it('responde 400 con "Credenciales inválidas" cuando la contraseña no coincide', async () => {
+  it('responde 401 con "Credenciales inválidas" cuando la contraseña no coincide', async () => {
     mocked(getIp).mockReturnValue('1.1.1.1')
     mocked(authService.login).mockRejectedValue(new Error('Credenciales inválidas'))
 
@@ -93,7 +93,7 @@ describe('authController.login — escenarios inválidos', () => {
       makeReq({ body: { email: 'a@b.c', password: 'bad' } }),
     )
 
-    expect(res.status).toBe(400)
+    expect(res.status).toBe(401)
     await expect(res.json()).resolves.toEqual({ message: 'Credenciales inválidas' })
   })
 })

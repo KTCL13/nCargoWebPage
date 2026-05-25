@@ -10,7 +10,7 @@ jest.mock('next/server', () => {
       })
     }
   }
-  class NextRequest {}
+  class NextRequest { }
   return { NextResponse, NextRequest }
 })
 
@@ -128,13 +128,13 @@ describe('authController.login', () => {
     expect(res.cookies.set).not.toHaveBeenCalled()
   })
 
-  it('returns 400 with "Credenciales inválidas" on bad credentials', async () => {
+  it('returns 401 with "Credenciales inválidas" on bad credentials', async () => {
     mocked(getIp).mockReturnValue('1.1.1.1')
     mocked(authService.login).mockRejectedValue(new Error('Credenciales inválidas'))
 
     const res: any = await authController.login(makeReq({ body: { email: 'a@b.c', password: 'bad' } }))
 
-    expect(res.status).toBe(400)
+    expect(res.status).toBe(401)
     await expect(res.json()).resolves.toEqual({ message: 'Credenciales inválidas' })
   })
 })
