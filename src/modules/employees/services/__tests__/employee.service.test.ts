@@ -417,6 +417,34 @@ describe('employeeService.createContract', () => {
     expect((prisma as any).$transaction).toHaveBeenCalled()
     expect(result.endDate).toBeNull()
   })
+
+  it('G4 3NF: tx.jobHistory.create no recibe jobId (se obtiene vía contract.jobId)', async () => {
+    const jobHistoryCreate = jest.fn().mockResolvedValue({ id: 99, employeeId: 1, contractId: 10, startDate: new Date(), endDate: null })
+
+    mocked((prisma as any).$transaction).mockImplementation(async (cb: (tx: any) => Promise<any>) => {
+      const tx = {
+        jobHistory: {
+          updateMany: jest.fn().mockResolvedValue({ count: 0 }),
+          create: jobHistoryCreate,
+        },
+        contract: {
+          updateMany: jest.fn().mockResolvedValue({ count: 0 }),
+          create: jest.fn().mockResolvedValue(fakeContract),
+        },
+      }
+      await cb(tx)
+      return fakeContract
+    })
+    primeResponseDtoMocks()
+
+    await employeeService.createContract(1, validData)
+
+    expect(jobHistoryCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.not.objectContaining({ jobId: expect.anything() }),
+      }),
+    )
+  })
 })
 
 // =====================================================================

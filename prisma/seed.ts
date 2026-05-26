@@ -377,7 +377,6 @@ async function main() {
         data: {
           employeeId: emp.id,
           contractId: contracts[i].id,
-          jobId: jobs[i % jobs.length].id,
           startDate: new Date(`2024-0${(i % 9) + 1}-01`),
         },
       }),
@@ -794,7 +793,6 @@ async function main() {
             providerId: serviexpress.id,
             statusId: ssDelivered.id,
             odooOrderId: 5001,
-            odooCustomerId: 1001,
             trackingNumber: "SRV-2025-00101",
             weightLbs: 5.2,
             receivedAtMailbox: new Date("2025-03-01"),
@@ -809,7 +807,6 @@ async function main() {
             providerId: serviexpress.id,
             statusId: ssTransit.id,
             odooOrderId: 5002,
-            odooCustomerId: 1002,
             trackingNumber: "SRV-2025-00102",
             weightLbs: 12.0,
             receivedAtMailbox: new Date("2025-03-05"),
@@ -823,7 +820,6 @@ async function main() {
             providerId: serviexpress.id,
             statusId: ssCustoms.id,
             odooOrderId: 5003,
-            odooCustomerId: 1003,
             trackingNumber: "SRV-2025-00103",
             weightLbs: 3.5,
             receivedAtMailbox: new Date("2025-03-08"),
@@ -837,7 +833,6 @@ async function main() {
             providerId: serviexpress.id,
             statusId: ssReceived.id,
             odooOrderId: 5004,
-            odooCustomerId: 1004,
             trackingNumber: null,
             weightLbs: 8.0,
             receivedAtMailbox: new Date("2025-03-14"),
@@ -849,7 +844,6 @@ async function main() {
             providerId: serviexpress.id,
             statusId: ssPicked.id,
             odooOrderId: 5005,
-            odooCustomerId: 1005,
             trackingNumber: null,
             weightLbs: 20.0,
             receivedAtMailbox: new Date("2025-03-12"),
@@ -861,7 +855,6 @@ async function main() {
             providerId: serviexpress.id,
             statusId: ssWarehouse.id,
             odooOrderId: 5006,
-            odooCustomerId: 1006,
             trackingNumber: "SRV-2025-00106",
             weightLbs: 7.3,
             receivedAtMailbox: new Date("2025-03-06"),
@@ -874,7 +867,6 @@ async function main() {
             providerId: serviexpress.id,
             statusId: ssOutDel.id,
             odooOrderId: 5007,
-            odooCustomerId: 1007,
             trackingNumber: "SRV-2025-00107",
             weightLbs: 2.1,
             receivedAtMailbox: new Date("2025-03-04"),
@@ -887,7 +879,6 @@ async function main() {
             providerId: serviexpress.id,
             statusId: ssCancelled.id,
             odooOrderId: 5008,
-            odooCustomerId: 1008,
             trackingNumber: null,
             weightLbs: 4.0,
             receivedAtMailbox: new Date("2025-03-10"),
@@ -900,7 +891,6 @@ async function main() {
             providerId: serviexpress.id,
             statusId: ssFailed.id,
             odooOrderId: 5009,
-            odooCustomerId: 1009,
             trackingNumber: "SRV-2025-00109",
             weightLbs: 6.5,
             receivedAtMailbox: new Date("2025-03-03"),
@@ -914,7 +904,6 @@ async function main() {
             providerId: serviexpress.id,
             statusId: ssDelivered.id,
             odooOrderId: 5010,
-            odooCustomerId: 1010,
             trackingNumber: "SRV-2025-00110",
             weightLbs: 9.8,
             receivedAtMailbox: new Date("2025-02-20"),
@@ -1108,24 +1097,8 @@ async function main() {
       prisma.taskAnalytics.create({
         data: {
           taskId: task.id,
-          employeeId: employees[i % employees.length].id,
           durationMinutes: 60 + i * 15,
           wasDelayed: i % 5 === 0,
-        },
-      }),
-    ),
-  );
-
-  // ── 24. WORKLOAD SNAPSHOTS ──
-  await Promise.all(
-    employees.slice(0, 8).map((emp, i) =>
-      prisma.workloadSnapshot.create({
-        data: {
-          employeeId: emp.id,
-          date: new Date(`2025-03-${String(i + 10).padStart(2, "0")}`),
-          activeTasks: 2 + (i % 3),
-          completedTasks: 3 + i,
-          workloadScore: 65 + i * 4,
         },
       }),
     ),

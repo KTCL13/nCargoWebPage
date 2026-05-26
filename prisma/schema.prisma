@@ -45,22 +45,19 @@ model Employee {
   passwordResetTokens  PasswordResetToken[]
   quotations           Quotation[]
   shipmentEvents       ShipmentEvent[]
-  taskAnalytics        TaskAnalytics[]
   assignedTasks        Task[]               @relation("AssignedByEmployee")
   tasks                Task[]               @relation("EmployeeTasks")
   sessions             UserSession[]
-  workloads            WorkloadSnapshot[]
 
   @@unique([identificationTypeId, identificationNumber], name: "uq_employee_identification", map: "uq_employee_identification")
   @@map("employees")
 }
 
 model Job {
-  id          Int          @id @default(autoincrement())
-  title       String       @db.VarChar(150)
+  id          Int        @id @default(autoincrement())
+  title       String     @db.VarChar(150)
   description String?
   contracts   Contract[]
-  jobHistory  JobHistory[]
 
   @@map("jobs")
 }
@@ -96,12 +93,10 @@ model JobHistory {
   id         Int       @id @default(autoincrement())
   employeeId Int       @map("employee_id")
   contractId Int       @map("contract_id")
-  jobId      Int       @map("job_id")
   startDate  DateTime  @map("start_date")
   endDate    DateTime? @map("end_date")
   contract   Contract  @relation(fields: [contractId], references: [id])
   employee   Employee  @relation(fields: [employeeId], references: [id])
-  job        Job       @relation(fields: [jobId], references: [id])
 
   @@map("job_history")
 }
@@ -305,7 +300,6 @@ model Shipment {
   providerId         Int                @map("provider_id")
   statusId           Int                @map("status_id")
   odooOrderId        Int?               @map("odoo_order_id")
-  odooCustomerId     Int?               @map("odoo_customer_id")
   trackingNumber     String?            @map("tracking_number") @db.VarChar(100)
   weightLbs          Decimal?           @map("weight_lbs") @db.Decimal(8, 2)
   receivedAtMailbox  DateTime?          @map("received_at_mailbox")
@@ -417,29 +411,14 @@ model EmployeeKPI {
 model TaskAnalytics {
   id              Int      @id @default(autoincrement())
   taskId          Int      @unique @map("task_id")
-  employeeId      Int      @map("employee_id")
   durationMinutes Int?     @map("duration_minutes")
   wasDelayed      Boolean  @default(false) @map("was_delayed")
   createdAt       DateTime @default(now()) @map("created_at")
-  employee        Employee @relation(fields: [employeeId], references: [id])
   task            Task     @relation(fields: [taskId], references: [id])
 
   @@map("task_analytics")
 }
 
-model WorkloadSnapshot {
-  id             Int      @id @default(autoincrement())
-  employeeId     Int      @map("employee_id")
-  date           DateTime @db.Date
-  activeTasks    Int      @default(0) @map("active_tasks")
-  completedTasks Int      @default(0) @map("completed_tasks")
-  workloadScore  Decimal? @map("workload_score") @db.Decimal(5, 2)
-  createdAt      DateTime @default(now()) @map("created_at")
-  employee       Employee @relation(fields: [employeeId], references: [id])
-
-  @@unique([employeeId, date])
-  @@map("workload_snapshots")
-}
 
 model EmployeeAlert {
   id         Int       @id @default(autoincrement())
