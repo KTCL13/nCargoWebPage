@@ -34,7 +34,10 @@ export function ContratosClient() {
       <div className="bg-white rounded-[var(--radius-xl)] shadow-sm border border-gray-100 overflow-hidden">
         <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 border-b">
           <h3 className="font-titles text-lg font-bold">Listado de Contratos</h3>
-          <div className="relative"><input type="text" placeholder="Buscar..." value={search} onChange={e => { setSearch(e.target.value); setPage(0) }} className="form-input pl-8 w-56" /><span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-600">🔍</span></div>
+          <div className="relative">
+            <input type="text" placeholder="Buscar..." value={search} onChange={e => setSearch(e.target.value)} className="form-input pl-9 w-56" />
+            <svg xmlns="http://www.w3.org/2000/svg" className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+          </div>
         </div>
 
         {selected.size > 0 && (

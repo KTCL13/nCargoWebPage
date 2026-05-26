@@ -9,6 +9,7 @@ export function useContracts() {
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(0)
   const [search, setSearch] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
   const [pageSize, setPageSize] = useState(DEFAULT_LIMIT)
   const [loading, setLoading] = useState(false)
 
@@ -22,16 +23,21 @@ export function useContracts() {
   const [historyEmpId, setHistoryEmpId] = useState<number | null>(null)
   const [historyEmpName, setHistoryEmpName] = useState('')
 
+  useEffect(() => {
+    const t = setTimeout(() => { setDebouncedSearch(search); setPage(0) }, 400)
+    return () => clearTimeout(t)
+  }, [search])
+
   const fetchContracts = useCallback(async () => {
     setLoading(true)
     setDirty({})
     setSelected(new Set())
     try {
-      const data = await contractsClient.getContracts(page, pageSize, search)
+      const data = await contractsClient.getContracts(page, pageSize, debouncedSearch)
       setContracts(data.data ?? [])
       setTotal(data.total ?? 0)
     } catch (e) { console.error(e) } finally { setLoading(false) }
-  }, [page, pageSize, search])
+  }, [page, pageSize, debouncedSearch])
 
   useEffect(() => { fetchContracts() }, [fetchContracts])
 
