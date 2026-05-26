@@ -1,13 +1,17 @@
 'use client'
 
+import { useState } from 'react'
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
 import { NAV_ITEMS } from '@/components/layout/nav-config'
 import { useJornada } from '@/lib/employee/jornada/useJornada'
 import { AttendanceKpis } from '@/components/employee/jornada/AttendanceKpis'
 import { TimerRing } from '@/components/employee/jornada/TimerRing'
 import { ControlPanel } from '@/components/employee/jornada/ControlPanel'
+import { ConfirmClockOutModal } from '@/components/employee/jornada/ConfirmClockOutModal'
 
 export function JornadaClient() {
+  const [showConfirmModal, setShowConfirmModal] = useState(false)
+
   const {
     employeeId, attendance, timerState, elapsed, pauseCount, loading, errorMsg,
     tasks, selectedTaskId, setSelectedTaskId, taskLoading, loadToday,
@@ -65,12 +69,20 @@ export function JornadaClient() {
           onStart={handleStart}
           onPause={handlePause}
           onResume={handleResume}
-          onStop={handleStop}
+          onStop={() => setShowConfirmModal(true)}
           sessionStart={sessionStart}
           pauseCount={pauseCount}
           stateLabel={stateLabel}
         />
       </div>
+
+      <ConfirmClockOutModal
+        isOpen={showConfirmModal}
+        onClose={() => setShowConfirmModal(false)}
+        onConfirm={() => { handleStop(); setShowConfirmModal(false) }}
+        loading={loading}
+        elapsed={elapsed}
+      />
     </DashboardLayout>
   )
 }

@@ -2,10 +2,23 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin, getAuthEmployee } from '@/lib/auth-guard'
 import { odooLockerService } from '../services/odoo-locker.service'
 
+function authErrorResponse(error: unknown) {
+  const message = error instanceof Error ? error.message : 'No autorizado'
+  const status =
+    error instanceof Error && error.message.startsWith('Forbidden') ? 403
+    : error instanceof Error && error.message.includes('Token') ? 401
+    : 400
+  return NextResponse.json({ message }, { status })
+}
+
 class OdooLockerController {
   async syncLockers(req: NextRequest) {
     try {
       requireAdmin(req)
+    } catch (error) {
+      return authErrorResponse(error)
+    }
+    try {
       const body = await req.json().catch(() => ({}))
       const searchTerm: string = body.searchTerm?.trim() || 'Suscripción Casillero'
       const result = await odooLockerService.syncFromOdoo(searchTerm)
@@ -18,6 +31,10 @@ class OdooLockerController {
   async getLockers(req: NextRequest) {
     try {
       getAuthEmployee(req)
+    } catch (error) {
+      return authErrorResponse(error)
+    }
+    try {
       const { searchParams } = new URL(req.url)
       const page = parseInt(searchParams.get('page') ?? '1')
       const limit = parseInt(searchParams.get('limit') ?? '10')
@@ -31,8 +48,11 @@ class OdooLockerController {
   async getShipments(req: NextRequest) {
     try {
       getAuthEmployee(req)
+    } catch (error) {
+      return authErrorResponse(error)
+    }
+    try {
       const { searchParams } = new URL(req.url)
-
       const filters = {
         search: searchParams.get('search') ?? undefined,
         statusId: searchParams.get('statusId') ? parseInt(searchParams.get('statusId')!) : undefined,
@@ -42,7 +62,6 @@ class OdooLockerController {
         page: parseInt(searchParams.get('page') ?? '1'),
         pageSize: parseInt(searchParams.get('pageSize') ?? '15'),
       }
-
       const result = await odooLockerService.getShipments(filters)
       const totalPages = Math.ceil(result.total / filters.pageSize)
       return NextResponse.json({ ...result, page: filters.page, pageSize: filters.pageSize, totalPages })
@@ -52,19 +71,18 @@ class OdooLockerController {
   }
 
   async updateShipment(req: NextRequest) {
+    let employee
     try {
-      const employee = getAuthEmployee(req)
+      employee = getAuthEmployee(req)
+    } catch (error) {
+      return authErrorResponse(error)
+    }
+    try {
       const body = await req.json()
       const { id, trackingNumber, odooStageName, comment } = body
-
       if (!id) return NextResponse.json({ message: 'id is required' }, { status: 400 })
-
       const result = await odooLockerService.updateShipment(
-        Number(id),
-        trackingNumber,
-        odooStageName,
-        comment,
-        employee.id,
+        Number(id), trackingNumber, odooStageName, comment, employee.id,
       )
       return NextResponse.json(result)
     } catch (error) {
@@ -75,6 +93,10 @@ class OdooLockerController {
   async getLockerShipments(req: NextRequest, lockerId: number) {
     try {
       getAuthEmployee(req)
+    } catch (error) {
+      return authErrorResponse(error)
+    }
+    try {
       const { searchParams } = new URL(req.url)
       const search = searchParams.get('search') ?? undefined
       const page = parseInt(searchParams.get('page') ?? '1')
@@ -87,13 +109,16 @@ class OdooLockerController {
   }
 
   async createLockerShipment(req: NextRequest, lockerId: number) {
+    let employee
     try {
-      const employee = getAuthEmployee(req)
+      employee = getAuthEmployee(req)
+    } catch (error) {
+      return authErrorResponse(error)
+    }
+    try {
       const body = await req.json()
       const { name, description } = body
-
       if (!name) return NextResponse.json({ message: 'name is required' }, { status: 400 })
-
       const shipment = await odooLockerService.createShipment(lockerId, name, description, employee.id)
       return NextResponse.json(shipment, { status: 201 })
     } catch (error) {

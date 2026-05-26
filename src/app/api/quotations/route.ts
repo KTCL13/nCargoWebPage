@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { requireAdmin } from '@/lib/auth-guard'
 
 export async function GET(req: NextRequest) {
+  try { requireAdmin(req) } catch (e) {
+    return NextResponse.json({ message: (e as Error).message }, { status: 401 })
+  }
   const { searchParams } = new URL(req.url)
   const page     = parseInt(searchParams.get('page')     ?? '1')
   const pageSize = parseInt(searchParams.get('pageSize') ?? '0')

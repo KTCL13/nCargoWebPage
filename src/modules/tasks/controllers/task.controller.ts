@@ -85,10 +85,14 @@ class TaskController {
     }
 
     async assignTask(req: NextRequest) {
+        let admin
         try {
-            const admin = getAuthEmployee(req)
+            admin = getAuthEmployee(req)
+        } catch (error) {
+            return authErrorResponse(error)
+        }
+        try {
             const body: CreateTaskDto = await req.json()
-
             const result = await taskService.assignTask(body, admin.id)
             return NextResponse.json(result, { status: 201 })
         } catch (error: unknown) {
@@ -100,12 +104,16 @@ class TaskController {
     }
 
     async reassignTask(req: NextRequest) {
+        let admin
         try {
-            const admin = getAuthEmployee(req)
-            const url = new URL(req.url)
-            const id = Number(url.searchParams.get('id'))
+            admin = getAuthEmployee(req)
+        } catch (error) {
+            return authErrorResponse(error)
+        }
+        const url = new URL(req.url)
+        const id = Number(url.searchParams.get('id'))
+        try {
             const body: ReassignTaskDto = await req.json()
-
             const result = await taskService.reassignTask(id, body, admin.id)
             return NextResponse.json(result, { status: 200 })
         } catch (error: unknown) {
@@ -117,12 +125,16 @@ class TaskController {
     }
 
     async update(req: NextRequest) {
+        let actor
         try {
-            const actor = getAuthEmployee(req)
-            const url = new URL(req.url)
-            const id = Number(url.searchParams.get('id'))
+            actor = getAuthEmployee(req)
+        } catch (error) {
+            return authErrorResponse(error)
+        }
+        const url = new URL(req.url)
+        const id = Number(url.searchParams.get('id'))
+        try {
             const body: UpdateTaskDto = await req.json()
-
             const result = await taskService.update(id, { ...body, actorId: actor.id })
             return NextResponse.json(result, { status: 200 })
         } catch (error: unknown) {
@@ -154,10 +166,14 @@ class TaskController {
     }
 
     async bulkAssign(req: NextRequest) {
+        let admin
         try {
-            const admin = getAuthEmployee(req)
+            admin = getAuthEmployee(req)
+        } catch (error) {
+            return authErrorResponse(error)
+        }
+        try {
             const body: BulkAssignTaskDto = await req.json()
-
             const result = await taskService.bulkAssign(body, admin.id)
             return NextResponse.json(result, { status: 201 })
         } catch (error: unknown) {
