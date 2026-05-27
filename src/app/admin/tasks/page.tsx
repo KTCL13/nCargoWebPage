@@ -40,8 +40,14 @@ export default function GestionTareasPage() {
               <p className="text-gray-500 text-sm">Asignación y seguimiento global de actividades</p>
             </div>
             <div className="flex gap-2">
-              <button onClick={handleCheckOverdue} className="bg-red-50 text-red-600 text-sm font-subtitles font-bold border border-red-100 px-4 py-2 rounded-[var(--radius-lg)] hover:bg-red-100 transition">⏰ Limpiar Vencidas</button>
-              <button onClick={() => setShowCreateModal(true)} className="bg-[var(--color-primary)] text-white text-sm font-subtitles font-bold px-4 py-2 rounded-[var(--radius-lg)] hover:opacity-90 transition">+ Nueva Tarea</button>
+              <button onClick={handleCheckOverdue}
+                className="bg-red-50 text-red-600 text-sm font-subtitles font-bold border border-red-100 px-4 py-2 rounded-[var(--radius-lg)] hover:bg-red-100 transition">
+                ⏰ Limpiar Vencidas
+              </button>
+              <button onClick={() => setShowCreateModal(true)}
+                className="bg-[var(--color-primary)] text-white text-sm font-subtitles font-bold px-4 py-2 rounded-[var(--radius-lg)] hover:opacity-90 transition">
+                + Nueva Tarea
+              </button>
             </div>
           </div>
 
@@ -61,7 +67,10 @@ export default function GestionTareasPage() {
                 </select>
               </div>
               <div className="flex-1 min-w-[300px]">
-                <EmployeeSearch onSelect={emp => { setEmployeeFilter(emp ? String(emp.id) : ''); setPage(0) }} placeholder="Filtrar por empleado (Nombre o ID)..." className="bg-white" />
+                <EmployeeSearch
+                  onSelect={emp => { setEmployeeFilter(emp ? String(emp.id) : ''); setPage(0) }}
+                  placeholder="Filtrar por empleado (Nombre o ID)..."
+                  className="bg-white" />
               </div>
             </div>
 
@@ -82,22 +91,25 @@ export default function GestionTareasPage() {
               </div>
               <form onSubmit={handleCreateSubmit} className="p-6 space-y-4">
                 <div className="flex p-1 bg-gray-100 rounded-[var(--radius-lg)]">
-                  <button type="button" onClick={() => setIsBulk(false)} className={`flex-1 py-1.5 text-xs font-bold rounded-[var(--radius-md)] transition ${!isBulk ? 'bg-white shadow text-[var(--color-primary)]' : 'text-gray-500'}`}>
+                  <button type="button" onClick={() => setIsBulk(false)}
+                    className={`flex-1 py-1.5 text-xs font-bold rounded-[var(--radius-md)] transition ${!isBulk ? 'bg-white shadow text-[var(--color-primary)]' : 'text-gray-500'}`}>
                     Individual
-
                   </button>
-                  <button type="button" onClick={() => setIsBulk(true)} className={`flex-1 py-1.5 text-xs font-bold rounded-[var(--radius-md)] transition ${isBulk ? 'bg-white shadow text-[var(--color-primary)]' : 'text-gray-500'}`}>
-                    Asignación Masiva
 
+                  <button type="button" onClick={() => setIsBulk(true)}
+                    className={`flex-1 py-1.5 text-xs font-bold rounded-[var(--radius-md)] transition ${isBulk ? 'bg-white shadow text-[var(--color-primary)]' : 'text-gray-500'}`}>
+                    Asignación Masiva
                   </button>
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Título</label>
-                  <input required type="text" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} className="form-input w-full" placeholder="Ej: Revisión de inventario" />
+                  <input required type="text" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
+                    className="form-input w-full" placeholder="Ej: Revisión de inventario" />
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Descripción</label>
-                  <textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} className="form-input w-full h-20 resize-none" placeholder="Instrucciones detalladas..." />
+                  <textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+                    className="form-input w-full h-20 resize-none" placeholder="Instrucciones detalladas..." />
                 </div>
                 {isBulk ?
                   <EmployeeSearch
@@ -116,10 +128,12 @@ export default function GestionTareasPage() {
                   onStartTimeChange={(value) => setForm(f => ({ ...f, startTime: value }))}
                   onEndTimeChange={(value) => setForm(f => ({ ...f, endTime: value }))}
                   isDateInvalid={isDateInvalid}
+                  errorMessage={dateError || undefined}
                 />
 
                 <div className="flex gap-3 pt-2">
-                  <button type="button" onClick={() => setShowCreateModal(false)} className="flex-1 py-2.5 rounded-[var(--radius-lg)] border border-gray-200 text-sm font-bold text-gray-500 hover:bg-gray-50 transition">
+                  <button type="button" onClick={() => setShowCreateModal(false)}
+                    className="flex-1 py-2.5 rounded-[var(--radius-lg)] border border-gray-200 text-sm font-bold text-gray-500 hover:bg-gray-50 transition">
                     Cancelar
                   </button>
                   <button
@@ -142,14 +156,18 @@ export default function GestionTareasPage() {
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
             <div className="bg-white rounded-[var(--radius-xl)] shadow-2xl w-full max-w-sm p-6">
               <h2 className="font-titles text-lg font-bold text-[var(--color-foreground)] mb-4">Reasignar Tarea</h2>
-              <p className="text-xs text-gray-500 mb-4 font-subtitles">Vas a reasignar: <span className="font-bold text-gray-900">{reassignTask.title}</span></p>
+              <p className="text-xs text-gray-500 mb-4 font-subtitles">Vas a reasignar:
+                <span className="font-bold text-gray-900">{reassignTask.title}</span>
+              </p>
               <div className="space-y-4">
                 <EmployeeSearch label="Nuevo Responsable" onSelect={emp => setNewEmployeeId(emp ? String(emp.id) : '')} placeholder="Buscar nuevo responsable..." />
                 <div className="flex gap-3 pt-2">
-                  <button type="button" onClick={() => setReassignTask(null)} className="flex-1 py-2.5 rounded-[var(--radius-lg)] border border-gray-200 text-sm font-bold text-gray-500 hover:bg-gray-50 transition">
+                  <button type="button" onClick={() => setReassignTask(null)}
+                    className="flex-1 py-2.5 rounded-[var(--radius-lg)] border border-gray-200 text-sm font-bold text-gray-500 hover:bg-gray-50 transition">
                     Cancelar
                   </button>
-                  <button onClick={handleReassign} disabled={reassignLoading || !newEmployeeId} className="flex-1 py-2.5 rounded-[var(--radius-lg)] bg-[var(--color-primary)] text-white text-sm font-bold hover:opacity-90 transition disabled:opacity-50">
+                  <button onClick={handleReassign} disabled={reassignLoading || !newEmployeeId}
+                    className="flex-1 py-2.5 rounded-[var(--radius-lg)] bg-[var(--color-primary)] text-white text-sm font-bold hover:opacity-90 transition disabled:opacity-50">
                     {reassignLoading ? 'Procesando...' : 'Confirmar'}
                   </button>
                 </div>
@@ -160,7 +178,11 @@ export default function GestionTareasPage() {
       </DashboardLayout>
 
       <div role="status" className="fixed bottom-5 right-5 z-[9999] flex flex-col gap-2 pointer-events-none">
-        {toasts.map(t => <div key={t.id} aria-live="polite" aria-atomic="true" className="pointer-events-auto flex items-center gap-3 bg-[var(--color-foreground)] text-white pl-4 pr-5 py-3.5 rounded-[var(--radius-lg)] shadow-lg text-sm font-medium animate-in slide-in-from-right-full">✅ <span>{t.text}</span></div>)}
+        {toasts.map(t =>
+          <div key={t.id} aria-live="polite" aria-atomic="true"
+            className="pointer-events-auto flex items-center gap-3 bg-[var(--color-foreground)] text-white pl-4 pr-5 py-3.5 rounded-[var(--radius-lg)] shadow-lg text-sm font-medium animate-in slide-in-from-right-full">
+            ✅ <span>{t.text}</span>
+          </div>)}
       </div>
     </>
   )

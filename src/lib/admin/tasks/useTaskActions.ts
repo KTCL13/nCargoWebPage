@@ -24,8 +24,7 @@ export function useTaskActions(token: string | null, employees: TaskEmployee[], 
   const [reassignLoading, setReassignLoading] = useState(false)
 
   const [toasts, setToasts] = useState<ToastMsg[]>([])
-  // Holds validation error for start/end dates
-  const [dateError, setDateError] = useState<string>('')
+
   const showToast = (text: string) => {
     const id = Date.now()
     setToasts(ts => [...ts, { id, text }])
@@ -33,18 +32,36 @@ export function useTaskActions(token: string | null, employees: TaskEmployee[], 
   }
 
   // Reactive validation for dates
-  const isDateInvalid = !!(form.startTime && form.endTime && new Date(form.endTime) < new Date(form.startTime));
+  const minStart = (() => { const d = new Date(); d.setMonth(d.getMonth() - 1); return d; })();
+  const maxEnd = (() => {
+    if (!form.startTime) return null;
+    const d = new Date(form.startTime);
+    d.setFullYear(d.getFullYear() + 1);
+    return d;
+  })();
+
+  const startTooEarly = !!(form.startTime && new Date(form.startTime) < minStart);
+  const endBeforeStart = !!(form.startTime && form.endTime && new Date(form.endTime) < new Date(form.startTime));
+  const rangeExceedsYear = !!(form.startTime && form.endTime && maxEnd && new Date(form.endTime) > maxEnd);
+
+  const isDateInvalid = startTooEarly || endBeforeStart || rangeExceedsYear;
+
+  const dateError =
+    startTooEarly
+      ? 'La fecha de inicio no puede ser anterior a un mes desde hoy.'
+      : endBeforeStart
+      ? 'La fecha de fin no puede ser anterior a la de inicio.'
+      : rangeExceedsYear
+      ? 'El rango entre inicio y fin no puede superar un año.'
+      : '';
 
   const handleCreateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!token) return;
 
     if (isDateInvalid) {
-      setDateError('La fecha de fin no puede ser anterior a la fecha de inicio.');
       return;
     }
-
-    setDateError('');
     setCreateLoading(true);
     try {
       const apiUrl = isBulk ? '/api/tasks/bulk-assign' : '/api/tasks'
@@ -116,6 +133,6 @@ export function useTaskActions(token: string | null, employees: TaskEmployee[], 
     showCreateModal, setShowCreateModal, isBulk, setIsBulk, form, setForm, createLoading,
     reassignTask, setReassignTask, newEmployeeId, setNewEmployeeId, reassignLoading,
     toasts, handleCreateSubmit, handleReassign,
-    dateError, setDateError, isDateInvalid
+    dateError, isDateInvalid
   }
 }
