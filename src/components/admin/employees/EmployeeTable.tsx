@@ -1,4 +1,5 @@
 import { Employee } from '@/types/admin/employees'
+import { useState, useMemo } from 'react'
 import { avatarColor, initials, translateRole } from '@/lib/admin/employees/utils'
 
 interface EmployeeTableProps {
@@ -20,6 +21,53 @@ export function EmployeeTable({
   dirty, saving, toggleStatus, saveRow,
   openModal, openContractModal
 }: EmployeeTableProps) {
+  // Sorting state
+  const [sortColumn, setSortColumn] = useState<string>('')
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
+
+  const handleSort = (column: string) => {
+    if (sortColumn === column) {
+      setSortDirection(prev => (prev === 'asc' ? 'desc' : 'asc'))
+    } else {
+      setSortColumn(column)
+      setSortDirection('asc')
+    }
+  }
+
+  const sortedEmployees = useMemo(() => {
+    if (!sortColumn) return employees
+    const sorted = [...employees]
+    sorted.sort((a, b) => {
+      let aVal: any
+      let bVal: any
+      switch (sortColumn) {
+        case 'name':
+          aVal = a.name
+          bVal = b.name
+          break
+        case 'role':
+          aVal = a.roles?.[0] ?? ''
+          bVal = b.roles?.[0] ?? ''
+          break
+        case 'job':
+          aVal = a.activeContract?.job?.title ?? ''
+          bVal = b.activeContract?.job?.title ?? ''
+          break
+        case 'status':
+          aVal = a.status ?? ''
+          bVal = b.status ?? ''
+          break
+        default:
+          aVal = ''
+          bVal = ''
+      }
+      if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1
+      if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1
+      return 0
+    })
+    return sorted
+  }, [employees, sortColumn, sortDirection])
+
   return (
     <div className="overflow-x-auto min-h-[400px]">
       <table role="grid" aria-label="Data table" className="w-full text-sm">
@@ -36,11 +84,30 @@ export function EmployeeTable({
                 className="accent-[var(--color-primary)] w-4 h-4"
               />
             </th>
-            <th role="columnheader" className="px-4 py-3 text-left font-subtitles text-xs uppercase tracking-wide text-gray-500">Nombre</th>
-            <th role="columnheader" className="px-4 py-3 text-left font-subtitles text-xs uppercase tracking-wide text-gray-500">Rol</th>
-            <th role="columnheader" className="px-4 py-3 text-left font-subtitles text-xs uppercase tracking-wide text-gray-500">Cargo</th>
-            <th role="columnheader" className="px-4 py-3 text-left font-subtitles text-xs uppercase tracking-wide text-gray-500">Estado</th>
-            <th role="columnheader" className="px-4 py-3 text-right font-subtitles text-xs uppercase tracking-wide text-gray-500">Acciones</th>
+            {["Nombre", "Rol", "Cargo", "Estado", "Acciones"].map((h) => {
+              const columnKeyMap: Record<string, string> = {
+                Nombre: 'name',
+                Rol: 'role',
+                Cargo: 'job',
+                Estado: 'status',
+                Acciones: ''
+              }
+              const colKey = columnKeyMap[h]
+              const isSortable = colKey !== ''
+              return (
+                <th
+                  role="columnheader"
+                  key={h}
+                  className={`px-4 py-3 text-left font-subtitles text-xs uppercase tracking-wide text-gray-500 ${isSortable ? 'cursor-pointer select-none' : ''}`}
+                  onClick={isSortable ? () => handleSort(colKey) : undefined}
+                >
+                  {h}
+                  {isSortable && sortColumn === colKey && (
+                    <span>{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>
+                  )}
+                </th>
+              )
+            })}
           </tr>
         </thead>
         <tbody role="rowgroup">
@@ -69,7 +136,7 @@ export function EmployeeTable({
                 No se encontraron empleados
               </td>
             </tr>
-          ) : employees.map(emp => {
+          ) : sortedEmployees.map(emp => {
             const currentStatus = dirty[emp.id] ?? emp.status
             const isDirty = dirty[emp.id] !== undefined
             const isSaving = saving.has(emp.id)
