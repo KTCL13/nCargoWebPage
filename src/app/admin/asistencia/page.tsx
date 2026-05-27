@@ -50,18 +50,21 @@ export default function AsistenciaAdminPage() {
           </div>
           <div className="flex-[2] min-w-[300px]">
             <label className="text-[10px] font-bold text-gray-400 uppercase mb-1 block ml-1">Empleado</label>
-            <EmployeeSearch onSelect={emp => setEmployeeFilter(emp ? String(emp.id) : '')} placeholder="Nombre o identificación..." className="w-full" />
+            <EmployeeSearch
+              onSelect={emp => setEmployeeFilter(emp ? String(emp.id) : '')} placeholder="Nombre o identificación..." className="w-full" />
           </div>
           <div className="flex-1 min-w-[150px]">
             <label className="text-[10px] font-bold text-gray-400 uppercase mb-1 block ml-1">Estado</label>
             <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="form-input w-full">
-              <option value="">Cualquier estado</option>
+              <option value="">Todos los estado</option>
               <option value="OPEN">Abierta</option>
               <option value="PAUSED">En Pausa</option>
               <option value="CLOSED">Finalizada</option>
             </select>
           </div>
-          <button onClick={() => fetchAttendance()} className="bg-[var(--color-primary)] text-white px-5 py-2.5 rounded-[var(--radius-lg)] font-bold text-sm hover:opacity-90 transition">Actualizar</button>
+          <button onClick={() => fetchAttendance()} className="bg-[var(--color-primary)] text-white px-5 py-2.5 rounded-[var(--radius-lg)] font-bold text-sm hover:opacity-90 transition">
+            Actualizar
+          </button>
         </div>
 
         <div className="bg-white rounded-[var(--radius-xl)] border border-gray-100 shadow-sm overflow-hidden">
@@ -85,13 +88,25 @@ export default function AsistenciaAdminPage() {
                   <tr><td colSpan={7} className="py-10 text-center text-gray-400">No hay registros para los filtros seleccionados</td></tr>
                 ) : registries.map(r => (
                   <tr key={r.id} className="hover:bg-gray-50/50 transition-colors">
-                    <td className="px-5 py-4 font-bold text-[var(--color-foreground)]">{r.employee ? `${r.employee.firstName} ${r.employee.lastName}` : `ID: ${r.employeeId}`}</td>
+                    <td className="px-5 py-4 font-bold text-[var(--color-foreground)]">
+                      {r.employee ? `${r.employee.firstName} ${r.employee.lastName}` : `ID: ${r.employeeId}`}
+                    </td>
                     <td className="px-5 py-4 text-gray-500">{fmtDate(r.startedAt)}</td>
                     <td className="px-5 py-4 font-mono text-gray-700">{fmtTime(r.startedAt)}</td>
                     <td className="px-5 py-4 font-mono text-gray-700">{fmtTime(r.endedAt)}</td>
                     <td className="px-5 py-4 font-bold text-gray-900">{Number(r.workedHours || 0).toFixed(2)}h</td>
-                    <td className="px-5 py-4"><span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${STATUS_COLORS[r.status]}`}>{STATUS_LABELS[r.status]}</span></td>
-                    <td className="px-5 py-4 text-right">{r.status !== 'CLOSED' && <button onClick={() => handleCloseJourney(r.id)} className="text-xs font-bold text-red-600 hover:underline">Cerrar manualmente</button>}</td>
+                    <td className="px-5 py-4">
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${STATUS_COLORS[r.status]}`}>
+                        {STATUS_LABELS[r.status]}
+                      </span>
+                    </td>
+                    <td className="px-5 py-4 text-right">
+                      {r.status !== 'CLOSED' &&
+                        <button onClick={() => handleCloseJourney(r.id)} className="text-xs font-bold text-red-600 hover:underline">
+                          Cerrar manualmente
+                        </button>
+                      }
+                    </td>
                   </tr>
                 ))}
               </tbody>
