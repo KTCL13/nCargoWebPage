@@ -82,6 +82,7 @@ export default function EmpleadosPage() {
         showModal={showModal} setShowModal={setShowModal} isViewOnly={isViewOnly}
         editingId={editingId} form={form} setForm={setForm}
         identificationTypes={identificationTypes} roles={roles}
+        jobs={jobs} contractTypes={contractTypes}
         modalLoading={modalLoading} modalError={modalError} handleSubmit={handleSubmit}
         dupWarning={dupWarning} setDupWarning={setDupWarning} setSkipDupCheck={setSkipDupCheck}
       />

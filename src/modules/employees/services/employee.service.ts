@@ -187,7 +187,6 @@ class EmployeeService {
                     data: {
                         employeeId: emp.id,
                         contractId: newContract.id,
-                        jobId: newContract.jobId,
                         startDate: newContract.startDate,
                         endDate: null,
                     },
@@ -295,7 +294,6 @@ class EmployeeService {
                 data: {
                     employeeId,
                     contractId: newContract.id,
-                    jobId: newContract.jobId,
                     startDate: newContract.startDate,
                     endDate: null,
                 },
