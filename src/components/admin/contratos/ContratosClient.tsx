@@ -8,6 +8,7 @@ import { contractsClient } from '@/lib/api-client/contracts'
 import { ContractExportButtons } from '@/components/contracts/ContractExportButtons'
 import { useState, useMemo } from 'react';
 import { useAuth } from '@/context/AuthContext'
+import { useTableSort } from '@/hooks/useTableSort'
 
 function fmt(date: string | null) {
   if (!date) return '—'
@@ -22,63 +23,22 @@ export function ContratosClient() {
     fetchContracts, toggleActive, saveRow, saveAll, openHistory
   } = useContracts()
 
-  const [sortColumn, setSortColumn] = useState<string>('')
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
-
-  const handleSort = (column: string) => {
-    if (sortColumn === column) {
-      setSortDirection(prev => (prev === 'asc' ? 'desc' : 'asc'))
-    } else {
-      setSortColumn(column)
-      setSortDirection('asc')
-    }
-  }
-
-  const sortedContracts = useMemo(() => {
-    if (!sortColumn) return contracts
-    const sorted = [...contracts]
-    sorted.sort((a, b) => {
-      let aVal: any
-      let bVal: any
-      switch (sortColumn) {
-        case 'employee':
-          aVal = a.employee.name
-          bVal = b.employee.name
-          break
-        case 'job':
-          aVal = a.job.title
-          bVal = b.job.title
-          break
-        case 'type':
-          aVal = a.contractType?.name ?? ''
-          bVal = b.contractType?.name ?? ''
-          break
-        case 'salary':
-          aVal = a.salary ?? a.hourlyRate ?? 0
-          bVal = b.salary ?? b.hourlyRate ?? 0
-          break
-        case 'active':
-          aVal = a.isActive
-          bVal = b.isActive
-          break
-        case 'start':
-          aVal = a.startDate ?? ''
-          bVal = b.startDate ?? ''
-          break
-        case 'end':
-          aVal = a.endDate ?? ''
-          bVal = b.endDate ?? ''
-          break
-        default:
-          aVal = ''
-          bVal = ''
+  const { sortColumn, sortDirection, handleSort, sortedItems: sortedContracts } = useTableSort(
+    contracts,
+    { column: '' as string, direction: 'asc' },
+    (c, column) => {
+      switch (column) {
+        case 'employee': return c.employee.name;
+        case 'job': return c.job.title;
+        case 'type': return c.contractType?.name ?? '';
+        case 'salary': return c.salary ?? c.hourlyRate ?? 0;
+        case 'active': return c.isActive;
+        case 'start': return c.startDate ?? '';
+        case 'end': return c.endDate ?? '';
+        default: return '';
       }
-      if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1
-      if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1
-      return 0
-    })
-    return sorted
-  }, [contracts, sortColumn, sortDirection])
+    }
+  );
 
   const bulkUpdate = async (isActive: boolean) => {
     await Promise.all([...selected].map(id => contractsClient.updateContract(id, { isActive })))
@@ -144,12 +104,14 @@ export function ContratosClient() {
                     <th
                       role="columnheader"
                       key={h}
-                      className={`px-4 py-3 text-left font-bold text-gray-500 uppercase text-[10px] ${isSortable ? 'cursor-pointer select-none' : ''}`}
+                      className={`px-4 py-3 text-left font-bold text-gray-500 uppercase text-[10px] ${isSortable ? 'cursor-pointer select-none hover:bg-gray-100 transition' : ''}`}
                       onClick={isSortable ? () => handleSort(colKey) : undefined}
                     >
                       {h}
-                      {isSortable && sortColumn === colKey && (
-                        <span>{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>
+                      {isSortable && (
+                        <span className={`ml-1 ${sortColumn === colKey ? 'text-[var(--color-primary)]' : 'opacity-20'}`}>
+                          {sortColumn === colKey ? (sortDirection === 'asc' ? '↑' : '↓') : '↕'}
+                        </span>
                       )}
                     </th>
                   )

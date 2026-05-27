@@ -1,6 +1,7 @@
 import { Employee } from '@/types/admin/employees'
-import { useState, useMemo } from 'react'
+import { useState } from 'react'
 import { avatarColor, initials, translateRole } from '@/lib/admin/employees/utils'
+import { useTableSort } from '@/hooks/useTableSort'
 
 interface EmployeeTableProps {
   employees: Employee[]
@@ -21,52 +22,20 @@ export function EmployeeTable({
   dirty, saving, toggleStatus, saveRow,
   openModal, openContractModal
 }: EmployeeTableProps) {
-  // Sorting state
-  const [sortColumn, setSortColumn] = useState<string>('')
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
-
-  const handleSort = (column: string) => {
-    if (sortColumn === column) {
-      setSortDirection(prev => (prev === 'asc' ? 'desc' : 'asc'))
-    } else {
-      setSortColumn(column)
-      setSortDirection('asc')
-    }
-  }
-
-  const sortedEmployees = useMemo(() => {
-    if (!sortColumn) return employees
-    const sorted = [...employees]
-    sorted.sort((a, b) => {
-      let aVal: any
-      let bVal: any
-      switch (sortColumn) {
-        case 'name':
-          aVal = a.name
-          bVal = b.name
-          break
-        case 'role':
-          aVal = a.roles?.[0] ?? ''
-          bVal = b.roles?.[0] ?? ''
-          break
-        case 'job':
-          aVal = a.activeContract?.job?.title ?? ''
-          bVal = b.activeContract?.job?.title ?? ''
-          break
-        case 'status':
-          aVal = a.status ?? ''
-          bVal = b.status ?? ''
-          break
-        default:
-          aVal = ''
-          bVal = ''
+  
+  const { sortColumn, sortDirection, handleSort, sortedItems: sortedEmployees } = useTableSort<Employee>(
+    employees,
+    { column: '', direction: 'asc' },
+    (emp, column) => {
+      switch (column) {
+        case 'name': return emp.name;
+        case 'role': return emp.roles?.[0] ?? '';
+        case 'job': return emp.activeContract?.job?.title ?? '';
+        case 'status': return emp.status ?? '';
+        default: return '';
       }
-      if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1
-      if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1
-      return 0
-    })
-    return sorted
-  }, [employees, sortColumn, sortDirection])
+    }
+  );
 
   return (
     <div className="overflow-x-auto min-h-[400px]">
@@ -98,12 +67,14 @@ export function EmployeeTable({
                 <th
                   role="columnheader"
                   key={h}
-                  className={`px-4 py-3 text-left font-subtitles text-xs uppercase tracking-wide text-gray-500 ${isSortable ? 'cursor-pointer select-none' : ''}`}
+                  className={`px-4 py-3 text-left font-subtitles text-xs uppercase tracking-wide text-gray-500 ${isSortable ? 'cursor-pointer select-none hover:bg-gray-100 transition' : ''}`}
                   onClick={isSortable ? () => handleSort(colKey) : undefined}
                 >
                   {h}
-                  {isSortable && sortColumn === colKey && (
-                    <span>{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>
+                  {isSortable && (
+                    <span className={`ml-1 ${sortColumn === colKey ? 'text-[var(--color-primary)]' : 'opacity-20'}`}>
+                      {sortColumn === colKey ? (sortDirection === 'asc' ? '↑' : '↓') : '↕'}
+                    </span>
                   )}
                 </th>
               )

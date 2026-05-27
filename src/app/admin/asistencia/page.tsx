@@ -8,6 +8,7 @@ import { useAuth } from '@/context/AuthContext'
 import { EmployeeSearch } from '@/components/ui/EmployeeSearch'
 import { useAttendance } from '@/lib/admin/attendance/useAttendance'
 import { STATUS_COLORS, STATUS_LABELS } from '@/types/admin/attendance'
+import { useTableSort } from '@/hooks/useTableSort'
 
 export default function AsistenciaAdminPage() {
   const { token } = useAuth()
@@ -16,6 +17,22 @@ export default function AsistenciaAdminPage() {
     dateFilter, setDateFilter, employeeFilter, setEmployeeFilter, statusFilter, setStatusFilter,
     fetchAttendance, handleCloseJourney
   } = useAttendance(token)
+
+  const { sortColumn, sortDirection, handleSort, sortedItems: sortedRegistries } = useTableSort(
+    registries,
+    { column: '' as string, direction: 'asc' },
+    (r, column) => {
+      switch (column) {
+        case 'employee': return r.employee ? `${r.employee.firstName} ${r.employee.lastName}`.toLowerCase() : String(r.employeeId);
+        case 'date': return new Date(r.startedAt).getTime();
+        case 'start': return new Date(r.startedAt).getTime();
+        case 'end': return r.endedAt ? new Date(r.endedAt).getTime() : Infinity;
+        case 'hours': return Number(r.workedHours || 0);
+        case 'status': return STATUS_LABELS[r.status];
+        default: return '';
+      }
+    }
+  );
 
   const openJourneys = useMemo(() => registries.filter(r => r.status === 'OPEN').length, [registries])
 
@@ -72,21 +89,41 @@ export default function AsistenciaAdminPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-gray-50/50 border-b border-gray-100">
-                  <th className="px-5 py-3 text-left font-subtitles text-xs uppercase text-gray-500">Empleado</th>
-                  <th className="px-5 py-3 text-left font-subtitles text-xs uppercase text-gray-500">Fecha</th>
-                  <th className="px-5 py-3 text-left font-subtitles text-xs uppercase text-gray-500">Entrada</th>
-                  <th className="px-5 py-3 text-left font-subtitles text-xs uppercase text-gray-500">Salida</th>
-                  <th className="px-5 py-3 text-left font-subtitles text-xs uppercase text-gray-500">Horas</th>
-                  <th className="px-5 py-3 text-left font-subtitles text-xs uppercase text-gray-500">Estado</th>
-                  <th className="px-5 py-3 text-right font-subtitles text-xs uppercase text-gray-500">Acción</th>
+                  {["Empleado", "Fecha", "Entrada", "Salida", "Horas", "Estado", "Acción"].map(h => {
+                    const columnKeyMap: Record<string, string> = {
+                      Empleado: 'employee',
+                      Fecha: 'date',
+                      Entrada: 'start',
+                      Salida: 'end',
+                      Horas: 'hours',
+                      Estado: 'status',
+                      Acción: ''
+                    };
+                    const colKey = columnKeyMap[h];
+                    const isSortable = colKey !== '';
+                    return (
+                      <th
+                        key={h}
+                        className={`px-5 py-3 text-left font-subtitles text-xs uppercase text-gray-500 ${isSortable ? 'cursor-pointer select-none hover:bg-gray-100 transition' : ''} ${h === 'Acción' ? 'text-right' : ''}`}
+                        onClick={isSortable ? () => handleSort(colKey) : undefined}
+                      >
+                        {h}
+                        {isSortable && (
+                          <span className={`ml-1 ${sortColumn === colKey ? 'text-[var(--color-primary)]' : 'opacity-20'}`}>
+                            {sortColumn === colKey ? (sortDirection === 'asc' ? '↑' : '↓') : '↕'}
+                          </span>
+                        )}
+                      </th>
+                    );
+                  })}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {loading ? (
                   <tr><td colSpan={7} className="py-10 text-center text-gray-400">Cargando bitácora...</td></tr>
-                ) : registries.length === 0 ? (
+                ) : sortedRegistries.length === 0 ? (
                   <tr><td colSpan={7} className="py-10 text-center text-gray-400">No hay registros para los filtros seleccionados</td></tr>
-                ) : registries.map(r => (
+                ) : sortedRegistries.map(r => (
                   <tr key={r.id} className="hover:bg-gray-50/50 transition-colors">
                     <td className="px-5 py-4 font-bold text-[var(--color-foreground)]">
                       {r.employee ? `${r.employee.firstName} ${r.employee.lastName}` : `ID: ${r.employeeId}`}

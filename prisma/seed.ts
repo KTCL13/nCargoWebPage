@@ -7,12 +7,12 @@ const prisma = new PrismaClient();
 async function main() {
   // ── IdentificationType ────────────────────────────────────────────
   const idTypes = [
-    { code: 'CC',       name: 'Cédula de ciudadanía' },
-    { code: 'CE',       name: 'Cédula de extranjería' },
+    { code: 'CC', name: 'Cédula de ciudadanía' },
+    { code: 'CE', name: 'Cédula de extranjería' },
     { code: 'PASSPORT', name: 'Passport' },
-    { code: 'NIT',      name: 'NIT' },
-    { code: 'TI',       name: 'Tarjeta de identidad' },
-    { code: 'PPT',      name: 'Permiso de protección temporal' },
+    { code: 'NIT', name: 'NIT' },
+    { code: 'TI', name: 'Tarjeta de identidad' },
+    { code: 'PPT', name: 'Permiso de protección temporal' },
   ]
   for (const idType of idTypes) {
     await prisma.identificationType.upsert({
@@ -377,7 +377,7 @@ async function main() {
         data: {
           employeeId: emp.id,
           contractId: contracts[i].id,
-          jobId: jobs[i % jobs.length].id,
+
           startDate: new Date(`2024-0${(i % 9) + 1}-01`),
         },
       }),

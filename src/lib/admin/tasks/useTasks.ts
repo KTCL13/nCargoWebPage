@@ -54,7 +54,7 @@ export function useTasks(token: string | null) {
   useEffect(() => { fetchData() }, [fetchData])
 
   const handleDeleteTask = async (id: number) => {
-    if (!confirm('¿Deseas eliminar esta tarea permanentemente?') || !token) return
+    if (!token) return
     try {
       const res = await authFetch(`/api/tasks?id=${id}`, {
         method: 'DELETE',
