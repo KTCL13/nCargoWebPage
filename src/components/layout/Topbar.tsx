@@ -31,8 +31,9 @@ export function Topbar({
     : '??'
 
   return (
-    <header className="h-[80px] bg-[var(--color-foreground)]/98 backdrop-blur-md border-b border-white/10 shadow-lg shadow-black/30 flex items-center justify-between px-5 lg:px-[6%] sticky top-0 z-40 transition-all duration-300">
-
+    <header
+      className="h-[80px] bg-[var(--color-foreground)]/98 backdrop-blur-md border-b border-white/10 shadow-lg shadow-black/30 flex items-center justify-between px-5 lg:px-[6%] sticky top-0 z-40 transition-all duration-300"
+    >
       <div className="flex items-center gap-4">
         {/* Hamburger — mobile only */}
         {onMenuToggle && (
@@ -41,7 +42,9 @@ export function Topbar({
             aria-label="Abrir menú"
             className="md:hidden w-10 h-10 flex items-center justify-center rounded-[var(--radius-md)] text-white hover:bg-white/10 focus-visible:ring-3 focus-visible:ring-[var(--color-secondary)] outline-none transition-colors"
           >
-            <svg viewBox="0 0 24 24" className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" /></svg>
+            <svg viewBox="0 0 24 24" className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
           </button>
         )}
 

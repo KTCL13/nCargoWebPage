@@ -60,7 +60,6 @@ model Job {
   title       String       @db.VarChar(150)
   description String?
   contracts   Contract[]
-  jobHistory  JobHistory[]
 
   @@map("jobs")
 }
@@ -96,12 +95,10 @@ model JobHistory {
   id         Int       @id @default(autoincrement())
   employeeId Int       @map("employee_id")
   contractId Int       @map("contract_id")
-  jobId      Int       @map("job_id")
   startDate  DateTime  @map("start_date")
   endDate    DateTime? @map("end_date")
   contract   Contract  @relation(fields: [contractId], references: [id])
   employee   Employee  @relation(fields: [employeeId], references: [id])
-  job        Job       @relation(fields: [jobId], references: [id])
 
   @@map("job_history")
 }

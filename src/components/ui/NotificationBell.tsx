@@ -297,14 +297,23 @@ export function NotificationBell() {
                   </span>
                 )}
               </div>
-              {unread > 0 && (
+              <div className="flex items-center gap-3">
+                {unread > 0 && (
+                  <button
+                    onClick={markAllRead}
+                    className="text-[11px] text-[var(--color-secondary)] font-semibold hover:opacity-75 transition-opacity whitespace-nowrap"
+                  >
+                    Marcar todas como leídas
+                  </button>
+                )}
                 <button
-                  onClick={markAllRead}
-                  className="text-[11px] text-[var(--color-secondary)] font-semibold hover:opacity-75 transition-opacity whitespace-nowrap"
+                  onClick={() => setOpen(false)}
+                  className="text-gray-400 hover:text-gray-600 transition-colors p-1"
+                  aria-label="Cerrar panel"
                 >
-                  Marcar todas como leídas
+                  <CloseIcon className="w-4 h-4" />
                 </button>
-              )}
+              </div>
             </div>
 
             {/* ── Notification list ─────────────────────────────────── */}
@@ -545,6 +554,15 @@ function WarnIcon() {
       <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
       <line x1="12" y1="9" x2="12" y2="13" />
       <line x1="12" y1="17" x2="12.01" y2="17" />
+    </svg>
+  )
+}
+
+function CloseIcon({ className }: { className?: string }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+      <line x1="18" y1="6" x2="6" y2="18" />
+      <line x1="6" y1="6" x2="18" y2="18" />
     </svg>
   )
 }

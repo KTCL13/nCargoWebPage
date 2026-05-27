@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Employee, Role, EmployeeFormState } from '@/types/admin/employees'
+import { authFetch } from '@/lib/api-client/auth-fetch'
 
 export function useEmployeeModal(roles: Role[], setForm: (f: EmployeeFormState) => void, setDupWarning: (w: any) => void, setSkipDupCheck: (b: boolean) => void) {
   const [showModal, setShowModal] = useState(false)
@@ -16,7 +17,7 @@ export function useEmployeeModal(roles: Role[], setForm: (f: EmployeeFormState) 
     if (emp) {
       setModalLoading(true)
       try {
-        const res = await fetch(`/api/employees?id=${emp.id}`)
+        const res = await authFetch(`/api/employees?id=${emp.id}`)
         if (!res.ok) throw new Error()
         const data = await res.json()
         const roleId = roles.find(r => r.name === data.roles?.[0])?.id?.toString() || ''

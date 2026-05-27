@@ -1,5 +1,7 @@
 import { Employee } from '@/types/admin/employees'
+import { useState } from 'react'
 import { avatarColor, initials, translateRole } from '@/lib/admin/employees/utils'
+import { useTableSort } from '@/hooks/useTableSort'
 
 interface EmployeeTableProps {
   employees: Employee[]
@@ -20,6 +22,21 @@ export function EmployeeTable({
   dirty, saving, toggleStatus, saveRow,
   openModal, openContractModal
 }: EmployeeTableProps) {
+  
+  const { sortColumn, sortDirection, handleSort, sortedItems: sortedEmployees } = useTableSort<Employee>(
+    employees,
+    { column: '', direction: 'asc' },
+    (emp, column) => {
+      switch (column) {
+        case 'name': return emp.name;
+        case 'role': return emp.roles?.[0] ?? '';
+        case 'job': return emp.activeContract?.job?.title ?? '';
+        case 'status': return emp.status ?? '';
+        default: return '';
+      }
+    }
+  );
+
   return (
     <div className="overflow-x-auto min-h-[400px]">
       <table role="grid" aria-label="Data table" className="w-full text-sm">
@@ -36,11 +53,32 @@ export function EmployeeTable({
                 className="accent-[var(--color-primary)] w-4 h-4"
               />
             </th>
-            <th role="columnheader" className="px-4 py-3 text-left font-subtitles text-xs uppercase tracking-wide text-gray-500">Nombre</th>
-            <th role="columnheader" className="px-4 py-3 text-left font-subtitles text-xs uppercase tracking-wide text-gray-500">Rol</th>
-            <th role="columnheader" className="px-4 py-3 text-left font-subtitles text-xs uppercase tracking-wide text-gray-500">Cargo</th>
-            <th role="columnheader" className="px-4 py-3 text-left font-subtitles text-xs uppercase tracking-wide text-gray-500">Estado</th>
-            <th role="columnheader" className="px-4 py-3 text-right font-subtitles text-xs uppercase tracking-wide text-gray-500">Acciones</th>
+            {["Nombre", "Rol", "Cargo", "Estado", "Acciones"].map((h) => {
+              const columnKeyMap: Record<string, string> = {
+                Nombre: 'name',
+                Rol: 'role',
+                Cargo: 'job',
+                Estado: 'status',
+                Acciones: ''
+              }
+              const colKey = columnKeyMap[h]
+              const isSortable = colKey !== ''
+              return (
+                <th
+                  role="columnheader"
+                  key={h}
+                  className={`px-4 py-3 text-left font-subtitles text-xs uppercase tracking-wide text-gray-500 ${isSortable ? 'cursor-pointer select-none hover:bg-gray-100 transition' : ''}`}
+                  onClick={isSortable ? () => handleSort(colKey) : undefined}
+                >
+                  {h}
+                  {isSortable && (
+                    <span className={`ml-1 ${sortColumn === colKey ? 'text-[var(--color-primary)]' : 'opacity-20'}`}>
+                      {sortColumn === colKey ? (sortDirection === 'asc' ? '↑' : '↓') : '↕'}
+                    </span>
+                  )}
+                </th>
+              )
+            })}
           </tr>
         </thead>
         <tbody role="rowgroup">
@@ -69,7 +107,7 @@ export function EmployeeTable({
                 No se encontraron empleados
               </td>
             </tr>
-          ) : employees.map(emp => {
+          ) : sortedEmployees.map(emp => {
             const currentStatus = dirty[emp.id] ?? emp.status
             const isDirty = dirty[emp.id] !== undefined
             const isSaving = saving.has(emp.id)

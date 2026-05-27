@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Role, IdentificationType, ContractType, Job, EmployeeFormState } from '@/types/admin/employees'
 import { passwordStrength } from '@/lib/admin/employees/utils'
+import { InitialContractSection } from './InitialContractSection'
 
 interface EmployeeModalProps {
   showModal: boolean
@@ -8,9 +9,11 @@ interface EmployeeModalProps {
   isViewOnly: boolean
   editingId: number | null
   form: EmployeeFormState
-  setForm: (form: any) => void
+  setForm: React.Dispatch<React.SetStateAction<EmployeeFormState>>
   identificationTypes: IdentificationType[]
   roles: Role[]
+  jobs: Job[]
+  contractTypes: ContractType[]
   modalLoading: boolean
   modalError: string
   handleSubmit: (e: React.FormEvent) => void
@@ -21,7 +24,7 @@ interface EmployeeModalProps {
 
 export function EmployeeModal({
   showModal, setShowModal, isViewOnly, editingId, form, setForm,
-  identificationTypes, roles, modalLoading, modalError, handleSubmit,
+  identificationTypes, roles, jobs, contractTypes, modalLoading, modalError, handleSubmit,
   dupWarning, setDupWarning, setSkipDupCheck
 }: EmployeeModalProps) {
   const [showPassword, setShowPassword] = useState(false)
@@ -210,6 +213,16 @@ export function EmployeeModal({
               </div>
             </div>
           </div>
+
+          {(!editingId || isViewOnly) && (
+            <InitialContractSection 
+              form={form} 
+              setForm={setForm} 
+              jobs={jobs} 
+              contractTypes={contractTypes} 
+              isViewOnly={isViewOnly}
+            />
+          )}
 
           {/* Error and Warning */}
           {modalError && <p className="text-red-600 text-xs bg-red-50 p-3 rounded-[var(--radius-lg)] border border-red-100 font-medium">⚠️ {modalError}</p>}

@@ -15,6 +15,38 @@ export function useEmployeeSubmit(
     e.preventDefault(); setModalError('')
     if (form.password && !passwordStrength(form.password).isValid) return setModalError('La contraseña no cumple seguridad')
 
+    // ── Strict date validation (creation only) ───────────────────────────────
+    const isCreating = editingId === null
+    if (isCreating && (form.jobId || form.contractTypeId)) {
+      const today = new Date()
+
+      const minStart = new Date(today)
+      minStart.setMonth(minStart.getMonth() - 1)
+      minStart.setHours(0, 0, 0, 0)
+
+      const maxEnd = new Date(today)
+      maxEnd.setFullYear(maxEnd.getFullYear() + 1)
+      maxEnd.setHours(23, 59, 59, 999)
+
+      if (form.startDate) {
+        const start = new Date(form.startDate)
+        if (start < minStart) {
+          return setModalError('La fecha de inicio no puede ser anterior a 1 mes atrás.')
+        }
+      }
+      if (form.startDate && form.endDate) {
+        const start = new Date(form.startDate)
+        const end   = new Date(form.endDate)
+        if (end < start) {
+          return setModalError('La fecha de fin no puede ser anterior a la de inicio.')
+        }
+        if (end > maxEnd) {
+          return setModalError('La fecha de fin no puede superar 1 año desde la fecha actual.')
+        }
+      }
+    }
+    // ─────────────────────────────────────────────────────────────────────────
+
     if (!skipDupCheck) {
       const phone = form.phone.replace(/\s/g, ''); const params = new URLSearchParams()
       if (form.email) params.set('email', form.email)
