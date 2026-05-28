@@ -1,6 +1,10 @@
+import { withRetry } from '@/lib/retry'
+
 const ODOO_DB = process.env.ODOO_DB ?? ''
 const ODOO_USERNAME = process.env.ODOO_USERNAME ?? ''
 const ODOO_API_KEY = process.env.ODOO_API_KEY ?? ''
+
+const TIMEOUT_MS = 10_000
 
 // Force HTTPS — Odoo SaaS instances enforce HTTPS with 307 redirects; Node fetch
 // resends POST bodies on 307 but some proxies strip them, so we upgrade proactively.
@@ -20,36 +24,48 @@ type JsonRpcResponse<T> = {
   error?: { code: number; message: string; data?: { name?: string; message?: string; debug?: string } }
 }
 
-async function jsonRpc<T>(service: string, method: string, args: unknown[]): Promise<T> {
+async function jsonRpcOnce<T>(service: string, method: string, args: unknown[]): Promise<T> {
   if (!ODOO_DB || !ODOO_USERNAME || !ODOO_API_KEY) {
     throw new Error('Odoo no está configurado: revisa ODOO_URL, ODOO_DB, ODOO_USERNAME y ODOO_API_KEY en .env')
   }
 
-  const res = await fetch(odooUrl('/jsonrpc'), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    redirect: 'follow',
-    body: JSON.stringify({
-      jsonrpc: '2.0',
-      method: 'call',
-      params: { service, method, args },
-      id: Date.now(),
-    }),
-  })
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS)
 
-  if (!res.ok) {
-    const detail = res.status === 307 || res.status === 301 || res.status === 302
-      ? ` — verifica que ODOO_URL use https://`
-      : ''
-    throw new Error(`Odoo HTTP ${res.status}${detail}`)
+  try {
+    const res = await fetch(odooUrl('/jsonrpc'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      redirect: 'follow',
+      signal: controller.signal,
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'call',
+        params: { service, method, args },
+        id: Date.now(),
+      }),
+    })
+
+    if (!res.ok) {
+      const detail = res.status === 307 || res.status === 301 || res.status === 302
+        ? ` — verifica que ODOO_URL use https://`
+        : ''
+      throw new Error(`Odoo HTTP ${res.status}${detail}`)
+    }
+    const data = (await res.json()) as JsonRpcResponse<T>
+    if (data.error) {
+      const msg = data.error.data?.message || data.error.message || 'Error en Odoo'
+      throw new Error(msg)
+    }
+    if (data.result === undefined) throw new Error('Respuesta vacía de Odoo')
+    return data.result
+  } finally {
+    clearTimeout(timer)
   }
-  const data = (await res.json()) as JsonRpcResponse<T>
-  if (data.error) {
-    const msg = data.error.data?.message || data.error.message || 'Error en Odoo'
-    throw new Error(msg)
-  }
-  if (data.result === undefined) throw new Error('Respuesta vacía de Odoo')
-  return data.result
+}
+
+async function jsonRpc<T>(service: string, method: string, args: unknown[]): Promise<T> {
+  return withRetry(() => jsonRpcOnce<T>(service, method, args))
 }
 
 // uid is the user's DB row id for a given (db, username, api_key) triple — it never

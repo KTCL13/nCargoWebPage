@@ -1,4 +1,7 @@
 import xmlrpc from 'xmlrpc'
+import { withRetry } from '@/lib/retry'
+
+const TIMEOUT_MS = 10_000
 
 type XmlRpcValue =
   | string
@@ -46,14 +49,22 @@ function makeClient(path: string) {
   return isHttps ? xmlrpc.createSecureClient(opts) : xmlrpc.createClient(opts)
 }
 
-function call<T>(client: ReturnType<typeof xmlrpc.createClient>, method: string, params: XmlRpcValue[]): Promise<T> {
-  return new Promise((resolve, reject) => {
+function callOnce<T>(client: ReturnType<typeof xmlrpc.createClient>, method: string, params: XmlRpcValue[]): Promise<T> {
+  const callPromise = new Promise<T>((resolve, reject) => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     client.methodCall(method, params, (err: any, value: T) => {
       if (err) reject(err instanceof Error ? err : new Error(String(err)))
       else resolve(value)
     })
   })
+  const timeoutPromise = new Promise<T>((_, reject) =>
+    setTimeout(() => reject(new Error(`Odoo XML-RPC timeout after ${TIMEOUT_MS}ms`)), TIMEOUT_MS),
+  )
+  return Promise.race([callPromise, timeoutPromise])
+}
+
+function call<T>(client: ReturnType<typeof xmlrpc.createClient>, method: string, params: XmlRpcValue[]): Promise<T> {
+  return withRetry(() => callOnce<T>(client, method, params))
 }
 
 async function authenticate(): Promise<number> {
