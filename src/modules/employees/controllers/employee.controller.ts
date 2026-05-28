@@ -16,6 +16,15 @@ function authErrorStatus(error: unknown): number {
     return 400
 }
 
+function friendlyErrorMessage(error: unknown): string {
+    if (error instanceof Error) {
+        if (error.message.includes('numeric field overflow') || error.message.includes('22003'))
+            return 'El valor ingresado supera el límite permitido. Verifica que el salario o la tarifa estén dentro del rango válido.'
+        return error.message
+    }
+    return 'Error interno del servidor'
+}
+
 class EmployeeController {
     // Obtener todos los empleados con filtros
     async findAll(req: NextRequest) {
@@ -32,11 +41,13 @@ class EmployeeController {
         const limit = Number(url.searchParams.get('limit') ?? '10')
         const status = url.searchParams.get('status') as 'ACTIVE' | 'INACTIVE' | null
         const roleId = url.searchParams.get('roleId')
+        const jobId = url.searchParams.get('jobId')
         const search = url.searchParams.get('search')
 
         const filter: FilterEmployeeDto = {
             status: status ?? undefined,
             roleId: roleId ? Number(roleId) : undefined,
+            jobId: jobId ? Number(jobId) : undefined,
             search: search ?? undefined,
             page,
             limit,
@@ -92,10 +103,7 @@ class EmployeeController {
             const result = await employeeService.create(body)
             return NextResponse.json(result, { status: 201 })
         } catch (error: unknown) {
-            return NextResponse.json(
-                { message: error instanceof Error ? error.message : 'Error interno del servidor' },
-                { status: 400 }
-            )
+            return NextResponse.json({ message: friendlyErrorMessage(error) }, { status: 400 })
         }
     }
 
@@ -214,10 +222,7 @@ class EmployeeController {
             const result = await employeeService.createContract(employeeId, body)
             return NextResponse.json(result, { status: 201 })
         } catch (error: unknown) {
-            return NextResponse.json(
-                { message: error instanceof Error ? error.message : 'Error interno del servidor' },
-                { status: 400 }
-            )
+            return NextResponse.json({ message: friendlyErrorMessage(error) }, { status: 400 })
         }
     }
 
@@ -239,10 +244,7 @@ class EmployeeController {
             const result = await employeeService.updateContract(contractId, body)
             return NextResponse.json(result, { status: 200 })
         } catch (error: unknown) {
-            return NextResponse.json(
-                { message: error instanceof Error ? error.message : 'Error interno del servidor' },
-                { status: 400 }
-            )
+            return NextResponse.json({ message: friendlyErrorMessage(error) }, { status: 400 })
         }
     }
 

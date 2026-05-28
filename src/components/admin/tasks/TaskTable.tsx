@@ -7,13 +7,14 @@ interface TaskTableProps {
   tasks: Task[]
   loading: boolean
   onReassign: (task: Task) => void
-  onDelete: (id: number) => void
+  onDelete: (id: number, reason?: string) => void
 }
 
 type SortColumn = 'title' | 'employee' | 'status' | 'endTime' | null;
 
 export function TaskTable({ tasks, loading, onReassign, onDelete }: TaskTableProps) {
-  const [taskToDelete, setTaskToDelete] = useState<number | null>(null);
+  const [taskToDelete, setTaskToDelete] = useState<Task | null>(null);
+  const [cancelReason, setCancelReason] = useState('');
 
   const { sortColumn, sortDirection, handleSort, sortedItems: sortedTasks } = useTableSort<Task, NonNullable<SortColumn>>(
     tasks,
@@ -29,11 +30,22 @@ export function TaskTable({ tasks, loading, onReassign, onDelete }: TaskTablePro
     }
   );
 
+  const handleRequestDelete = (task: Task) => {
+    setTaskToDelete(task);
+    setCancelReason('');
+  };
+
   const handleConfirmDelete = () => {
     if (taskToDelete !== null) {
-      onDelete(taskToDelete);
+      onDelete(taskToDelete.id, taskToDelete.employeeId ? cancelReason : undefined);
       setTaskToDelete(null);
+      setCancelReason('');
     }
+  };
+
+  const handleCloseDelete = () => {
+    setTaskToDelete(null);
+    setCancelReason('');
   };
 
   const renderSortIndicator = (column: NonNullable<SortColumn>) => {
@@ -117,7 +129,7 @@ export function TaskTable({ tasks, loading, onReassign, onDelete }: TaskTablePro
                       🔄
                     </button>
                     <button
-                      onClick={() => setTaskToDelete(task.id)}
+                      onClick={() => handleRequestDelete(task)}
                       className="p-2 rounded-lg bg-gray-50 text-gray-600 hover:text-red-600 hover:bg-red-50 transition"
                       title="Eliminar"
                     >
@@ -131,16 +143,62 @@ export function TaskTable({ tasks, loading, onReassign, onDelete }: TaskTablePro
         </table>
       </div>
 
-      <ConfirmDialog
-        isOpen={taskToDelete !== null}
-        onClose={() => setTaskToDelete(null)}
-        onConfirm={handleConfirmDelete}
-        title="¿Eliminar esta tarea?"
-        description="Esta acción no se puede deshacer. La tarea será eliminada permanentemente del sistema."
-        confirmText="Sí, eliminar"
-        cancelText="Cancelar"
-        variant="danger"
-      />
+      {taskToDelete?.employeeId ? (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-white rounded-[var(--radius-xl)] shadow-2xl w-full max-w-md animate-in fade-in zoom-in duration-200">
+            <div className="px-6 py-5 border-b border-gray-100 bg-red-50/60 flex justify-between items-center">
+              <h2 className="font-titles text-lg font-extrabold text-red-700">Cancelar tarea asignada</h2>
+              <button type="button" onClick={handleCloseDelete} className="text-gray-400 hover:text-gray-600">×</button>
+            </div>
+            <div className="p-6 space-y-4">
+              <p className="text-sm text-gray-600 font-subtitles">
+                Vas a eliminar la tarea <span className="font-bold text-gray-900">&ldquo;{taskToDelete.title}&rdquo;</span> asignada a{' '}
+                <span className="font-bold text-gray-900">
+                  {taskToDelete.employee ? `${taskToDelete.employee.firstName} ${taskToDelete.employee.lastName}` : 'un empleado'}
+                </span>.
+                <br />
+                <span className="text-red-500 font-semibold">El empleado recibirá una notificación y un correo con el motivo.</span>
+              </p>
+              <div>
+                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
+                  Motivo de cancelación <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  value={cancelReason}
+                  onChange={e => setCancelReason(e.target.value)}
+                  rows={3}
+                  className="form-input w-full resize-none"
+                  placeholder="Explica el motivo por el que se cancela esta tarea..."
+                />
+              </div>
+              <div className="flex gap-3 pt-1">
+                <button type="button" onClick={handleCloseDelete}
+                  className="flex-1 py-2.5 rounded-[var(--radius-lg)] border border-gray-200 text-sm font-bold text-gray-500 hover:bg-gray-50 transition">
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  disabled={!cancelReason.trim()}
+                  onClick={handleConfirmDelete}
+                  className="flex-1 py-2.5 rounded-[var(--radius-lg)] bg-red-600 text-white text-sm font-bold hover:bg-red-700 transition disabled:opacity-40 disabled:cursor-not-allowed">
+                  Sí, eliminar y notificar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <ConfirmDialog
+          isOpen={taskToDelete !== null}
+          onClose={handleCloseDelete}
+          onConfirm={handleConfirmDelete}
+          title="¿Eliminar esta tarea?"
+          description="Esta acción no se puede deshacer. La tarea será eliminada permanentemente del sistema."
+          confirmText="Sí, eliminar"
+          cancelText="Cancelar"
+          variant="danger"
+        />
+      )}
     </>
   )
 }

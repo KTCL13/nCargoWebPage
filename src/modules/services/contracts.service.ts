@@ -13,28 +13,40 @@ export class ContractsService {
           }
         : {}
 
-    const [rawData, total] = await Promise.all([
-        prisma.contract.findMany({
-            where,
-            include: {
-                employee:     { select: { id: true, firstName: true, lastName: true, email: true } },
-                job:          { select: { id: true, title: true } },
-                contractType: { select: { id: true, name: true } },
-            },
-            orderBy: { createdAt: 'desc' },
-            skip:  (page - 1) * limit,
-            take:  limit,
-        }),
-        prisma.contract.count({ where }),
-    ])
+    // One row per employee: collect distinct employee IDs then fetch their latest contract
+    const allDistinct = await prisma.contract.findMany({
+        where,
+        select: { employeeId: true },
+        distinct: ['employeeId'],
+        orderBy: { employeeId: 'asc' },
+    })
 
-    const data = rawData.map(c => ({
-        ...c,
-        employee: {
-            ...c.employee,
-            name: `${c.employee.firstName} ${c.employee.lastName}`.trim(),
-        },
-    }))
+    const total          = allDistinct.length
+    const pagedEmployees = allDistinct.slice((page - 1) * limit, page * limit)
+
+    const rawData = await Promise.all(
+        pagedEmployees.map(({ employeeId }) =>
+            prisma.contract.findFirst({
+                where: { employeeId },
+                include: {
+                    employee:     { select: { id: true, firstName: true, lastName: true, email: true } },
+                    job:          { select: { id: true, title: true } },
+                    contractType: { select: { id: true, name: true } },
+                },
+                orderBy: [{ startDate: 'desc' }, { createdAt: 'desc' }],
+            })
+        )
+    )
+
+    const data = rawData
+        .filter((c): c is NonNullable<typeof c> => c !== null)
+        .map(c => ({
+            ...c,
+            employee: {
+                ...c.employee,
+                name: `${c.employee.firstName} ${c.employee.lastName}`.trim(),
+            },
+        }))
 
     return { data, total, page, limit }
   }

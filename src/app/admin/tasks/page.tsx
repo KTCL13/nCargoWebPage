@@ -1,15 +1,20 @@
 'use client'
 
+import { useState } from 'react'
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
 import { NAV_ITEMS } from '@/components/layout/nav-config'
 import { Pagination } from '@/components/ui/Pagination'
 import { useAuth } from '@/context/AuthContext'
 import { EmployeeSearch } from '@/components/ui/EmployeeSearch'
+import { JobSearch } from '@/components/ui/JobSearch'
 import { TaskTable } from '@/components/admin/tasks/TaskTable'
 import { useTasks } from '@/lib/admin/tasks/useTasks'
 import { useTaskActions } from '@/lib/admin/tasks/useTaskActions'
 import { STATUS_LABELS, TaskStatus } from '@/types/admin/tasks'
 import { DateTimeRangePicker } from '@/components/ui/DateTimeRangePicker'
+import { authFetch } from '@/lib/api-client/auth-fetch'
+
+type BulkMode = 'search' | 'job' | 'all'
 
 export default function GestionTareasPage() {
   const { token } = useAuth()
@@ -25,6 +30,50 @@ export default function GestionTareasPage() {
     toasts, handleCreateSubmit, handleReassign,
     isDateInvalid, dateError
   } = useTaskActions(token, employees, fetchData)
+
+  const [bulkMode, setBulkMode] = useState<BulkMode>('search')
+  const [bulkLoading, setBulkLoading] = useState(false)
+
+  const changeBulkMode = (mode: BulkMode) => {
+    setBulkMode(mode)
+    setForm(f => ({ ...f, employeeIds: [] }))
+  }
+
+  const loadEmployeesByJob = async (jobId: number) => {
+    if (!token) return
+    setBulkLoading(true)
+    try {
+      const res = await authFetch(`/api/employees?jobId=${jobId}&status=ACTIVE&limit=500`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const json = await res.json()
+      const emps: { id: number }[] = Array.isArray(json) ? json : (json.data ?? [])
+      setForm(f => ({ ...f, employeeIds: emps.map(e => String(e.id)) }))
+    } finally {
+      setBulkLoading(false)
+    }
+  }
+
+  const loadAllEmployees = async () => {
+    if (!token) return
+    setBulkLoading(true)
+    try {
+      const res = await authFetch(`/api/employees?status=ACTIVE&limit=500`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const json = await res.json()
+      const emps: { id: number }[] = Array.isArray(json) ? json : (json.data ?? [])
+      setForm(f => ({ ...f, employeeIds: emps.map(e => String(e.id)) }))
+    } finally {
+      setBulkLoading(false)
+    }
+  }
+
+  const closeCreateModal = () => {
+    setShowCreateModal(false)
+    setBulkMode('search')
+    setForm(f => ({ ...f, employeeIds: [] }))
+  }
 
   return (
     <>
@@ -74,7 +123,7 @@ export default function GestionTareasPage() {
               </div>
             </div>
 
-            <TaskTable tasks={tasks} loading={loading} onReassign={setReassignTask} onDelete={handleDeleteTask} />
+            <TaskTable tasks={tasks} loading={loading} onReassign={setReassignTask} onDelete={(id, reason) => handleDeleteTask(id, reason)} />
 
             <div className="px-5 py-4 border-t border-gray-100">
               <Pagination page={page} pageSize={pageSize} totalItems={total} onPageChange={setPage} onPageSizeChange={setPageSize} />
@@ -87,7 +136,7 @@ export default function GestionTareasPage() {
             <div className="bg-white rounded-[var(--radius-xl)] shadow-2xl w-full max-w-lg animate-in fade-in zoom-in duration-200">
               <div className="px-6 py-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
                 <h2 className="font-titles text-xl font-extrabold text-[var(--color-foreground)]">Nueva Tarea</h2>
-                <button onClick={() => setShowCreateModal(false)} className="text-gray-400 hover:text-gray-600">×</button>
+                <button onClick={closeCreateModal} className="text-gray-400 hover:text-gray-600">×</button>
               </div>
               <form onSubmit={handleCreateSubmit} className="p-6 space-y-4">
                 <div className="flex p-1 bg-gray-100 rounded-[var(--radius-lg)]">
@@ -111,16 +160,80 @@ export default function GestionTareasPage() {
                   <textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
                     className="form-input w-full h-20 resize-none" placeholder="Instrucciones detalladas..." />
                 </div>
-                {isBulk ?
-                  <EmployeeSearch
-                    multi
-                    label="Empleados Responsables"
-                    onMultiSelect={emps => setForm(f => ({ ...f, employeeIds: emps.map(e => String(e.id)) }))}
-                    placeholder="Escribe para buscar y añadir empleados..." /> :
+                {isBulk ? (
+                  <div className="space-y-3">
+                    {/* Mode selector */}
+                    <div className="flex p-1 bg-gray-100 rounded-[var(--radius-lg)] gap-1">
+                      {([
+                        { key: 'search', label: '🔍 Buscar' },
+                        { key: 'job',    label: '💼 Por cargo' },
+                        { key: 'all',    label: '👥 Todos' },
+                      ] as { key: BulkMode; label: string }[]).map(({ key, label }) => (
+                        <button key={key} type="button" onClick={() => changeBulkMode(key)}
+                          className={`flex-1 py-1.5 text-xs font-bold rounded-[var(--radius-md)] transition ${bulkMode === key ? 'bg-white shadow text-[var(--color-primary)]' : 'text-gray-500 hover:text-gray-700'}`}>
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Per-mode UI */}
+                    {bulkMode === 'search' && (
+                      <EmployeeSearch
+                        multi
+                        label="Empleados responsables"
+                        onMultiSelect={emps => setForm(f => ({ ...f, employeeIds: emps.map(e => String(e.id)) }))}
+                        placeholder="Escribe para buscar y añadir empleados..." />
+                    )}
+
+                    {bulkMode === 'job' && (
+                      <div className="space-y-2">
+                        <JobSearch
+                          label="Cargo / puesto"
+                          placeholder="Buscar cargo para asignar a todos sus empleados..."
+                          onChange={job => {
+                            if (job) loadEmployeesByJob(job.id)
+                            else setForm(f => ({ ...f, employeeIds: [] }))
+                          }}
+                        />
+                        {bulkLoading && (
+                          <p className="text-xs text-gray-500 flex items-center gap-1.5">
+                            <span className="w-3 h-3 border-2 border-gray-300 border-t-[var(--color-primary)] rounded-full animate-spin inline-block" />
+                            Buscando empleados...
+                          </p>
+                        )}
+                      </div>
+                    )}
+
+                    {bulkMode === 'all' && (
+                      <div className="space-y-2">
+                        <p className="text-xs text-gray-500 font-subtitles">Se asignará la tarea a todos los empleados activos.</p>
+                        <button type="button" onClick={loadAllEmployees} disabled={bulkLoading}
+                          className="w-full py-2 rounded-[var(--radius-lg)] border border-dashed border-gray-300 text-sm text-gray-600 hover:bg-gray-50 transition disabled:opacity-50 font-subtitles font-semibold">
+                          {bulkLoading ? 'Cargando...' : '↓ Cargar todos los empleados activos'}
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Selected count badge */}
+                    {form.employeeIds.length > 0 && (
+                      <div className="flex items-center gap-2 px-3 py-2 bg-green-50 border border-green-100 rounded-[var(--radius-lg)]">
+                        <span className="w-2 h-2 rounded-full bg-green-500 shrink-0" />
+                        <span className="text-xs font-bold text-green-700">
+                          {form.employeeIds.length} empleado{form.employeeIds.length !== 1 ? 's' : ''} seleccionado{form.employeeIds.length !== 1 ? 's' : ''}
+                        </span>
+                        <button type="button" onClick={() => setForm(f => ({ ...f, employeeIds: [] }))}
+                          className="ml-auto text-[10px] text-green-600 hover:text-green-800 font-bold uppercase">
+                          Limpiar
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ) : (
                   <EmployeeSearch
                     label="Empleado Responsable"
                     onSelect={emp => setForm(f => ({ ...f, employeeId: emp ? String(emp.id) : '' }))}
-                    placeholder="Escribe nombre o identificación..." />}
+                    placeholder="Escribe nombre o identificación..." />
+                )}
 
                 <DateTimeRangePicker
                   startTime={form.startTime}
@@ -132,7 +245,7 @@ export default function GestionTareasPage() {
                 />
 
                 <div className="flex gap-3 pt-2">
-                  <button type="button" onClick={() => setShowCreateModal(false)}
+                  <button type="button" onClick={closeCreateModal}
                     className="flex-1 py-2.5 rounded-[var(--radius-lg)] border border-gray-200 text-sm font-bold text-gray-500 hover:bg-gray-50 transition">
                     Cancelar
                   </button>

@@ -17,6 +17,16 @@ import { ContractResponseDto } from '../dtos/contract-response.dto'
 
 type EmployeeWithIdType = Employee & { identificationType: IdentificationType }
 
+// ReDoS-safe: no nested quantifiers; max length check prevents slow paths on crafted inputs
+const EMAIL_RE = /^(?:[a-zA-Z0-9!#$%&'*+/=?^_`{|}~\-]+(?:\.[a-zA-Z0-9!#$%&'*+/=?^_`{|}~\-]+)*)@(?:[a-zA-Z0-9](?:[a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$/
+
+function assertValidEmail(email: string): void {
+    const trimmed = email.trim()
+    if (!trimmed) throw new Error('El correo electrónico es obligatorio')
+    if (trimmed.length > 254) throw new Error('El correo electrónico no puede superar 254 caracteres')
+    if (!EMAIL_RE.test(trimmed)) throw new Error(`"${trimmed}" no es un correo electrónico válido`)
+}
+
 export function fullName(emp: { firstName: string; lastName: string }): string {
     return `${emp.firstName} ${emp.lastName}`.trim()
 }
@@ -75,15 +85,26 @@ class EmployeeService {
 
         const isHourly = contractType?.name?.toUpperCase().includes('HORA') ?? false
 
-        if (!isHourly && smlvCfg) {
-            const smlv = Number(smlvCfg.value)
-            if (salary < smlv)
-                throw new Error(`El salario no puede ser menor al SMLV ($${smlv.toLocaleString('es-CO')})`)
+        const MAX_SALARY     = 9_999_999_999.99
+        const MAX_HOURLY     = 99_999_999.99
+
+        if (!isHourly) {
+            if (salary > MAX_SALARY)
+                throw new Error(`El salario no puede superar $${MAX_SALARY.toLocaleString('es-CO')}`)
+            if (smlvCfg) {
+                const smlv = Number(smlvCfg.value)
+                if (salary < smlv)
+                    throw new Error(`El salario no puede ser menor al SMLV ($${smlv.toLocaleString('es-CO')})`)
+            }
         }
-        if (isHourly && minHourlyCfg) {
-            const minRate = Number(minHourlyCfg.value)
-            if (hourlyRate < minRate)
-                throw new Error(`La tarifa por hora no puede ser menor al mínimo legal ($${minRate.toLocaleString('es-CO')}/h)`)
+        if (isHourly) {
+            if (hourlyRate > MAX_HOURLY)
+                throw new Error(`La tarifa por hora no puede superar $${MAX_HOURLY.toLocaleString('es-CO')}/h`)
+            if (minHourlyCfg) {
+                const minRate = Number(minHourlyCfg.value)
+                if (hourlyRate < minRate)
+                    throw new Error(`La tarifa por hora no puede ser menor al mínimo legal ($${minRate.toLocaleString('es-CO')}/h)`)
+            }
         }
     }
 
@@ -126,6 +147,8 @@ class EmployeeService {
         if (!lastName?.trim()) throw new Error('El apellido es obligatorio')
         if (!identificationNumber?.trim()) throw new Error('El número de identificación es obligatorio')
         if (!identificationTypeId) throw new Error('El tipo de identificación es obligatorio')
+        assertValidEmail(email)
+        const normalizedEmail = email.trim().toLowerCase()
 
         const existing = await employeeRepository.findByIdentification(identificationTypeId, identificationNumber.trim())
         if (existing) {
@@ -133,9 +156,9 @@ class EmployeeService {
             throw new Error(`Ya existe un empleado con el mismo número de ${idType}: ${identificationNumber.trim()}`)
         }
 
-        const emailExists = await employeeRepository.findByEmailExcluding(email)
+        const emailExists = await employeeRepository.findByEmailExcluding(normalizedEmail)
         if (emailExists) {
-            throw new Error(`El correo electrónico "${email}" ya está registrado por otro empleado`)
+            throw new Error(`El correo electrónico "${normalizedEmail}" ya está registrado por otro empleado`)
         }
 
         if (!password || password.length < 8 || !/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/[0-9]/.test(password))
@@ -156,7 +179,7 @@ class EmployeeService {
                     lastName: lastName.trim(),
                     identificationNumber: identificationNumber.trim(),
                     identificationTypeId,
-                    email,
+                    email: normalizedEmail,
                     passwordHash,
                     status,
                     metadata: metadata ?? {},
@@ -201,6 +224,7 @@ class EmployeeService {
 
     async update(id: number, data: UpdateEmployeeDto): Promise<EmployeeResponseDto> {
         const { roleIds, password, ...rest } = data
+        if (rest.email !== undefined && rest.email !== '') assertValidEmail(rest.email)
         const repoData: Parameters<typeof employeeRepository.updateEmployee>[1] = {
             ...rest,
             ...(rest.email && { email: rest.email.trim().toLowerCase() }),
@@ -306,6 +330,10 @@ class EmployeeService {
     }
 
     async updateContract(contractId: number, data: UpdateContractDto): Promise<ContractResponseDto> {
+        if (data.salary !== undefined && data.salary > 9_999_999_999.99)
+            throw new Error(`El salario no puede superar $${(9_999_999_999.99).toLocaleString('es-CO')}`)
+        if (data.hourlyRate !== undefined && data.hourlyRate > 99_999_999.99)
+            throw new Error(`La tarifa por hora no puede superar $${(99_999_999.99).toLocaleString('es-CO')}/h`)
         const updateData = { ...data }
         if (data.endDate) {
             updateData.endDate = new Date(data.endDate)

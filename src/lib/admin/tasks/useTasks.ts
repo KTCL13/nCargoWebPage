@@ -53,12 +53,13 @@ export function useTasks(token: string | null) {
 
   useEffect(() => { fetchData() }, [fetchData])
 
-  const handleDeleteTask = async (id: number) => {
+  const handleDeleteTask = async (id: number, reason?: string) => {
     if (!token) return
     try {
       const res = await authFetch(`/api/tasks?id=${id}`, {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        ...(reason ? { body: JSON.stringify({ reason }) } : {}),
       })
       if (res.ok) fetchData()
     } catch {
@@ -82,6 +83,6 @@ export function useTasks(token: string | null) {
   return {
     tasks, employees, total, page, setPage, pageSize, setPageSize, loading,
     statusFilter, setStatusFilter, employeeFilter, setEmployeeFilter,
-    fetchData, handleDeleteTask, handleCheckOverdue
+    fetchData, handleDeleteTask, handleCheckOverdue,
   }
 }

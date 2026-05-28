@@ -58,6 +58,32 @@ class TaskRepository {
         })
     }
 
+    async findDueSoon(): Promise<Task[]> {
+        const now = new Date()
+        const in70min = new Date(now.getTime() + 70 * 60 * 1000)
+
+        const [pendingStatus, inProgressStatus] = await Promise.all([
+            prisma.taskStatus.findUnique({ where: { name: 'PENDING' } }),
+            prisma.taskStatus.findUnique({ where: { name: 'IN_PROGRESS' } }),
+        ])
+
+        const statusIds = [pendingStatus?.id, inProgressStatus?.id].filter((id): id is number => id !== undefined)
+        if (statusIds.length === 0) return []
+
+        const tasks = await prisma.task.findMany({
+            where: {
+                statusId: { in: statusIds },
+                endTime: { gt: now, lte: in70min },
+            },
+        })
+
+        // exclude tasks already warned via metadata flag
+        return tasks.filter(t => {
+            const meta = t.metadata as Record<string, unknown> | null
+            return !meta?.dueSoonWarned
+        })
+    }
+
     // 🔥 FIX AQUÍ
     async create(data: {
         title: string

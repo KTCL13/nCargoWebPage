@@ -12,7 +12,8 @@
       "Bash(npm list *)",
       "Bash(git stash *)",
       "Bash(ls -la \"c:\\\\Users\\\\Brayan\\\\Desktop\\\\Proyecto N-cargo\\\\nCargoWebPage\\\\\" | grep -i env)",
-      "Read(//c/Users/Brayan/Desktop/Proyecto N-cargo/**)"
+      "Read(//c/Users/Brayan/Desktop/Proyecto N-cargo/**)",
+      "Bash(xargs ls)"
     ]
   }
 }

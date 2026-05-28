@@ -207,11 +207,26 @@ class TaskService {
         return this.toTaskResponseDto(task)
     }
 
-    async delete(id: number): Promise<void> {
+    async delete(id: number, reason?: string, adminId?: number): Promise<void> {
         const existing = await taskRepository.findById(id)
 
         if (!existing) {
             throw new Error(`Task no encontrada con id ${id}`)
+        }
+
+        if (existing.employeeId && reason && adminId) {
+            const employee = await employeeRepository.getEmployeeById(existing.employeeId)
+            if (employee) {
+                await eventBus.publish('task.cancelled', {
+                    taskId: id,
+                    taskTitle: existing.title,
+                    employeeId: employee.id,
+                    employeeName: fullName(employee),
+                    employeeEmail: employee.email,
+                    adminId,
+                    reason,
+                })
+            }
         }
 
         await taskRepository.delete(id)
@@ -256,6 +271,44 @@ class TaskService {
     }
 
 
+
+    async warnDueSoonTasks(): Promise<{ warned: number }> {
+        const tasks = await taskRepository.findDueSoon()
+        if (tasks.length === 0) return { warned: 0 }
+
+        await Promise.all(
+            tasks.map(async task => {
+                const [employee, admin] = await Promise.all([
+                    employeeRepository.getEmployeeById(task.employeeId),
+                    task.assignedBy
+                        ? employeeRepository.getEmployeeById(task.assignedBy)
+                        : employeeRepository.getEmployeeById(task.createdBy),
+                ])
+
+                if (!employee || !admin) return
+
+                // mark as warned so subsequent cron ticks don't re-notify
+                const existingMeta = (task.metadata as Record<string, unknown> | null) ?? {}
+                await taskRepository.update(task.id, {
+                    metadata: { ...existingMeta, dueSoonWarned: true },
+                })
+
+                await eventBus.publish('task.due_soon', {
+                    taskId: task.id,
+                    taskTitle: task.title,
+                    employeeId: employee.id,
+                    employeeName: fullName(employee),
+                    employeeEmail: employee.email,
+                    adminId: admin.id,
+                    adminEmail: admin.email,
+                    adminName: fullName(admin),
+                    endTime: task.endTime!,
+                })
+            }),
+        )
+
+        return { warned: tasks.length }
+    }
 
     async markOverdueTasksAsNotDone(): Promise<void> {
         const overdueTasks = await taskRepository.findOverduePending()

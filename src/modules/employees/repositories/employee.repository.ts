@@ -45,11 +45,10 @@ class EmployeeRepository {
         const where: Prisma.EmployeeWhereInput = {
             ...(status && { status }),
             ...(filter.roleId && {
-                employeeRoles: {
-                    some: {
-                        roleId: filter.roleId,
-                    },
-                },
+                employeeRoles: { some: { roleId: filter.roleId } },
+            }),
+            ...(filter.jobId && {
+                contracts: { some: { jobId: filter.jobId, isActive: true } },
             }),
             ...(search && {
                 OR: [

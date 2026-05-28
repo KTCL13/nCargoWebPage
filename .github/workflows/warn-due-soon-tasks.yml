@@ -1,0 +1,46 @@
+name: Warn due-soon tasks
+
+# Every 30 minutes, notifies employees and admins of tasks expiring within
+# the next hour. Each task is flagged (metadata.dueSoonWarned) after the
+# first notification so duplicate alerts are never sent.
+#
+# Setup (one-time, same credentials as close-stale-attendance):
+#   Repository → Settings → Secrets and variables → Actions
+#   - secret   CRON_SECRET  = same value as the Vercel env var
+#   - variable APP_URL      = https://your-prod-domain.example.com
+
+on:
+  schedule:
+    - cron: '0,30 * * * *'   # every 30 minutes
+  workflow_dispatch:
+
+jobs:
+  warn:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Trigger warn-due-soon-tasks
+        env:
+          APP_URL: ${{ vars.APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$APP_URL" ] || [ -z "$CRON_SECRET" ]; then
+            echo "::error::APP_URL variable or CRON_SECRET secret is not set"
+            exit 1
+          fi
+
+          response=$(curl -sS -w "\n%{http_code}" -X POST \
+            "$APP_URL/api/cron/warn-due-soon-tasks" \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            -H "Content-Type: application/json")
+
+          body=$(echo "$response" | sed '$d')
+          status=$(echo "$response" | tail -n 1)
+
+          echo "Status: $status"
+          echo "Body:   $body"
+
+          if [ "$status" != "200" ]; then
+            echo "::error::Cron endpoint returned non-200 status"
+            exit 1
+          fi

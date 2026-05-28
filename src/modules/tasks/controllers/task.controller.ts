@@ -134,16 +134,18 @@ class TaskController {
     }
 
     async remove(req: NextRequest) {
+        let admin
         try {
-            requireAdmin(req)
+            admin = requireAdmin(req)
         } catch (error) {
             return authErrorResponse(error)
         }
         try {
             const url = new URL(req.url)
             const id = Number(url.searchParams.get('id'))
+            const body = await req.json().catch(() => ({})) as { reason?: string }
 
-            await taskService.delete(id)
+            await taskService.delete(id, body.reason, admin.id)
             return new NextResponse(null, { status: 204 })
         } catch (error: unknown) {
             return NextResponse.json(

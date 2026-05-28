@@ -54,6 +54,24 @@ export function useQuotations(token: string | null) {
     } catch { } finally { setLoadingO(false) }
   }, [])
 
+  const deleteEmpRecord = useCallback(async (id: number) => {
+    await authFetch(`/api/cotizacion-records?id=${id}`, { method: 'DELETE' })
+    fetchEmpleados()
+  }, [fetchEmpleados])
+
+  const updateEmpRecord = useCallback(async (id: number, data: Record<string, unknown>) => {
+    const res = await authFetch(`/api/cotizacion-records?id=${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      throw new Error(err.message ?? 'Error al actualizar')
+    }
+    fetchEmpleados()
+  }, [fetchEmpleados])
+
   useEffect(() => { if (tab === 'publica') fetchPublica() }, [tab, fetchPublica])
   useEffect(() => { if (tab === 'empleados') fetchEmpleados() }, [tab, fetchEmpleados])
   useEffect(() => { if (tab === 'offices') fetchOffices() }, [tab, fetchOffices])
@@ -62,6 +80,7 @@ export function useQuotations(token: string | null) {
     tab, setTab,
     pubRecords, pubTotal, pubPage, setPubPage, pubPageSize, setPubPageSize, pubLoading,
     empRecords, empTotal, empPage, setEmpPage, empPageSize, setEmpPageSize, empLoading,
+    deleteEmpRecord, updateEmpRecord,
     offices, loadingO, fetchPublica, fetchEmpleados, fetchOffices
   }
 }

@@ -13,11 +13,11 @@ class JobService {
         }
     }
 
-    async findAll(page: number = 1, limit: number = 10): Promise<{ data: JobResponseDto[], total: number }> {
+    async findAll(page: number = 1, limit: number = 10, search?: string): Promise<{ data: JobResponseDto[], total: number }> {
         const skip = (page - 1) * limit
         const [jobs, total] = await Promise.all([
-            jobRepository.findAll(skip, limit),
-            jobRepository.count()
+            jobRepository.findAll(skip, limit, search),
+            jobRepository.count(search)
         ])
 
         return {
@@ -37,11 +37,22 @@ class JobService {
     }
 
     async create(data: CreateJobDto): Promise<JobResponseDto> {
-        const job = await jobRepository.create(data)
+        const existing = await jobRepository.findByTitle(data.title.trim())
+        if (existing) {
+            throw new Error(`Ya existe un cargo con el título "${existing.title}". Los títulos de cargo deben ser únicos.`)
+        }
+        const job = await jobRepository.create({ ...data, title: data.title.trim() })
         return this.toJobResponseDto(job)
     }
 
     async update(id: number, data: UpdateJobDto): Promise<JobResponseDto> {
+        if (data.title) {
+            const existing = await jobRepository.findByTitle(data.title.trim())
+            if (existing && existing.id !== id) {
+                throw new Error(`Ya existe un cargo con el título "${existing.title}". Los títulos de cargo deben ser únicos.`)
+            }
+            data = { ...data, title: data.title.trim() }
+        }
         const job = await jobRepository.update(id, data)
         return this.toJobResponseDto(job)
     }
