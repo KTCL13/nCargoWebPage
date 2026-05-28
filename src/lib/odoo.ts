@@ -1,9 +1,17 @@
-const ODOO_URL = process.env.ODOO_URL ?? ''
 const ODOO_DB = process.env.ODOO_DB ?? ''
 const ODOO_USERNAME = process.env.ODOO_USERNAME ?? ''
 const ODOO_API_KEY = process.env.ODOO_API_KEY ?? ''
 
-let cachedUid: number | null = null
+// Force HTTPS — Odoo SaaS instances enforce HTTPS with 307 redirects; Node fetch
+// resends POST bodies on 307 but some proxies strip them, so we upgrade proactively.
+function odooUrl(path: string): string {
+  const raw = process.env.ODOO_URL ?? ''
+  if (!raw) throw new Error('ODOO_URL no configurado en .env')
+  const base = /^http:\/\/(?!localhost|127\.0\.0\.1)/i.test(raw)
+    ? raw.replace(/^http:/i, 'https:')
+    : raw
+  return `${base.replace(/\/$/, '')}${path}`
+}
 
 type JsonRpcResponse<T> = {
   jsonrpc: '2.0'
@@ -13,13 +21,14 @@ type JsonRpcResponse<T> = {
 }
 
 async function jsonRpc<T>(service: string, method: string, args: unknown[]): Promise<T> {
-  if (!ODOO_URL || !ODOO_DB || !ODOO_USERNAME || !ODOO_API_KEY) {
+  if (!ODOO_DB || !ODOO_USERNAME || !ODOO_API_KEY) {
     throw new Error('Odoo no está configurado: revisa ODOO_URL, ODOO_DB, ODOO_USERNAME y ODOO_API_KEY en .env')
   }
 
-  const res = await fetch(`${ODOO_URL}/jsonrpc`, {
+  const res = await fetch(odooUrl('/jsonrpc'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
+    redirect: 'follow',
     body: JSON.stringify({
       jsonrpc: '2.0',
       method: 'call',
@@ -28,7 +37,12 @@ async function jsonRpc<T>(service: string, method: string, args: unknown[]): Pro
     }),
   })
 
-  if (!res.ok) throw new Error(`Odoo HTTP ${res.status}`)
+  if (!res.ok) {
+    const detail = res.status === 307 || res.status === 301 || res.status === 302
+      ? ` — verifica que ODOO_URL use https://`
+      : ''
+    throw new Error(`Odoo HTTP ${res.status}${detail}`)
+  }
   const data = (await res.json()) as JsonRpcResponse<T>
   if (data.error) {
     const msg = data.error.data?.message || data.error.message || 'Error en Odoo'
@@ -37,6 +51,10 @@ async function jsonRpc<T>(service: string, method: string, args: unknown[]): Pro
   if (data.result === undefined) throw new Error('Respuesta vacía de Odoo')
   return data.result
 }
+
+// uid is the user's DB row id for a given (db, username, api_key) triple — it never
+// changes unless the employee record is deleted, so a per-process cache is safe.
+let cachedUid: number | null = null
 
 async function authenticate(): Promise<number> {
   if (cachedUid) return cachedUid
@@ -101,11 +119,7 @@ export async function searchPartners(query: string, limit = 20): Promise<OdooPar
   return partners
 }
 
-let cachedShippingProductId: number | null = null
-
 export async function getShippingProductId(): Promise<number> {
-  if (cachedShippingProductId) return cachedShippingProductId
-
   const code = process.env.ODOO_SHIPPING_PRODUCT_CODE?.trim()
   if (!code) {
     throw new Error('ODOO_SHIPPING_PRODUCT_CODE no configurado en .env')
@@ -122,7 +136,6 @@ export async function getShippingProductId(): Promise<number> {
     throw new Error(`No se encontró producto con referencia interna "${code}" en Odoo`)
   }
 
-  cachedShippingProductId = ids[0]
   return ids[0]
 }
 

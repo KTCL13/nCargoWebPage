@@ -31,7 +31,13 @@ export interface OdooStage {
 }
 
 function makeClient(path: string) {
-  const url = new URL(process.env.ODOO_URL!)
+  const raw = process.env.ODOO_URL!
+  // xmlrpc does not follow HTTP redirects. Force HTTPS for non-localhost to avoid
+  // 307 redirects that Odoo SaaS instances issue when contacted over plain HTTP.
+  const normalized = /^http:\/\/(?!localhost|127\.0\.0\.1)/i.test(raw)
+    ? raw.replace(/^http:/i, 'https:')
+    : raw
+  const url = new URL(normalized)
   const isHttps = url.protocol === 'https:'
   const host = url.hostname
   const port = url.port ? parseInt(url.port) : isHttps ? 443 : 80
