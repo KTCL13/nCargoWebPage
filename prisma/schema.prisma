@@ -191,6 +191,7 @@ model UserSession {
   logoutAt   DateTime? @map("logout_at")
   ipAddress  String?   @map("ip_address") @db.VarChar(45)
   deviceInfo Json?     @map("device_info")
+  tokenJti   String?   @unique @map("token_jti") @db.VarChar(36)
   employee   Employee  @relation(fields: [employeeId], references: [id])
 
   @@map("user_sessions")

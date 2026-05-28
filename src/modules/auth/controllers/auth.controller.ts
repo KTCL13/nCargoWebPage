@@ -63,8 +63,8 @@ class AuthController {
 
     async logout(req: NextRequest) {
         try {
-            const employee = getAuthEmployee(req)
-            await authService.logout(employee.id)
+            const employee = await getAuthEmployee(req)
+            await authService.logout(employee.id, employee.jti)
             return new NextResponse(null, { status: 204 })
         } catch (error) {
             const status = error instanceof Error && error.message.includes('Token') ? 401 : 400

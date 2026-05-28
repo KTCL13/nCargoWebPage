@@ -6,7 +6,7 @@ import { z } from 'zod'
 
 export async function GET(req: NextRequest) {
     try {
-        const auth = getAuthEmployee(req)
+        const auth = await getAuthEmployee(req)
         const safeEmployee = await employeeService.getProfile(auth.id)
         return NextResponse.json(safeEmployee)
     } catch (error: unknown) {
@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
 
 export async function PATCH(req: NextRequest) {
     try {
-        const auth = getAuthEmployee(req)
+        const auth = await getAuthEmployee(req)
         const body = await req.json()
         const validatedData = UpdateProfileSchema.parse(body)
 

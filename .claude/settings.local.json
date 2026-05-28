@@ -13,7 +13,12 @@
       "Bash(git stash *)",
       "Bash(ls -la \"c:\\\\Users\\\\Brayan\\\\Desktop\\\\Proyecto N-cargo\\\\nCargoWebPage\\\\\" | grep -i env)",
       "Read(//c/Users/Brayan/Desktop/Proyecto N-cargo/**)",
-      "Bash(xargs ls)"
+      "Bash(xargs ls)",
+      "Bash(git add *)",
+      "Bash(git checkout *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Bash(npx jest *)"
     ]
   }
 }

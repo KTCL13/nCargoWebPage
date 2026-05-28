@@ -29,7 +29,7 @@ class EmployeeController {
     // Obtener todos los empleados con filtros
     async findAll(req: NextRequest) {
         try {
-            requireAdmin(req)
+            await requireAdmin(req)
         } catch (error) {
             return NextResponse.json(
                 { message: error instanceof Error ? error.message : 'No autorizado' },
@@ -67,7 +67,7 @@ class EmployeeController {
     // Obtener un solo empleado por ID
     async findOne(req: NextRequest) {
         try {
-            requireAdmin(req)
+            await requireAdmin(req)
         } catch (error) {
             return NextResponse.json(
                 { message: error instanceof Error ? error.message : 'No autorizado' },
@@ -91,7 +91,7 @@ class EmployeeController {
     // Crear un nuevo empleado
     async create(req: NextRequest) {
         try {
-            requireAdmin(req)
+            await requireAdmin(req)
         } catch (error) {
             return NextResponse.json(
                 { message: error instanceof Error ? error.message : 'No autorizado' },
@@ -110,7 +110,7 @@ class EmployeeController {
     // Actualizar un empleado
     async update(req: NextRequest) {
         try {
-            requireAdmin(req)
+            await requireAdmin(req)
         } catch (error) {
             return NextResponse.json(
                 { message: error instanceof Error ? error.message : 'No autorizado' },
@@ -135,7 +135,7 @@ class EmployeeController {
     // Eliminar un empleado
     async remove(req: NextRequest) {
         try {
-            requireAdmin(req)
+            await requireAdmin(req)
         } catch (error) {
             return NextResponse.json(
                 { message: error instanceof Error ? error.message : 'No autorizado' },
@@ -159,7 +159,7 @@ class EmployeeController {
     // Obtener los contratos de un empleado
     async getContracts(req: NextRequest) {
         try {
-            requireAdmin(req)
+            await requireAdmin(req)
         } catch (error) {
             return NextResponse.json(
                 { message: error instanceof Error ? error.message : 'No autorizado' },
@@ -183,7 +183,7 @@ class EmployeeController {
     // Obtener un contrato por ID
     async findContractById(req: NextRequest) {
         try {
-            requireAdmin(req)
+            await requireAdmin(req)
         } catch (error) {
             return NextResponse.json(
                 { message: error instanceof Error ? error.message : 'No autorizado' },
@@ -207,7 +207,7 @@ class EmployeeController {
     // Crear un contrato para un empleado
     async createContract(req: NextRequest) {
         try {
-            requireAdmin(req)
+            await requireAdmin(req)
         } catch (error) {
             return NextResponse.json(
                 { message: error instanceof Error ? error.message : 'No autorizado' },
@@ -229,7 +229,7 @@ class EmployeeController {
     // Actualizar un contrato de un empleado
     async updateContract(req: NextRequest) {
         try {
-            requireAdmin(req)
+            await requireAdmin(req)
         } catch (error) {
             return NextResponse.json(
                 { message: error instanceof Error ? error.message : 'No autorizado' },
@@ -251,7 +251,7 @@ class EmployeeController {
     // Verificar duplicados de email/teléfono antes de guardar
     async checkDuplicates(req: NextRequest) {
         try {
-            requireAdmin(req)
+            await requireAdmin(req)
         } catch (error) {
             return NextResponse.json(
                 { message: error instanceof Error ? error.message : 'No autorizado' },
@@ -281,7 +281,7 @@ class EmployeeController {
     // Asignar roles a un empleado
     async assignRoles(req: NextRequest) {
         try {
-            requireAdmin(req)
+            await requireAdmin(req)
         } catch (error) {
             return NextResponse.json(
                 { message: error instanceof Error ? error.message : 'No autorizado' },

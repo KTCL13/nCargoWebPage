@@ -20,7 +20,7 @@ function authErrorResponse(error: unknown) {
 class JobController {
     async findAll(req: NextRequest) {
         try {
-            requireAdmin(req)
+            await requireAdmin(req)
         } catch (error) {
             return authErrorResponse(error)
         }
@@ -42,7 +42,7 @@ class JobController {
 
     async findOne(req: NextRequest) {
         try {
-            requireAdmin(req)
+            await requireAdmin(req)
         } catch (error) {
             return authErrorResponse(error)
         }
@@ -62,7 +62,7 @@ class JobController {
 
     async create(req: NextRequest) {
         try {
-            requireAdmin(req)
+            await requireAdmin(req)
         } catch (error) {
             return authErrorResponse(error)
         }
@@ -81,7 +81,7 @@ class JobController {
 
     async update(req: NextRequest) {
         try {
-            requireAdmin(req)
+            await requireAdmin(req)
         } catch (error) {
             return authErrorResponse(error)
         }
@@ -102,7 +102,7 @@ class JobController {
 
     async remove(req: NextRequest) {
         try {
-            requireAdmin(req)
+            await requireAdmin(req)
         } catch (error) {
             return authErrorResponse(error)
         }

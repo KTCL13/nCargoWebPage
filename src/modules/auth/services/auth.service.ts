@@ -54,7 +54,7 @@ class AuthService {
 
         await roleRepository.assignRoleToEmployee(employee.id, role.id)
 
-        const accessToken = jwtService.sign({ id: employee.id, email: employee.email, role: role.name })
+        const { token: accessToken } = jwtService.sign({ id: employee.id, email: employee.email, role: role.name })
         const name = `${employee.firstName} ${employee.lastName}`.trim()
 
         return { accessToken, role: role.name as RoleType, email: employee.email, name }
@@ -80,10 +80,25 @@ class AuthService {
         const role = employee.employeeRoles[0]?.role
         if (!role) throw new Error('El usuario no tiene rol asignado')
 
+        // Evict oldest session if the employee already has 3 active ones
+        const evicted = await sessionRepository.evictOldestIfAtLimit(employee.id)
+        if (evicted) {
+            await auditLog({
+                entityType: 'UserSession',
+                entityId: evicted.id,
+                action: 'SESSION_EVICTED',
+                performedBy: employee.id,
+                oldValues: { sessionId: evicted.id, loginAt: evicted.loginAt, ipAddress: evicted.ipAddress },
+            })
+        }
+
+        const { token: accessToken, jti } = jwtService.sign({ id: employee.id, email: employee.email, role: role.name })
+
         await sessionRepository.create({
             employeeId: employee.id,
             ipAddress: ip,
             deviceInfo: userAgent ? { userAgent } : undefined,
+            tokenJti: jti,
         })
 
         await auditLog({
@@ -94,16 +109,18 @@ class AuthService {
             newValues: { ip },
         })
 
-        const accessToken = jwtService.sign({ id: employee.id, email: employee.email, role: role.name })
         const name = `${employee.firstName} ${employee.lastName}`.trim()
 
         return { accessToken, role: role.name as RoleType, email: employee.email, name }
     }
 
-    async logout(employeeId: number): Promise<void> {
-        const session = await sessionRepository.findActiveByEmployee(employeeId)
-        if (session) {
-            await sessionRepository.closeSession(session.id, new Date())
+    async logout(employeeId: number, jti?: string): Promise<void> {
+        if (jti) {
+            await sessionRepository.closeSessionByJti(jti, new Date())
+        } else {
+            // Fallback: close the most recent active session (no jti in legacy token)
+            const session = await sessionRepository.findActiveByEmployee(employeeId)
+            if (session) await sessionRepository.closeSession(session.id, new Date())
         }
 
         await auditLog({

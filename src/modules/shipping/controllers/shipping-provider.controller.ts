@@ -18,7 +18,7 @@ function errResponse(error: unknown) {
 class ShippingProviderController {
   async findAll(req: NextRequest) {
     try {
-      getAuthEmployee(req)
+      await getAuthEmployee(req)
       const data = await shippingProviderService.findAll()
       return NextResponse.json({ data, total: data.length })
     } catch (error: unknown) {
@@ -28,7 +28,7 @@ class ShippingProviderController {
 
   async getRates(req: NextRequest, providerId: number) {
     try {
-      getAuthEmployee(req)
+      await getAuthEmployee(req)
       const data = await shippingProviderService.getRates(providerId)
       return NextResponse.json({ data, total: data.length })
     } catch (error: unknown) {
@@ -38,7 +38,7 @@ class ShippingProviderController {
 
   async createRate(req: NextRequest, providerId: number) {
     try {
-      requireAdmin(req)
+      await requireAdmin(req)
       const dto = await req.json()
       if (dto.destinationId === undefined || dto.basePrice === undefined) {
         return NextResponse.json(
@@ -55,7 +55,7 @@ class ShippingProviderController {
 
   async updateRate(req: NextRequest, providerId: number, rateId: number) {
     try {
-      requireAdmin(req)
+      await requireAdmin(req)
       const dto = await req.json()
       const result = await shippingProviderService.updateRate(providerId, rateId, dto)
       return NextResponse.json(result)
@@ -66,7 +66,7 @@ class ShippingProviderController {
 
   async deleteRate(req: NextRequest, providerId: number, rateId: number) {
     try {
-      requireAdmin(req)
+      await requireAdmin(req)
       await shippingProviderService.deleteRate(providerId, rateId)
       return new NextResponse(null, { status: 204 })
     } catch (error: unknown) {

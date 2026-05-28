@@ -1,6 +1,7 @@
 import jwt from 'jsonwebtoken'
+import { randomUUID } from 'crypto'
 
-type JwtPayload = { id: number; email: string; role: string }
+export type JwtPayload = { id: number; email: string; role: string; jti: string }
 
 const KNOWN_WEAK_SECRETS = new Set([
     'ncargo_secret_key_change_in_production',
@@ -26,8 +27,10 @@ function loadSecret(): string {
 }
 
 class JwtService {
-    sign(payload: JwtPayload): string {
-        return jwt.sign(payload, loadSecret(), { expiresIn: '1d' })
+    sign(payload: Omit<JwtPayload, 'jti'>): { token: string; jti: string } {
+        const jti = randomUUID()
+        const token = jwt.sign({ ...payload, jti }, loadSecret(), { expiresIn: '4h' })
+        return { token, jti }
     }
 
     verify(token: string): JwtPayload {

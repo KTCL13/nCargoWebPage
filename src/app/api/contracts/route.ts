@@ -19,7 +19,7 @@ function authErrorResponse(error: unknown) {
 
 export async function GET(req: NextRequest) {
     try {
-        requireAdmin(req)
+        await requireAdmin(req)
     } catch (error) {
         return authErrorResponse(error)
     }
@@ -35,7 +35,7 @@ export async function GET(req: NextRequest) {
 
 export async function PUT(req: NextRequest) {
     try {
-        requireAdmin(req)
+        await requireAdmin(req)
     } catch (error) {
         return authErrorResponse(error)
     }

@@ -6,7 +6,7 @@ import { getIp } from '@/lib/get-ip'
 class AttendanceController {
     async clockIn(req: NextRequest) {
         try {
-            const employee = getAuthEmployee(req)
+            const employee = await getAuthEmployee(req)
             const ip = getIp(req)
             const result = await attendanceService.clockIn(employee.id, ip)
             return NextResponse.json(result, { status: 201 })
@@ -22,7 +22,7 @@ class AttendanceController {
 
     async pause(req: NextRequest) {
         try {
-            const employee = getAuthEmployee(req)
+            const employee = await getAuthEmployee(req)
             const ip = getIp(req)
             const result = await attendanceService.pause(employee.id, ip)
             return NextResponse.json(result, { status: 200 })
@@ -38,7 +38,7 @@ class AttendanceController {
 
     async resume(req: NextRequest) {
         try {
-            const employee = getAuthEmployee(req)
+            const employee = await getAuthEmployee(req)
             const ip = getIp(req)
             const result = await attendanceService.resume(employee.id, ip)
             return NextResponse.json(result, { status: 200 })
@@ -54,7 +54,7 @@ class AttendanceController {
 
     async clockOut(req: NextRequest) {
         try {
-            const employee = getAuthEmployee(req)
+            const employee = await getAuthEmployee(req)
             const ip = getIp(req)
             const result = await attendanceService.clockOut(employee.id, ip)
             return NextResponse.json(result, { status: 200 })
@@ -70,7 +70,7 @@ class AttendanceController {
 
     async getToday(req: NextRequest) {
         try {
-            const employee = getAuthEmployee(req)
+            const employee = await getAuthEmployee(req)
             const url = new URL(req.url)
             const employeeIdParam = url.searchParams.get('employeeId')
             if (employeeIdParam && employee.role !== 'ADMIN') {
@@ -90,7 +90,7 @@ class AttendanceController {
 
     async getHistory(req: NextRequest) {
         try {
-            const employee = getAuthEmployee(req)
+            const employee = await getAuthEmployee(req)
             const url = new URL(req.url)
             const employeeIdParam = url.searchParams.get('employeeId')
             if (employeeIdParam && employee.role !== 'ADMIN') {

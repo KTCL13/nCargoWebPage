@@ -8,7 +8,7 @@ export async function PATCH(
     { params }: { params: Promise<{ id: string }> },
 ) {
     try {
-        const admin = getAuthEmployee(req)
+        const admin = await getAuthEmployee(req)
         if (admin.role !== 'ADMIN') {
             return NextResponse.json({ message: 'Acceso denegado' }, { status: 403 })
         }

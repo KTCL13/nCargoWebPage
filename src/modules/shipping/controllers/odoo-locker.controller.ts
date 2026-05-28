@@ -6,7 +6,7 @@ import { odooLockerService } from '../services/odoo-locker.service'
 class OdooLockerController {
   async syncLockers(req: NextRequest) {
     try {
-      const admin = requireAdmin(req)
+      const admin = await requireAdmin(req)
       const body = await req.json().catch(() => ({}))
       const searchTerm: string = body.searchTerm?.trim() || 'Suscripción Casillero'
       const result = await odooLockerService.syncFromOdoo(searchTerm)
@@ -25,7 +25,7 @@ class OdooLockerController {
 
   async getLockers(req: NextRequest) {
     try {
-      getAuthEmployee(req)
+      await getAuthEmployee(req)
       const { searchParams } = new URL(req.url)
       const page = parseInt(searchParams.get('page') ?? '1')
       const limit = parseInt(searchParams.get('limit') ?? '10')
@@ -38,7 +38,7 @@ class OdooLockerController {
 
   async getShipments(req: NextRequest) {
     try {
-      getAuthEmployee(req)
+      await getAuthEmployee(req)
       const { searchParams } = new URL(req.url)
 
       const filters = {
@@ -61,7 +61,7 @@ class OdooLockerController {
 
   async updateShipment(req: NextRequest) {
     try {
-      const employee = getAuthEmployee(req)
+      const employee = await getAuthEmployee(req)
       const body = await req.json()
       const { id, trackingNumber, odooStageName, comment } = body
 
@@ -89,7 +89,7 @@ class OdooLockerController {
 
   async getLockerShipments(req: NextRequest, lockerId: number) {
     try {
-      getAuthEmployee(req)
+      await getAuthEmployee(req)
       const { searchParams } = new URL(req.url)
       const search = searchParams.get('search') ?? undefined
       const page = parseInt(searchParams.get('page') ?? '1')
@@ -103,7 +103,7 @@ class OdooLockerController {
 
   async createLockerShipment(req: NextRequest, lockerId: number) {
     try {
-      const employee = getAuthEmployee(req)
+      const employee = await getAuthEmployee(req)
       const body = await req.json()
       const { name, description } = body
 
