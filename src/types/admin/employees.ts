@@ -1,3 +1,5 @@
+import type { BaseContractForm } from '@/components/admin/employees/ContractFormFields'
+
 export type IdentificationType = { id: number; code: string; name: string }
 
 export type Employee = {
@@ -21,7 +23,7 @@ export type Role = { id: number; name: string }
 export type Job = { id: number; title: string }
 export type ContractType = { id: number; name: string }
 
-export type EmployeeFormState = {
+export interface EmployeeFormState extends BaseContractForm {
   firstName: string
   lastName: string
   identificationNumber: string
@@ -31,10 +33,4 @@ export type EmployeeFormState = {
   phone: string
   roleId: string
   status: 'ACTIVE' | 'INACTIVE'
-  jobId: string
-  contractTypeId: string
-  salary: string
-  hourlyRate: string
-  startDate: string
-  endDate: string
 }

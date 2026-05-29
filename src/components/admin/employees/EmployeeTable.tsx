@@ -42,17 +42,6 @@ export function EmployeeTable({
       <table role="grid" aria-label="Data table" className="w-full text-sm">
         <thead role="rowgroup">
           <tr role="row" className="border-b border-gray-100 bg-gray-50">
-            <th role="columnheader" className="px-4 py-3 w-10">
-              <input
-                id="selectAll"
-                name="selectAll"
-                type="checkbox"
-                aria-label="Seleccionar todas las filas"
-                checked={employees.length > 0 && selected.size === employees.length}
-                onChange={toggleSelectAll}
-                className="accent-[var(--color-primary)] w-4 h-4"
-              />
-            </th>
             {["Nombre", "Rol", "Cargo", "Estado", "Acciones"].map((h) => {
               const columnKeyMap: Record<string, string> = {
                 Nombre: 'name',
@@ -85,7 +74,6 @@ export function EmployeeTable({
           {loading ? (
             Array.from({ length: 5 }).map((_, i) => (
               <tr role="row" key={i} className="border-b border-gray-50 animate-pulse">
-                <td role="gridcell" className="px-4 py-3"><div className="w-4 h-4 bg-gray-200 rounded"></div></td>
                 <td role="gridcell" className="px-4 py-3">
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-full bg-gray-200 flex-shrink-0"></div>
@@ -103,29 +91,15 @@ export function EmployeeTable({
             ))
           ) : employees.length === 0 ? (
             <tr role="row">
-              <td role="gridcell" colSpan={6} className="text-center py-12 text-gray-600 font-subtitles text-sm">
+              <td role="gridcell" colSpan={5} className="text-center py-12 text-gray-600 font-subtitles text-sm">
                 No se encontraron empleados
               </td>
             </tr>
           ) : sortedEmployees.map(emp => {
             const currentStatus = dirty[emp.id] ?? emp.status
-            const isDirty = dirty[emp.id] !== undefined
-            const isSaving = saving.has(emp.id)
 
             return (
               <tr role="row" key={emp.id} className="border-b border-gray-50 hover:bg-gray-50/50 transition">
-                <td role="gridcell" className="px-4 py-3">
-                  <input
-                    id={`select-${emp.id}`}
-                    name={`select-${emp.id}`}
-                    type="checkbox"
-                    aria-label={`Seleccionar fila de ${emp.name || 'elemento'}`}
-                    checked={selected.has(emp.id)}
-                    onChange={() => toggleSelect(emp.id)}
-                    className="accent-[var(--color-primary)] w-4 h-4"
-                  />
-                </td>
-
                 {/* Name */}
                 <td role="gridcell" className="px-4 py-3">
                   <div className="flex items-center gap-3">
@@ -159,8 +133,9 @@ export function EmployeeTable({
                     role="switch"
                     aria-checked={currentStatus === 'ACTIVE'}
                     onClick={() => toggleStatus(emp.id, emp.status)}
-                    className="switch-btn"
+                    className="switch-btn cursor-not-allowed opacity-80"
                     aria-label={`Cambiar estado de ${emp.name} a ${currentStatus === 'ACTIVE' ? 'inactivo' : 'activo'}`}
+                    disabled
                   >
                     <span className="switch-thumb" />
                   </button>
@@ -192,23 +167,6 @@ export function EmployeeTable({
                         📝
                       </button>
                     </div>
-                    
-                    <button
-                      onClick={() => saveRow(emp.id)}
-                      disabled={!isDirty || isSaving}
-                      className={`
-                        flex items-center gap-1.5 px-3 py-1.5 rounded-[var(--radius-lg)] text-xs font-bold font-subtitles transition-all shadow-sm
-                        ${isDirty && !isSaving
-                          ? 'bg-green-600 text-white hover:bg-green-700 hover:shadow-md'
-                          : 'bg-gray-100 text-gray-600 cursor-not-allowed border border-gray-200'
-                        }
-                      `}
-                    >
-                      {isSaving ? (
-                        <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      ) : '💾'}
-                      <span>{isSaving ? 'Guardando' : 'Guardar'}</span>
-                    </button>
                   </div>
                 </td>
               </tr>

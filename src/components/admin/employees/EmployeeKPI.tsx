@@ -1,19 +1,13 @@
-import { useEffect, useState } from 'react'
+import { useMemo } from 'react'
 import { Employee } from '@/types/admin/employees'
-import { authFetch } from '@/lib/api-client/auth-fetch'
 
 interface EmployeeKPIProps {
   employees: Employee[]
 }
 
 export function EmployeeKPI({ employees }: EmployeeKPIProps) {
-  const [activeCount, setActiveCount] = useState<number | null>(null)
-
-  useEffect(() => {
-    authFetch('/api/employees?status=ACTIVE&limit=1')
-      .then(r => r.json())
-      .then(d => setActiveCount(d.total ?? 0))
-      .catch(() => setActiveCount(0))
+  const activeCount = useMemo(() => {
+    return employees.filter(emp => emp.status === 'ACTIVE').length
   }, [employees])
 
   return (
@@ -25,7 +19,7 @@ export function EmployeeKPI({ employees }: EmployeeKPIProps) {
         <div>
           <p className="font-subtitles text-xs text-white/60 uppercase tracking-wide">Empleados Activos</p>
           <p className="font-titles text-3xl font-extrabold text-white leading-none mt-1">
-            {activeCount === null ? '—' : activeCount}
+            {activeCount}
           </p>
         </div>
       </div>
