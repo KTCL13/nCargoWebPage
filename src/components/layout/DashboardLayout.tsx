@@ -3,7 +3,6 @@
 import { useState } from 'react'
 import { Sidebar, NavItem } from './Sidebar'
 import { Topbar } from './Topbar'
-import { BottomNav } from './BottomNav'
 import { useAuth } from '@/context/AuthContext'
 
 interface DashboardLayoutProps {
@@ -19,12 +18,11 @@ export function DashboardLayout({
   navItems,
   onReload,
 }: DashboardLayoutProps) {
-
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const { user, logout } = useAuth()
 
   return (
-    <div className="flex min-h-screen bg-[var(--color-nc-white)] text-gray-800 font-body pb-[65px] md:pb-0">
+    <div className="flex min-h-screen bg-[var(--color-nc-white)] text-gray-800 font-body">
 
       <Sidebar
         items={navItems}
@@ -48,7 +46,6 @@ export function DashboardLayout({
           {children}
         </main>
 
-        <BottomNav items={navItems} userRole={user?.role || ''} />
       </div>
     </div>
   )
