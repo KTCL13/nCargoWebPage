@@ -9,6 +9,7 @@ jest.mock('../../repositories/job.repository', () => ({
     findAll: jest.fn(),
     count: jest.fn().mockResolvedValue(0),
     findById: jest.fn(),
+    findByTitle: jest.fn().mockResolvedValue(null),
     create: jest.fn(),
     update: jest.fn(),
     delete: jest.fn(),

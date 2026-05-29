@@ -13,10 +13,10 @@ export const pickupPointsClient = {
         ...(token ? { Authorization: `Bearer ${token}` } : {})
       },
       body: JSON.stringify({
-        ...form,
+        name: form.name,
+        address: form.address,
         latitude: parseFloat(form.latitude),
         longitude: parseFloat(form.longitude),
-        coverageRadiusMiles: form.coverageRadiusMiles ? parseFloat(form.coverageRadiusMiles) : null
       })
     });
     

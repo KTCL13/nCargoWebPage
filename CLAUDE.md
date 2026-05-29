@@ -55,6 +55,27 @@ JWT-based, stateless. The token payload is `{ id, email, role }`.
 - `src/context/AuthContext.tsx` — client-side React context; stores `auth_user` and `auth_token` in `localStorage`.
 - Roles: `ADMIN` and `EMPLOYEE`. Authorization is done manually in controllers/services by checking `employee.role`.
 
+**Mandatory convention — every write endpoint must begin with auth:**
+
+```typescript
+// All POST / PUT / PATCH / DELETE handlers must start with:
+const employee = await getAuthEmployee(req)   // authenticated user or 401
+// For admin-only operations:
+const employee = await requireAdmin(req)      // ADMIN role required or 403
+```
+
+No exceptions. Public endpoints (e.g. `POST /api/cotizaciones/calcular`) must be explicitly listed as intentional exceptions in this file.
+
+**Role-based data access for GET endpoints:**
+
+When an endpoint returns records that belong to a specific employee (quotations, attendance, tasks), filter by role:
+
+```typescript
+const where = employee.role === 'ADMIN' ? {} : { employeeId: employee.id }
+```
+
+ADMIN sees all records; EMPLOYEE sees only their own.
+
 ### Frontend
 
 - **`'use client'`** pages under `src/app/admin/` and `src/app/employee/` are all client components that fetch from the API using the token from `useAuth()`.

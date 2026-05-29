@@ -3,6 +3,9 @@ const nextConfig = {
   reactStrictMode: true,
   productionBrowserSourceMaps: true,
 
+  // Required for Docker standalone deployment (see dockerize.md)
+  output: 'standalone',
+
   serverExternalPackages: ["@prisma/client", "prisma", "pdfkit", "exceljs"],
 
   experimental: {

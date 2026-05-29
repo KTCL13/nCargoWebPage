@@ -29,6 +29,7 @@ export type Office = {
   address: string
   latitude: number | string
   longitude: number | string
+  isActive?: boolean
 }
 
 export type Dimensions = {

@@ -5,6 +5,7 @@ type AuditLogParams = {
     entityId: number
     action: string
     performedBy?: number | null
+    ipAddress?: string | null
     oldValues?: object
     newValues?: object
 }
@@ -16,6 +17,7 @@ export async function auditLog(params: AuditLogParams): Promise<void> {
             entityId: params.entityId,
             action: params.action,
             performedBy: params.performedBy ?? null,
+            ipAddress: params.ipAddress ?? null,
             oldValues: params.oldValues ?? undefined,
             newValues: params.newValues ?? undefined,
         },

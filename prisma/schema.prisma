@@ -387,6 +387,7 @@ model AuditLog {
   entityId    Int       @map("entity_id")
   action      String    @db.VarChar(50)
   performedBy Int?      @map("performed_by")
+  ipAddress   String?   @map("ip_address") @db.VarChar(45)
   oldValues   Json?     @map("old_values")
   newValues   Json?     @map("new_values")
   createdAt   DateTime  @default(now()) @map("created_at")
