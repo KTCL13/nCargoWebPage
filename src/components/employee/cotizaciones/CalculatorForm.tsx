@@ -115,8 +115,10 @@ export function CalculatorForm({
           <input type="number" value={dims.l} onChange={e => setDims(p => ({ ...p, l: e.target.value }))} placeholder="0" min="0" className={inp} />
         </div>
         <div className="flex flex-col gap-1">
-          <label className="font-subtitles text-xs font-semibold text-[var(--color-nc-dark)]/60">💵 Valor declarado (USD)</label>
-          <input type="number" value={valor} onChange={e => setValor(e.target.value)} placeholder="ej. 100" min="0" max="200" className={inp} />
+          <label className="font-subtitles text-xs font-semibold text-[var(--color-nc-dark)]/60">
+            💵 Valor declarado (USD) <span className="font-normal text-[var(--color-nc-dark)]/40">— opcional</span>
+          </label>
+          <input type="number" value={valor} onChange={e => setValor(e.target.value)} placeholder="0" min="0" max="200" className={inp} />
         </div>
       </div>
 

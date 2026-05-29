@@ -101,6 +101,7 @@ model JobHistory {
   contract   Contract  @relation(fields: [contractId], references: [id])
   employee   Employee  @relation(fields: [employeeId], references: [id])
 
+  @@index([employeeId], map: "idx_job_history_employee")
   @@map("job_history")
 }
 
@@ -181,6 +182,7 @@ model AttendanceEvent {
   createdAt        DateTime            @default(now()) @map("created_at")
   attendance       Attendance          @relation(fields: [attendanceId], references: [id])
 
+  @@index([attendanceId, timestamp(sort: Asc)], map: "idx_attendance_events_attendance")
   @@map("attendance_events")
 }
 
@@ -193,6 +195,7 @@ model UserSession {
   deviceInfo Json?     @map("device_info")
   employee   Employee  @relation(fields: [employeeId], references: [id])
 
+  @@index([employeeId, loginAt(sort: Desc)], map: "idx_sessions_employee")
   @@map("user_sessions")
 }
 
@@ -336,6 +339,8 @@ model Shipment {
   quotation          Quotation?         @relation(fields: [quotationId], references: [id])
   status             ShipmentStatus     @relation(fields: [statusId], references: [id])
 
+  @@index([lockerId, createdAt(sort: Desc)], map: "idx_shipments_locker")
+  @@index([statusId, createdAt(sort: Desc)], map: "idx_shipments_status_created")
   @@map("shipments")
 }
 
@@ -377,6 +382,7 @@ model GeneratedDocument {
   createdAt   DateTime  @default(now()) @map("created_at")
   employee    Employee? @relation(fields: [employeeId], references: [id])
 
+  @@index([employeeId, createdAt(sort: Desc)], map: "idx_docs_employee")
   @@map("generated_documents")
 }
 
@@ -458,6 +464,7 @@ model EmployeeAlert {
   createdAt  DateTime  @default(now()) @map("created_at")
   employee   Employee  @relation(fields: [employeeId], references: [id])
 
+  @@index([employeeId, createdAt(sort: Desc)], map: "idx_alerts_employee")
   @@map("employee_alerts")
 }
 

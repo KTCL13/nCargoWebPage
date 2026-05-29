@@ -59,7 +59,7 @@ describe('cotizacionesController.calcular', () => {
             makeReq({ body: { ...validBody, country: 'AR' } }),
         )
         expect(res.status).toBe(400)
-        await expect(res.json()).resolves.toEqual({ message: 'country debe ser CO o MX' })
+        await expect(res.json()).resolves.toEqual({ message: 'Selecciona un país de destino: Colombia (CO) o México (MX)' })
     })
 
     it('G4 wraps service errors in 400', async () => {

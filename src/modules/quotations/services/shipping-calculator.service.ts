@@ -1,14 +1,18 @@
-export const SHIPPING_RATES = {
-    volumetricDivisor: 153,
-    insuranceRate: 0.10,
-    brackets: [
-        { minLb: 1,  maxLb: 14,  type: 'FIXED' as const,  fixed: 36,    perLb: null },
-        { minLb: 15, maxLb: 70,  type: 'PER_LB' as const, fixed: null,  perLb: 2.95 },
-        { minLb: 71, maxLb: 110, type: 'PER_LB' as const, fixed: null,  perLb: 3.15 },
-    ],
+import { prisma } from '@/lib/prisma'
+
+export type ShippingBracket = {
+    minLb: number
+    maxLb: number
+    type: 'FIXED' | 'PER_LB'
+    fixed: number | null
+    perLb: number | null
 }
 
-export type ShippingBracket = (typeof SHIPPING_RATES.brackets)[number]
+export type ShippingRatesConfig = {
+    volumetricDivisor: number
+    insuranceRate: number
+    brackets: ShippingBracket[]
+}
 
 export type ShippingCalculation = {
     weight: number
@@ -20,76 +24,83 @@ export type ShippingCalculation = {
     shippingPrice: number
 }
 
+// Fallback used when SystemConfig keys are missing (first deploy / test env).
+export const DEFAULT_SHIPPING_RATES: ShippingRatesConfig = {
+    volumetricDivisor: 153,
+    insuranceRate: 0.10,
+    brackets: [
+        { minLb: 1,  maxLb: 14,  type: 'FIXED',  fixed: 36,   perLb: null },
+        { minLb: 15, maxLb: 70,  type: 'PER_LB', fixed: null, perLb: 2.95 },
+        { minLb: 71, maxLb: 110, type: 'PER_LB', fixed: null, perLb: 3.15 },
+    ],
+}
+
 const round = (value: number, decimals = 2): number => {
     const factor = 10 ** decimals
     return Math.round(value * factor) / factor
 }
 
 class ShippingCalculatorService {
-    calculateVolumetricWeight(height: number, width: number, length: number): number {
+
+    private async getConfig(): Promise<ShippingRatesConfig> {
+        const rows = await prisma.systemConfig.findMany({
+            where: { key: { in: ['quotation_volumetric_divisor', 'quotation_insurance_rate', 'quotation_brackets'] } },
+        })
+        const map: Record<string, unknown> = Object.fromEntries(rows.map(r => [r.key, r.value]))
+
+        return {
+            volumetricDivisor: map['quotation_volumetric_divisor'] != null
+                ? Number(map['quotation_volumetric_divisor'])
+                : DEFAULT_SHIPPING_RATES.volumetricDivisor,
+            insuranceRate: map['quotation_insurance_rate'] != null
+                ? Number(map['quotation_insurance_rate'])
+                : DEFAULT_SHIPPING_RATES.insuranceRate,
+            brackets: Array.isArray(map['quotation_brackets'])
+                ? (map['quotation_brackets'] as ShippingBracket[])
+                : DEFAULT_SHIPPING_RATES.brackets,
+        }
+    }
+
+    calculateVolumetricWeight(height: number, width: number, length: number, divisor = DEFAULT_SHIPPING_RATES.volumetricDivisor): number {
         if (height <= 0 || width <= 0 || length <= 0) return 0
-        return round((height * width * length) / SHIPPING_RATES.volumetricDivisor)
+        return round((height * width * length) / divisor)
     }
 
     calculateChargeableWeight(weight: number, volumetricWeight: number): number {
         return round(Math.max(weight, volumetricWeight))
     }
 
-    private resolveBracket(chargeableWeight: number): ShippingBracket {
-        const bracket = SHIPPING_RATES.brackets.find(
-            b => chargeableWeight >= b.minLb && chargeableWeight <= b.maxLb,
-        )
-        if (!bracket) {
-            const max = SHIPPING_RATES.brackets[SHIPPING_RATES.brackets.length - 1].maxLb
-            throw new Error(`Peso ${chargeableWeight} lb fuera de rango (1-${max} lb)`)
-        }
-        return bracket
-    }
-
-    calculateShippingPrice(chargeableWeight: number): {
+    calculateShippingPrice(chargeableWeight: number, brackets: ShippingBracket[] = DEFAULT_SHIPPING_RATES.brackets): {
         rateType: 'FIXED' | 'PER_LB'
         ratePerLb: number | null
         fixedRate: number | null
         shippingPrice: number
     } {
-        const bracket = this.resolveBracket(chargeableWeight)
+        const bracket = brackets.find(b => chargeableWeight >= b.minLb && chargeableWeight <= b.maxLb)
+        if (!bracket) {
+            const max = brackets[brackets.length - 1]?.maxLb ?? 110
+            throw new Error(`Peso ${chargeableWeight} lb fuera de rango (1-${max} lb)`)
+        }
         const shippingPrice = bracket.type === 'FIXED'
             ? bracket.fixed!
             : round(chargeableWeight * bracket.perLb!)
 
-        return {
-            rateType: bracket.type,
-            ratePerLb: bracket.perLb,
-            fixedRate: bracket.fixed,
-            shippingPrice,
-        }
+        return { rateType: bracket.type, ratePerLb: bracket.perLb, fixedRate: bracket.fixed, shippingPrice }
     }
 
-    calculateInsurance(declaredValue: number): number {
+    async calculateInsurance(declaredValue: number): Promise<number> {
         if (declaredValue <= 0) return 0
-        return round(declaredValue * SHIPPING_RATES.insuranceRate)
+        const { insuranceRate } = await this.getConfig()
+        return round(declaredValue * insuranceRate)
     }
 
-    calculateShipping(input: {
-        weight: number
-        height: number
-        width: number
-        length: number
-    }): ShippingCalculation {
-        const volumetricWeight = this.calculateVolumetricWeight(input.height, input.width, input.length)
+    async calculateShipping(input: { weight: number; height: number; width: number; length: number }): Promise<ShippingCalculation> {
+        const cfg = await this.getConfig()
+        const volumetricWeight = this.calculateVolumetricWeight(input.height, input.width, input.length, cfg.volumetricDivisor)
         const chargeableWeight = this.calculateChargeableWeight(input.weight, volumetricWeight)
-        const { rateType, ratePerLb, fixedRate, shippingPrice } =
-            this.calculateShippingPrice(chargeableWeight)
+        const { rateType, ratePerLb, fixedRate, shippingPrice } = this.calculateShippingPrice(chargeableWeight, cfg.brackets)
 
-        return {
-            weight: input.weight,
-            volumetricWeight,
-            chargeableWeight,
-            rateType,
-            ratePerLb,
-            fixedRate,
-            shippingPrice,
-        }
+        return { weight: input.weight, volumetricWeight, chargeableWeight, rateType, ratePerLb, fixedRate, shippingPrice }
     }
 }
 

@@ -13,7 +13,11 @@
       "Bash(git stash *)",
       "Bash(ls -la \"c:\\\\Users\\\\Brayan\\\\Desktop\\\\Proyecto N-cargo\\\\nCargoWebPage\\\\\" | grep -i env)",
       "Read(//c/Users/Brayan/Desktop/Proyecto N-cargo/**)",
-      "Bash(xargs ls)"
+      "Bash(xargs ls)",
+      "Bash(npm test *)",
+      "Bash(npx jest *)",
+      "Bash(node -e \"require\\('zod'\\)\")",
+      "Bash(xargs ls -la)"
     ]
   }
 }

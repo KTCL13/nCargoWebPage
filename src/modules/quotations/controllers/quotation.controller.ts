@@ -1,35 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { quotationService } from '../services/quotation.service'
-import { SimpleCalculatorDto } from '../dtos/simple-calculator.dto'
+import { SimpleCalculatorSchema } from '../dtos/simple-calculator.dto'
 
-const REQUIRED_FIELDS = ['city', 'weight', 'height', 'width', 'length', 'declaredValue'] as const
-
-function parseSimpleCalculatorBody(body: unknown): SimpleCalculatorDto {
-    if (!body || typeof body !== 'object') throw new Error('Body inválido')
-    const raw = body as Record<string, unknown>
-
-    for (const field of REQUIRED_FIELDS) {
-        if (raw[field] === undefined || raw[field] === null || raw[field] === '') {
-            throw new Error(`Campo obligatorio faltante: ${field}`)
-        }
+function parseSimpleCalculatorBody(body: unknown) {
+    const result = SimpleCalculatorSchema.safeParse(body)
+    if (!result.success) {
+        const first = result.error.issues[0]
+        throw new Error(first?.message ?? 'Datos de entrada inválidos')
     }
-
-    const numeric = (key: string): number => {
-        const value = Number(raw[key])
-        if (!Number.isFinite(value)) throw new Error(`Campo "${key}" debe ser numérico`)
-        return value
-    }
-
-    return {
-        city: String(raw.city).trim(),
-        weight: numeric('weight'),
-        height: numeric('height'),
-        width: numeric('width'),
-        length: numeric('length'),
-        declaredValue: numeric('declaredValue'),
-        employeeId: raw.employeeId !== undefined ? Number(raw.employeeId) : undefined,
-        odooCustomerId: raw.odooCustomerId !== undefined ? Number(raw.odooCustomerId) : undefined,
-    }
+    return result.data
 }
 
 class QuotationController {

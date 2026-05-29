@@ -5,10 +5,7 @@ import {
   SimpleQuotationResponseDto,
 } from "../dtos/quotation-calculation.dto";
 import { quotationRepository } from "../repositories/quotation.repository";
-import {
-  SHIPPING_RATES,
-  shippingCalculatorService,
-} from "./shipping-calculator.service";
+import { shippingCalculatorService } from "./shipping-calculator.service";
 
 const round = (value: number, decimals = 2): number => {
   const factor = 10 ** decimals;
@@ -26,28 +23,23 @@ class QuotationService {
     return employee.id;
   }
 
-  private buildSimpleCalculation(
+  private async buildSimpleCalculation(
     input: SimpleCalculatorDto,
-  ): QuotationCalculationDto {
-    const shipping = shippingCalculatorService.calculateShipping({
+  ): Promise<QuotationCalculationDto> {
+    const shipping = await shippingCalculatorService.calculateShipping({
       weight: input.weight,
       height: input.height,
       width: input.width,
       length: input.length,
     });
 
-    const insurance = shippingCalculatorService.calculateInsurance(
+    const insurance = await shippingCalculatorService.calculateInsurance(
       input.declaredValue,
     );
     const subtotal = round(shipping.shippingPrice + insurance);
     const total = subtotal;
 
-    return {
-      shipping,
-      insurance,
-      subtotal,
-      total,
-    };
+    return { shipping, insurance, subtotal, total };
   }
 
   async calculateSimple(
@@ -59,7 +51,7 @@ class QuotationService {
   async createSimple(
     input: SimpleCalculatorDto,
   ): Promise<SimpleQuotationResponseDto> {
-    const calculation = this.buildSimpleCalculation(input);
+    const calculation = await this.buildSimpleCalculation(input);
 
     // Resolve destination location (city)
     const destinationLocation = await prisma.location.findFirst({

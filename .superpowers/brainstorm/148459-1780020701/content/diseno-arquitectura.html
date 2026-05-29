@@ -1,0 +1,89 @@
+<h2>Diseño — Sección 1: Arquitectura de componentes</h2>
+<p class="subtitle">Tres piezas nuevas, dos zonas de aplicación. ¿Se ve correcta esta estructura?</p>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:20px;">
+
+  <!-- Piezas nuevas -->
+  <div>
+    <h3 style="font-size:13px;margin-bottom:12px;color:#1D4ED8;">📦 Piezas nuevas</h3>
+
+    <div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:10px;padding:14px;margin-bottom:10px;">
+      <div style="font-size:12px;font-weight:700;font-family:monospace;color:#1E40AF;margin-bottom:4px;">src/components/ui/AuthFormCard.tsx</div>
+      <div style="font-size:11px;color:#374151;line-height:1.6;">Layout de dos columnas: imagen a la izquierda (desktop), card blanca centrada a la derecha. Recibe <code>title</code>, <code>subtitle?</code>, <code>imageSrc?</code> y <code>children</code>.</div>
+      <div style="font-size:10px;margin-top:8px;background:#DBEAFE;border-radius:6px;padding:8px;font-family:monospace;color:#1E40AF;">
+        &lt;AuthFormCard title="LOGIN"&gt;<br>
+        &nbsp;&nbsp;&lt;form&gt;…&lt;/form&gt;<br>
+        &lt;/AuthFormCard&gt;
+      </div>
+    </div>
+
+    <div style="background:#F0FDF4;border:1px solid #BBF7D0;border-radius:10px;padding:14px;margin-bottom:10px;">
+      <div style="font-size:12px;font-weight:700;font-family:monospace;color:#15803D;margin-bottom:4px;">src/components/ui/ModalShell.tsx</div>
+      <div style="font-size:11px;color:#374151;line-height:1.6;">Envuelve todos los modales. Gestiona overlay, cabecera (título + subtítulo + ✕), área scrollable y pie con botón <strong>Cancelar</strong> + slot para acción primaria. Si <code>isDirty</code>, intercepta Cancelar con "¿Descartar cambios?".</div>
+      <div style="font-size:10px;margin-top:8px;background:#DCFCE7;border-radius:6px;padding:8px;font-family:monospace;color:#15803D;">
+        &lt;ModalShell<br>
+        &nbsp;&nbsp;isOpen title subtitle<br>
+        &nbsp;&nbsp;onClose isDirty<br>
+        &nbsp;&nbsp;footer={&lt;button&gt;Guardar&lt;/button&gt;}<br>
+        &gt;<br>
+        &nbsp;&nbsp;{/* contenido del form */}<br>
+        &lt;/ModalShell&gt;
+      </div>
+    </div>
+
+    <div style="background:#FFF7ED;border:1px solid #FED7AA;border-radius:10px;padding:14px;">
+      <div style="font-size:12px;font-weight:700;font-family:monospace;color:#C2410C;margin-bottom:4px;">src/hooks/useDirtyForm.ts</div>
+      <div style="font-size:11px;color:#374151;line-height:1.6;">Hook minimalista. Toma <code>initial</code> y <code>current</code>. Compara con deep equality. Devuelve <code>boolean</code>. Sin gestión de estado propia — los componentes ya tienen su propio state.</div>
+      <div style="font-size:10px;margin-top:8px;background:#FFEDD5;border-radius:6px;padding:8px;font-family:monospace;color:#C2410C;">
+        const isDirty = useDirtyForm(initialForm, form)
+      </div>
+    </div>
+  </div>
+
+  <!-- Zonas de aplicación -->
+  <div>
+    <h3 style="font-size:13px;margin-bottom:12px;color:#7C3AED;">🎯 Zonas de aplicación</h3>
+
+    <div style="background:#F5F3FF;border:1px solid #DDD6FE;border-radius:10px;padding:14px;margin-bottom:10px;">
+      <div style="font-size:12px;font-weight:700;color:#5B21B6;margin-bottom:8px;">Auth pages (3 archivos)</div>
+      <div style="font-size:11px;color:#374151;line-height:1.7;">
+        <div style="padding:3px 0;border-bottom:1px solid #EDE9FE;">📄 <code>login/page.tsx</code> — adopta AuthFormCard, borra FONTS/CLASSES</div>
+        <div style="padding:3px 0;border-bottom:1px solid #EDE9FE;">📄 <code>forgot-password/page.tsx</code> + <code>ForgotPasswordClient.tsx</code></div>
+        <div style="padding:3px 0;">📄 <code>reset-password/[token]/page.tsx</code></div>
+      </div>
+      <div style="font-size:10px;margin-top:8px;color:#6D28D9;background:#EDE9FE;border-radius:6px;padding:6px;">Cada página queda como solo: &lt;AuthFormCard title="…"&gt;&lt;form&gt;…&lt;/form&gt;&lt;/AuthFormCard&gt;</div>
+    </div>
+
+    <div style="background:#FDF2F8;border:1px solid #F9A8D4;border-radius:10px;padding:14px;margin-bottom:10px;">
+      <div style="font-size:12px;font-weight:700;color:#9D174D;margin-bottom:8px;">Modales del dashboard (6 modales)</div>
+      <div style="font-size:11px;color:#374151;line-height:1.7;">
+        <div style="padding:3px 0;border-bottom:1px solid #FCE7F3;">🗂 EmployeeModal (Admin)</div>
+        <div style="padding:3px 0;border-bottom:1px solid #FCE7F3;">🗂 ContractModal (Admin)</div>
+        <div style="padding:3px 0;border-bottom:1px solid #FCE7F3;">🗂 Modal en CotizacionesClient (Admin)</div>
+        <div style="padding:3px 0;border-bottom:1px solid #FCE7F3;">🗂 Modal/drawer en ContratosClient (Admin)</div>
+        <div style="padding:3px 0;border-bottom:1px solid #FCE7F3;">🗂 NewTaskModal (Employee)</div>
+        <div style="padding:3px 0;">🗂 OdooModal (Employee)</div>
+      </div>
+      <div style="font-size:10px;margin-top:8px;color:#9D174D;background:#FCE7F3;border-radius:6px;padding:6px;">Todos adoptan ModalShell + useDirtyForm. Cancelar: confirm si dirty, cierra directo si clean.</div>
+    </div>
+
+    <div style="background:#F0FDF4;border:1px solid #BBF7D0;border-radius:10px;padding:14px;">
+      <div style="font-size:12px;font-weight:700;color:#15803D;margin-bottom:6px;">Navegación móvil</div>
+      <div style="font-size:11px;color:#374151;line-height:1.7;">
+        <div>✂ Eliminar <code>BottomNav.tsx</code> + su import en <code>DashboardLayout</code></div>
+        <div>✂ Eliminar <code>pb-[65px] md:pb-0</code> del wrapper</div>
+        <div style="margin-top:6px;">✓ Solo queda hamburger → Sidebar en móvil</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div style="margin-top:20px;padding:12px;background:#FFFBEB;border:1px solid #FDE68A;border-radius:10px;font-size:11px;color:#92400E;">
+  <strong>Token cleanup adicional</strong> — algunos componentes del dashboard también tienen hardcodes menores
+  (<code>Charts.tsx</code>, <code>MetricCards.tsx</code>, <code>KanbanBoard.tsx</code>). Se limpian junto con las auth pages en la misma pasada.
+</div>
+
+<div style="margin-top:16px;text-align:center;">
+  <p style="font-size:13px;color:#374151;">¿Esta arquitectura se ve correcta? ✦ Responde en el terminal cuando estés listo.</p>
+</div>

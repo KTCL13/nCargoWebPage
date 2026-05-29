@@ -15,7 +15,7 @@ export function useCotizacionesForm() {
   const volWeight = Math.ceil((parse(dims.h) * parse(dims.w) * parse(dims.l)) / 153)
 
   const isValid = (flatRateEnabled: boolean) =>
-    !!weight && !!dims.h && !!dims.w && !!dims.l && valor !== '' &&
+    !!weight && !!dims.h && !!dims.w && !!dims.l &&
     (flatRateEnabled || !!cityId)
 
   return {

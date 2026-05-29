@@ -1,0 +1,95 @@
+<h2>Diseño — Sección 3: AuthFormCard</h2>
+<p class="subtitle">Layout unificado para login, recuperar contraseña y reset. ¿Aprobamos?</p>
+
+<div class="split" style="gap:20px;margin-top:20px;align-items:flex-start;">
+
+  <!-- ACTUAL: tres páginas distintas -->
+  <div class="mockup" style="flex:1;">
+    <div class="mockup-header">Hoy — 3 páginas con markup duplicado</div>
+    <div class="mockup-body" style="background:#FFF3CD;padding:14px;font-size:11px;color:#92400E;line-height:1.7;">
+      <div style="margin-bottom:10px;padding:8px;background:#FEF3C7;border-radius:8px;">
+        <strong>login/page.tsx</strong><br>
+        FONTS const + CLASSES const<br>
+        layout dos columnas inline<br>
+        style=&#123;&#123;fontFamily:FONTS.title&#125;&#125; en cada elemento<br>
+        bg-gradient-to-r from-[#040626] to-[#FF003B]
+      </div>
+      <div style="margin-bottom:10px;padding:8px;background:#FEF3C7;border-radius:8px;">
+        <strong>forgot-password/page.tsx</strong><br>
+        FONTS const duplicado<br>
+        Mismo layout dos columnas<br>
+        Misma imagen de fondo<br>
+        Mismo gradiente hardcodeado
+      </div>
+      <div style="padding:8px;background:#FEF3C7;border-radius:8px;">
+        <strong>reset-password/[token]/page.tsx</strong><br>
+        style=&#123;&#123;fontFamily:"'Montserrat'"&#125;&#125;<br>
+        bg-[#FF003B] hardcodeado<br>
+        Tercer layout diferente
+      </div>
+    </div>
+  </div>
+
+  <!-- NUEVO: AuthFormCard -->
+  <div class="mockup" style="flex:1;">
+    <div class="mockup-header">Con AuthFormCard — cada página solo aporta su form</div>
+    <div class="mockup-body" style="padding:0;overflow:hidden;background:#F9FAFB;">
+      <!-- Mockup visual del layout -->
+      <div style="display:flex;height:260px;">
+        <!-- Panel izq -->
+        <div style="width:52%;background:linear-gradient(135deg,#040626 0%,#0C1E8C 50%,#FF003B 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;position:relative;">
+          <div style="position:absolute;inset:0;background:url('/images/website/55.PNG') center/cover;opacity:0.3;"></div>
+          <div style="position:relative;z-index:1;text-align:center;">
+            <div style="color:white;font-size:16px;font-weight:900;line-height:1.2;text-transform:uppercase;letter-spacing:-0.5px;">Conectando<br>Familias</div>
+            <div style="color:rgba(255,255,255,0.7);font-size:10px;margin-top:6px;">Gestiona envíos con N-Cargo</div>
+          </div>
+        </div>
+        <!-- Panel der -->
+        <div style="flex:1;background:white;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;">
+          <div style="width:100%;max-width:220px;">
+            <div style="font-size:14px;font-weight:900;text-transform:uppercase;letter-spacing:-0.3px;color:#040626;text-align:center;margin-bottom:12px;">LOGIN</div>
+            <div style="margin-bottom:8px;">
+              <label style="font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#6B7280;display:block;margin-bottom:3px;">EMAIL</label>
+              <div style="border:1px solid #E5E7EB;border-radius:8px;padding:7px 10px;font-size:10px;color:#9CA3AF;background:#F9FAFB;">correo@ejemplo.com</div>
+            </div>
+            <div style="margin-bottom:10px;">
+              <label style="font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#6B7280;display:block;margin-bottom:3px;">CONTRASEÑA</label>
+              <div style="border:1px solid #E5E7EB;border-radius:8px;padding:7px 10px;font-size:10px;color:#9CA3AF;background:#F9FAFB;">••••••••</div>
+            </div>
+            <button style="width:100%;padding:8px;border-radius:8px;border:none;background:#FF003B;color:white;font-size:10px;font-weight:700;">Iniciar sesión</button>
+          </div>
+        </div>
+      </div>
+      <!-- Código resultante -->
+      <div style="padding:10px 14px;background:#F0FDF4;border-top:1px solid #BBF7D0;">
+        <div style="font-size:10px;font-family:monospace;color:#15803D;line-height:1.7;">
+          <span style="color:#6B7280;">// login/page.tsx — así de simple queda:</span><br>
+          &lt;AuthFormCard title="LOGIN"&gt;<br>
+          &nbsp;&nbsp;&lt;LoginForm /&gt;<br>
+          &lt;/AuthFormCard&gt;
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div style="margin-top:16px;background:#F8FAFC;border-radius:10px;border:1px solid #E2E8F0;padding:14px;">
+  <h3 style="font-size:12px;margin-bottom:8px;color:#374151;">API del componente</h3>
+  <div style="font-size:11px;font-family:monospace;color:#1E40AF;background:#EFF6FF;border-radius:8px;padding:12px;line-height:1.8;">
+    &lt;AuthFormCard<br>
+    &nbsp;&nbsp;title="LOGIN"<br>
+    &nbsp;&nbsp;subtitle="Ingresa tus credenciales"  <span style="color:#15803D;">// opcional</span><br>
+    &nbsp;&nbsp;imageSrc="/images/website/55.PNG"   <span style="color:#15803D;">// opcional, tiene default</span><br>
+    &gt;<br>
+    &nbsp;&nbsp;{/* solo el formulario */}<br>
+    &lt;/AuthFormCard&gt;
+  </div>
+  <div style="margin-top:10px;font-size:11px;color:#374151;">
+    El layout dos-columnas, la imagen de fondo, el overlay degradado y la tipografía viven dentro del componente. Las 3 páginas dejan de duplicar esa estructura.
+  </div>
+</div>
+
+<div style="margin-top:16px;text-align:center;">
+  <p style="font-size:13px;color:#374151;">¿Aprobamos AuthFormCard? ✦ Responde en el terminal.</p>
+</div>

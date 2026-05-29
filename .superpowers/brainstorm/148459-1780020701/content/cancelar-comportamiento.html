@@ -1,0 +1,49 @@
+<h2>¿Qué hace el botón "Cancelar" en un modal?</h2>
+<p class="subtitle">El usuario está editando un formulario a medias. ¿Qué pasa cuando presiona Cancelar?</p>
+
+<div class="options" style="margin-top:20px;">
+
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Cierra y descarta — sin preguntar</h3>
+      <p>El modal se cierra inmediatamente. Al reabrirlo el formulario aparece vacío (o con los datos guardados originales). Comportamiento más simple. Sin confirmación.</p>
+      <div style="margin-top:10px;background:#F3F4F6;border-radius:8px;padding:10px;font-size:11px;font-family:monospace;color:#374151;">
+        [Modal abierto con datos a medias]<br>
+        → clic en Cancelar<br>
+        → modal cierra<br>
+        → al reabrir: formulario limpio / datos originales
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Cierra pero preserva el borrador</h3>
+      <p>El modal se cierra. Al reabrirlo el usuario ve exactamente lo que tenía escrito antes de cancelar. Útil para formularios largos donde el usuario puede cerrar accidentalmente o necesitar consultar algo antes de terminar.</p>
+      <div style="margin-top:10px;background:#F3F4F6;border-radius:8px;padding:10px;font-size:11px;font-family:monospace;color:#374151;">
+        [Modal abierto: "Carlos Gómez, tel: 312..."]<br>
+        → clic en Cancelar → modal cierra<br>
+        → al reabrir: "Carlos Gómez, tel: 312..."<br>
+        <span style="color:#22C55E;">✓ borrador preservado</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Pide confirmación si hay cambios sin guardar</h3>
+      <p>Si el formulario no fue modificado, cierra sin preguntar. Si tiene cambios sin guardar, muestra "¿Descartar cambios?" antes de cerrar. El que más protege contra pérdida accidental de datos.</p>
+      <div style="margin-top:10px;background:#F3F4F6;border-radius:8px;padding:10px;font-size:11px;font-family:monospace;color:#374151;">
+        [si sin cambios] → clic en Cancelar → cierra<br>
+        [si con cambios] → clic en Cancelar →<br>
+        &nbsp;&nbsp;"¿Descartar cambios?" [Sí / No]<br>
+        &nbsp;&nbsp;→ Sí: cierra y descarta<br>
+        &nbsp;&nbsp;→ No: vuelve al formulario
+      </div>
+    </div>
+  </div>
+
+</div>
