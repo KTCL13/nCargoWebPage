@@ -5,8 +5,7 @@
 //   GRUPO 1 — Happy path
 //   GRUPO 2 — Errores de negocio controlados
 //   GRUPO 3 — Casos inválidos que el sistema maneja (// caso inválido controlado)
-// Nota: los endpoints de /tasks no usan getAuthEmployee, por lo que no hay
-//       rama 401 implementada. Los errores "not found" se responden como 400.
+//   GRUPO 4 — Sin token → 401 (todos los métodos protegidos)
 // =====================================================================
 
 jest.mock('next/server', () => {
@@ -42,6 +41,7 @@ jest.mock('@/lib/auth-guard', () => ({
 
 import { taskController } from '../task.controller'
 import { taskService } from '../../services/task.service'
+import { getAuthEmployee, requireAdmin } from '@/lib/auth-guard'
 
 const mocked = <T extends (...args: any) => any>(fn: T) => fn as unknown as jest.Mock
 
@@ -376,5 +376,56 @@ describe('taskController.checkOverdue (POST /tasks/check-overdue)', () => {
 
     expect(res.status).toBe(200)
     await expect(res.json()).resolves.toEqual({ message: 'Overdue tasks processed' })
+  })
+})
+
+// =====================================================================
+// GRUPO 4 — Sin token → todos los métodos deben responder 401
+// Verifica que auth errors no queden tragados por el catch de negocio (400)
+// =====================================================================
+describe('GRUPO 4 — sin token → 401 en todos los métodos protegidos', () => {
+  const noToken = () => { throw new Error('Token no proporcionado') }
+  const forbidden = () => { throw new Error('Forbidden: se requiere rol ADMIN') }
+
+  it('assignTask sin token → 401', async () => {
+    mocked(getAuthEmployee).mockImplementationOnce(noToken)
+    const res: any = await taskController.assignTask(makeReq({ body: { title: 'T', employeeId: 1 } }))
+    expect(res.status).toBe(401)
+  })
+
+  it('reassignTask sin token → 401', async () => {
+    mocked(getAuthEmployee).mockImplementationOnce(noToken)
+    const res: any = await taskController.reassignTask(
+      makeReq({ url: 'http://localhost/api/tasks/reassign?id=1', body: { newEmployeeId: 2 } }),
+    )
+    expect(res.status).toBe(401)
+  })
+
+  it('update sin token → 401', async () => {
+    mocked(getAuthEmployee).mockImplementationOnce(noToken)
+    const res: any = await taskController.update(
+      makeReq({ url: 'http://localhost/api/tasks?id=1', body: { status: 'COMPLETED' } }),
+    )
+    expect(res.status).toBe(401)
+  })
+
+  it('bulkAssign sin token → 401', async () => {
+    mocked(getAuthEmployee).mockImplementationOnce(noToken)
+    const res: any = await taskController.bulkAssign(
+      makeReq({ body: { title: 'T', employeeIds: [1, 2] } }),
+    )
+    expect(res.status).toBe(401)
+  })
+
+  it('remove con rol EMPLOYEE → 403', async () => {
+    mocked(requireAdmin).mockImplementationOnce(forbidden)
+    const res: any = await taskController.remove(makeReq({ url: 'http://localhost/api/tasks?id=1' }))
+    expect(res.status).toBe(403)
+  })
+
+  it('findAll sin token → 401', async () => {
+    mocked(getAuthEmployee).mockImplementationOnce(noToken)
+    const res: any = await taskController.findAll(makeReq())
+    expect(res.status).toBe(401)
   })
 })

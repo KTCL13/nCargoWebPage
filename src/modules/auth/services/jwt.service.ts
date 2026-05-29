@@ -35,7 +35,7 @@ class JwtService {
 
     verify(token: string): JwtPayload {
         try {
-            return jwt.verify(token, loadSecret()) as JwtPayload
+            return jwt.verify(token, loadSecret(), { algorithms: ['HS256'] }) as JwtPayload
         } catch {
             throw new Error('Token inválido o expirado')
         }

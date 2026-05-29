@@ -66,6 +66,10 @@ const employee = await requireAdmin(req)      // ADMIN role required or 403
 
 No exceptions. Public endpoints (e.g. `POST /api/cotizaciones/calcular`) must be explicitly listed as intentional exceptions in this file.
 
+Endpoints públicos permitidos sin guard: `auth/login`, `auth/register`, `auth/forgot-password`, `auth/reset-password`, `cotizaciones/calcular`, `cotizaciones/ciudades`, `docs`.
+
+El JWT se firma y verifica con **HS256** explícito en `src/modules/auth/services/jwt.service.ts`. No usar `jwt.decode()` directamente — siempre `getAuthEmployee()`.
+
 **Role-based data access for GET endpoints:**
 
 When an endpoint returns records that belong to a specific employee (quotations, attendance, tasks), filter by role:

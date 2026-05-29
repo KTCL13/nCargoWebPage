@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { quotationService } from '../services/quotation.service'
 import { SimpleCalculatorSchema } from '../dtos/simple-calculator.dto'
+import { getAuthEmployee } from '@/lib/auth-guard'
 
 function parseSimpleCalculatorBody(body: unknown) {
     const result = SimpleCalculatorSchema.safeParse(body)
@@ -14,6 +15,7 @@ function parseSimpleCalculatorBody(body: unknown) {
 class QuotationController {
     async calculateSimple(req: NextRequest) {
         try {
+            getAuthEmployee(req)
             const dto = parseSimpleCalculatorBody(await req.json())
             const result = await quotationService.calculateSimple(dto)
             return NextResponse.json(result, { status: 200 })
@@ -27,6 +29,7 @@ class QuotationController {
 
     async createSimple(req: NextRequest) {
         try {
+            getAuthEmployee(req)
             const dto = parseSimpleCalculatorBody(await req.json())
             const result = await quotationService.createSimple(dto)
             return NextResponse.json(result, { status: 201 })
