@@ -3,6 +3,8 @@ import { TaskAssignedEvent } from '../events/task-assigned.event'
 import { TaskReassignedEvent } from '../events/task-reassigned.event'
 import { TaskNotDoneEvent } from '../events/task-not-done.event'
 import { TaskCompletedEvent } from '../events/task-completed.event'
+import { TaskCancelledEvent } from '../events/task-cancelled.event'
+import { TaskDueSoonEvent } from '../events/task-due-soon.event'
 
 class InAppNotificationListener {
     async handleTaskAssigned(event: TaskAssignedEvent): Promise<void> {
@@ -63,6 +65,33 @@ class InAppNotificationListener {
             `${event.employeeName} completó la tarea "${event.taskTitle}".`,
             { taskId: event.taskId },
         )
+    }
+
+    async handleTaskCancelled(event: TaskCancelledEvent): Promise<void> {
+        await inAppNotificationAdapter.notifyEmployee(
+            event.employeeId,
+            'TASK_CANCELLED',
+            `Tu tarea "${event.taskTitle}" ha sido cancelada. Motivo: ${event.reason}`,
+            { taskId: event.taskId },
+        )
+    }
+
+    async handleTaskDueSoon(event: TaskDueSoonEvent): Promise<void> {
+        const formatted = new Date(event.endTime).toLocaleString('es-ES', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
+        await Promise.all([
+            inAppNotificationAdapter.notifyEmployee(
+                event.employeeId,
+                'TASK_DUE_SOON',
+                `⏰ Tu tarea "${event.taskTitle}" vence a las ${formatted}. ¡Complétala a tiempo!`,
+                { taskId: event.taskId },
+            ),
+            inAppNotificationAdapter.notifyEmployee(
+                event.adminId,
+                'TASK_DUE_SOON',
+                `⏰ La tarea "${event.taskTitle}" de ${event.employeeName} vence a las ${formatted}.`,
+                { taskId: event.taskId },
+            ),
+        ])
     }
 }
 

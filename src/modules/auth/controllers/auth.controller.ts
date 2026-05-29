@@ -63,8 +63,8 @@ class AuthController {
 
     async logout(req: NextRequest) {
         try {
-            const employee = getAuthEmployee(req)
-            await authService.logout(employee.id)
+            const employee = await getAuthEmployee(req)
+            await authService.logout(employee.id, employee.jti, getIp(req))
             return new NextResponse(null, { status: 204 })
         } catch (error) {
             const status = error instanceof Error && error.message.includes('Token') ? 401 : 400
@@ -94,11 +94,12 @@ class AuthController {
     }
 
     async resetPassword(req: NextRequest) {
-        const limited = rateLimited('reset-password', getIp(req), 10, 60 * 60_000)
+        const ip = getIp(req)
+        const limited = rateLimited('reset-password', ip, 10, 60 * 60_000)
         if (limited) return limited
         try {
             const body = await req.json()
-            await authService.resetPassword(body)
+            await authService.resetPassword(body, ip)
             return NextResponse.json(
                 { message: 'Contraseña actualizada correctamente.' },
                 { status: 200 }

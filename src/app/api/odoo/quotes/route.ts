@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createSaleOrder, getShippingProductId } from '@/lib/odoo'
 import { quotationRepository } from '@/modules/quotations/repositories/quotation.repository'
 import { getAuthEmployee } from '@/lib/auth-guard'
+import { auditLog } from '@/lib/audit-logger'
 
 type Breakdown = {
   total: number
@@ -45,7 +46,7 @@ function buildDescription(country: string | undefined, q: Breakdown): string {
 
 export async function POST(req: NextRequest) {
   try {
-    getAuthEmployee(req)
+    const employee = await getAuthEmployee(req)
     const body = await req.json()
     const { customerId, quotationData, country, quotationId } = body as {
       customerId: number
@@ -78,6 +79,20 @@ export async function POST(req: NextRequest) {
         })
         .catch((err) => console.error('[Quotation] odoo update failed:', err))
     }
+
+    auditLog({
+      entityType: 'odoo_sale_order',
+      entityId: result.orderId,
+      action: 'CREATE_SALE_ORDER',
+      performedBy: employee.id,
+      newValues: {
+        odooOrderId: result.orderId,
+        odooOrderName: result.name,
+        odooCustomerId: customerId,
+        quotationId: quotationId ?? null,
+        total: result.total,
+      },
+    }).catch(() => { /* non-blocking */ })
 
     return NextResponse.json({
       success: true,

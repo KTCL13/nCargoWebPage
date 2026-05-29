@@ -45,11 +45,10 @@ class EmployeeRepository {
         const where: Prisma.EmployeeWhereInput = {
             ...(status && { status }),
             ...(filter.roleId && {
-                employeeRoles: {
-                    some: {
-                        roleId: filter.roleId,
-                    },
-                },
+                employeeRoles: { some: { roleId: filter.roleId } },
+            }),
+            ...(filter.jobId && {
+                contracts: { some: { jobId: filter.jobId, isActive: true } },
             }),
             ...(search && {
                 OR: [
@@ -129,6 +128,19 @@ class EmployeeRepository {
                 ...(excludeId !== undefined && { id: { not: excludeId } }),
             },
             include: identificationTypeInclude,
+        })
+    }
+
+    async findMinimal(filter: { status?: 'ACTIVE' | 'INACTIVE'; jobId?: number; limit?: number }) {
+        const where: Prisma.EmployeeWhereInput = {
+            ...(filter.status && { status: filter.status }),
+            ...(filter.jobId && { contracts: { some: { jobId: filter.jobId, isActive: true } } }),
+        }
+        return prisma.employee.findMany({
+            where,
+            take: filter.limit ?? 500,
+            orderBy: [{ firstName: 'asc' }, { lastName: 'asc' }],
+            select: { id: true, firstName: true, lastName: true },
         })
     }
 

@@ -5,6 +5,8 @@ import { TaskAssignedEvent } from './events/task-assigned.event'
 import { TaskReassignedEvent } from './events/task-reassigned.event'
 import { TaskNotDoneEvent } from './events/task-not-done.event'
 import { TaskCompletedEvent } from './events/task-completed.event'
+import { TaskCancelledEvent } from './events/task-cancelled.event'
+import { TaskDueSoonEvent } from './events/task-due-soon.event'
 
 eventBus.subscribe('task.assigned',   (e) => emailNotificationListener.handleTaskAssigned(e as TaskAssignedEvent))
 eventBus.subscribe('task.assigned',   (e) => inAppNotificationListener.handleTaskAssigned(e as TaskAssignedEvent))
@@ -13,3 +15,7 @@ eventBus.subscribe('task.reassigned', (e) => inAppNotificationListener.handleTas
 eventBus.subscribe('task.not_done',   (e) => emailNotificationListener.handleTaskNotDone(e as TaskNotDoneEvent))
 eventBus.subscribe('task.not_done',   (e) => inAppNotificationListener.handleTaskNotDone(e as TaskNotDoneEvent))
 eventBus.subscribe('task.completed',  (e) => inAppNotificationListener.handleTaskCompleted(e as TaskCompletedEvent))
+eventBus.subscribe('task.cancelled',  (e) => emailNotificationListener.handleTaskCancelled(e as TaskCancelledEvent))
+eventBus.subscribe('task.cancelled',  (e) => inAppNotificationListener.handleTaskCancelled(e as TaskCancelledEvent))
+eventBus.subscribe('task.due_soon',   (e) => emailNotificationListener.handleTaskDueSoon(e as TaskDueSoonEvent))
+eventBus.subscribe('task.due_soon',   (e) => inAppNotificationListener.handleTaskDueSoon(e as TaskDueSoonEvent))

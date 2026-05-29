@@ -141,13 +141,13 @@ describe('authController.login', () => {
 
 describe('authController.logout', () => {
   it('returns 204 on successful logout', async () => {
-    mocked(getAuthEmployee).mockReturnValue({ id: 7, email: 'a@b.c', role: 'ADMIN' })
+    mocked(getAuthEmployee).mockResolvedValue({ id: 7, email: 'a@b.c', role: 'ADMIN', jti: 'test-jti' })
     mocked(authService.logout).mockResolvedValue(undefined)
 
     const res: any = await authController.logout(makeReq())
 
     expect(res.status).toBe(204)
-    expect(authService.logout).toHaveBeenCalledWith(7)
+    expect(authService.logout).toHaveBeenCalledWith(7, expect.any(String), expect.any(String))
   })
 
   it('returns 401 when token is invalid', async () => {
@@ -174,7 +174,7 @@ describe('authController.logout', () => {
   })
 
   it('returns 400 when a non-token error occurs after auth', async () => {
-    mocked(getAuthEmployee).mockReturnValue({ id: 7, email: 'a@b.c', role: 'ADMIN' })
+    mocked(getAuthEmployee).mockResolvedValue({ id: 7, email: 'a@b.c', role: 'ADMIN', jti: 'test-jti' })
     mocked(authService.logout).mockRejectedValue(new Error('db down'))
 
     const res: any = await authController.logout(makeReq())

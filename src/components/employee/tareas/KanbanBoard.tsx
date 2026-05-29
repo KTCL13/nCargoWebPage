@@ -9,7 +9,7 @@ interface KanbanBoardProps {
 
 const COLUMNS: Column[] = [
   { statuses: ['PENDING'],                  label: 'Por Hacer',   dot: '#9CA3AF' },
-  { statuses: ['IN_PROGRESS'],              label: 'En Proceso',  dot: '#FF003B' },
+  { statuses: ['IN_PROGRESS'],              label: 'En Proceso',  dot: 'var(--color-nc-red)' },
   { statuses: ['COMPLETED'],                label: 'Completado',  dot: '#22C55E' },
   { statuses: ['CANCELLED', 'NOT_DONE'],    label: 'Cancelado',   dot: '#6B7280', archived: true },
 ]

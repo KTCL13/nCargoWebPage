@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/prisma'
-import { Attendance, AttendanceStatus } from '@prisma/client'
+import { Attendance, AttendanceStatus, Prisma } from '@prisma/client'
 import { toZonedTime, fromZonedTime } from 'date-fns-tz'
 import { startOfDay } from 'date-fns'
 
@@ -73,16 +73,27 @@ class AttendanceRepository {
         employeeId: number,
         page: number,
         limit: number,
+        from?: Date,
+        to?: Date,
     ): Promise<{ data: Attendance[]; total: number }> {
+        const where: Prisma.AttendanceWhereInput = {
+            employeeId,
+            ...((from || to) && {
+                startedAt: {
+                    ...(from && { gte: from }),
+                    ...(to && { lte: to }),
+                },
+            }),
+        }
         const [data, total] = await Promise.all([
             prisma.attendance.findMany({
-                where: { employeeId },
+                where,
                 skip: (page - 1) * limit,
                 take: limit,
                 orderBy: { startedAt: 'desc' },
                 include: { events: { orderBy: { timestamp: 'asc' } } },
             }),
-            prisma.attendance.count({ where: { employeeId } }),
+            prisma.attendance.count({ where }),
         ])
         return { data, total }
     }

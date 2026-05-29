@@ -30,6 +30,7 @@ describe('auditLog', () => {
                 entityId: 42,
                 action: 'UPDATE',
                 performedBy: 1,
+                ipAddress: null,
                 oldValues: { name: 'a' },
                 newValues: { name: 'b' },
             },

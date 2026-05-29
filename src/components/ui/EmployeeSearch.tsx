@@ -8,6 +8,7 @@ interface Employee {
   id: number
   firstName: string
   lastName: string
+  email?: string
   identificationNumber: string
   identificationType: {
     name: string
@@ -16,6 +17,17 @@ interface Employee {
 
 function empFullName(emp: Employee) {
   return `${emp.firstName} ${emp.lastName}`
+}
+
+function getMatchedFields(emp: Employee, query: string): Array<{ label: string; value: string }> {
+  const q = query.toLowerCase()
+  const fields: Array<{ label: string; value: string }> = []
+  if (!empFullName(emp).toLowerCase().includes(q) && !emp.identificationNumber.toLowerCase().includes(q)) {
+    if (emp.email?.toLowerCase().includes(q)) {
+      fields.push({ label: 'email', value: emp.email })
+    }
+  }
+  return fields
 }
 
 interface EmployeeSearchProps {
@@ -195,6 +207,7 @@ export function EmployeeSearch({
                 <div className="max-h-60 overflow-y-auto p-2">
                   {results.map((emp) => {
                     const isSelected = multi && selectedMulti.some(e => e.id === emp.id)
+                    const matchedFields = getMatchedFields(emp, debouncedQuery)
                     return (
                       <button
                         key={emp.id}
@@ -209,6 +222,11 @@ export function EmployeeSearch({
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-bold text-gray-900 truncate">{empFullName(emp)}</p>
                           <p className="text-[10px] text-gray-500 font-mono">{emp.identificationType?.name}: {emp.identificationNumber}</p>
+                          {matchedFields.map(f => (
+                            <p key={f.label} className="text-[10px] text-amber-600 font-mono mt-0.5 truncate">
+                              Coincide en {f.label}: {f.value}
+                            </p>
+                          ))}
                         </div>
                         {isSelected && <span className="text-[10px] font-bold text-[var(--color-primary)] uppercase">Seleccionado</span>}
                       </button>

@@ -20,16 +20,17 @@ function authErrorResponse(error: unknown) {
 class JobController {
     async findAll(req: NextRequest) {
         try {
-            requireAdmin(req)
+            await requireAdmin(req)
         } catch (error) {
             return authErrorResponse(error)
         }
         const url = new URL(req.url)
         const page = Number(url.searchParams.get('page')) || 1
         const limit = Number(url.searchParams.get('limit')) || 10
+        const search = url.searchParams.get('search') ?? undefined
 
         try {
-            const result = await jobService.findAll(page, limit)
+            const result = await jobService.findAll(page, limit, search)
             return NextResponse.json(result, { status: 200 })
         } catch (error: unknown) {
             return NextResponse.json(
@@ -41,7 +42,7 @@ class JobController {
 
     async findOne(req: NextRequest) {
         try {
-            requireAdmin(req)
+            await requireAdmin(req)
         } catch (error) {
             return authErrorResponse(error)
         }
@@ -61,7 +62,7 @@ class JobController {
 
     async create(req: NextRequest) {
         try {
-            requireAdmin(req)
+            await requireAdmin(req)
         } catch (error) {
             return authErrorResponse(error)
         }
@@ -80,7 +81,7 @@ class JobController {
 
     async update(req: NextRequest) {
         try {
-            requireAdmin(req)
+            await requireAdmin(req)
         } catch (error) {
             return authErrorResponse(error)
         }
@@ -101,7 +102,7 @@ class JobController {
 
     async remove(req: NextRequest) {
         try {
-            requireAdmin(req)
+            await requireAdmin(req)
         } catch (error) {
             return authErrorResponse(error)
         }

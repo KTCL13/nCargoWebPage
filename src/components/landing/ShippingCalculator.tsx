@@ -1,5 +1,15 @@
 'use client'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, KeyboardEvent } from 'react'
+
+function blockNegativeKey(e: KeyboardEvent<HTMLInputElement>) {
+  if (e.key === '-' || e.key === 'e' || e.key === 'E') e.preventDefault()
+}
+
+function clampPositive(v: string): string {
+  if (v === '') return ''
+  const n = parseFloat(v)
+  return isNaN(n) ? '' : n < 0 ? '0' : v
+}
 
 type Country = 'CO' | 'MX'
 type City = { id: number; city: string; department: string | null }
@@ -205,7 +215,8 @@ export function Calculator() {
                   id="declared"
                   type="number"
                   value={declared}
-                  onChange={e => setDeclared(e.target.value)}
+                  onChange={e => setDeclared(clampPositive(e.target.value))}
+                  onKeyDown={blockNegativeKey}
                   className={inp}
                   placeholder="0"
                   min="0"

@@ -11,7 +11,7 @@ const CARDS = [
     icon: '⏱️',
     label: 'Horas trabajadas',
     sub: 'Suma del período',
-    accentHex: '#0C1E8C',
+    accentHex: 'var(--color-nc-blue)',
     format: (v: number | null) => (v != null && !isNaN(v)) ? `${v.toFixed(1)}h` : '—',
   },
   {
@@ -27,7 +27,7 @@ const CARDS = [
     icon: '🎯',
     label: 'Productividad prom.',
     sub: 'Score promedio',
-    accentHex: '#FF003B',
+    accentHex: 'var(--color-nc-red)',
     format: (v: number | null) => (v != null && !isNaN(v)) ? `${v.toFixed(1)}%` : '—',
   },
   {
@@ -53,7 +53,7 @@ export function MetricCards({ metrics }: { metrics: Metrics }) {
           >
             <div
               className="w-12 h-12 rounded-xl flex items-center justify-center text-xl flex-shrink-0 transition-transform group-hover:scale-110 duration-300"
-              style={{ backgroundColor: card.accentHex + '15' }}
+              style={{ backgroundColor: card.accentHex.startsWith('var(') ? `color-mix(in srgb, ${card.accentHex} 8%, transparent)` : card.accentHex + '15' }}
             >
               <span className="drop-shadow-sm">{card.icon}</span>
             </div>

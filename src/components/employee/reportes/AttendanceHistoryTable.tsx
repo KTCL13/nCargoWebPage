@@ -4,6 +4,7 @@ interface AttendanceHistoryTableProps {
   records: AttendanceRecord[]
   loading: boolean
   totalAccumulated: number
+  onExport: () => void
 }
 
 function formatDuration(hours: number) {
@@ -23,7 +24,7 @@ const STATUS_LABEL: Record<string, string> = {
   CLOSED: 'Completada', PAUSED: 'Pausada', OPEN: 'Activa',
 }
 
-export function AttendanceHistoryTable({ records, loading, totalAccumulated }: AttendanceHistoryTableProps) {
+export function AttendanceHistoryTable({ records, loading, totalAccumulated, onExport }: AttendanceHistoryTableProps) {
   return (
     <div className="bg-white rounded-2xl border border-black/5 shadow-sm overflow-hidden">
       <div className="flex items-center justify-between px-6 py-4 border-b border-black/5">
@@ -36,12 +37,22 @@ export function AttendanceHistoryTable({ records, loading, totalAccumulated }: A
             </strong>
           </p>
         </div>
+        <button
+          onClick={onExport}
+          disabled={loading || records.length === 0}
+          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-subtitles font-semibold rounded-lg bg-[var(--color-nc-dark)] text-white hover:bg-[var(--color-nc-dark)]/80 disabled:opacity-40 disabled:pointer-events-none transition"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 15V3" />
+          </svg>
+          Exportar CSV
+        </button>
       </div>
 
       {loading ? (
         <p className="text-center py-10 text-sm text-[var(--color-nc-dark)]/40 font-subtitles">Cargando…</p>
       ) : records.length === 0 ? (
-        <p className="text-center py-10 text-sm text-[var(--color-nc-dark)]/40 font-subtitles">Sin registros</p>
+        <p className="text-center py-10 text-sm text-[var(--color-nc-dark)]/40 font-subtitles">Sin registros en este periodo</p>
       ) : (
         <div className="overflow-x-auto">
           <table role="grid" aria-label="Data table" className="w-full text-sm font-subtitles">

@@ -1,0 +1,57 @@
+<h2>Enfoques de implementación</h2>
+<p class="subtitle">Tres formas de lograr tokens + componentes + navegación móvil unificada</p>
+
+<div class="options" style="margin-top:20px;">
+
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Componentes React compartidos <span style="color:#22C55E;font-size:11px;margin-left:6px;">✦ Recomendado</span></h3>
+      <p>Crear <strong>3 piezas nuevas</strong> en <code>src/components/</code> que unifican todo:</p>
+      <div style="margin-top:8px;font-size:11px;line-height:1.7;">
+        <div style="background:#F0FDF4;border-radius:8px;padding:10px;margin-bottom:8px;">
+          <strong style="color:#15803D;">AuthFormCard</strong> — layout de dos columnas (imagen izq + card der) reutilizado por login, forgot-password y reset-password. Cada página solo aporta su formulario como children.
+        </div>
+        <div style="background:#EFF6FF;border-radius:8px;padding:10px;margin-bottom:8px;">
+          <strong style="color:#1D4ED8;">ModalShell</strong> — envuelve todos los modales: cabecera (título + subtítulo + ✕), área de contenido, y pie estandarizado con botón Cancelar + slot para acción primaria.
+        </div>
+        <div style="background:#FFF7ED;border-radius:8px;padding:10px;">
+          <strong style="color:#C2410C;">useDirtyForm(initial)</strong> — hook que compara estado actual vs inicial. Devuelve <code>isDirty</code> y <code>reset()</code>. ModalShell lo usa para decidir si mostrar "¿Descartar cambios?".
+        </div>
+      </div>
+      <div class="pros-cons" style="margin-top:8px;">
+        <div class="pros"><h4>Pros</h4><ul><li>Un solo lugar para cambiar el estilo de todos los modales</li><li>Dirty-check reutilizable en cualquier modal futuro</li><li>Auth pages quedan muy simples</li></ul></div>
+        <div class="cons"><h4>Cons</h4><ul><li>Más refactoring inicial (tocar todos los modales)</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Solo CSS clases + hook</h3>
+      <p>Sin nuevos componentes React. Agregar <code>.auth-card</code>, <code>.modal-header</code>, <code>.modal-footer</code> a <code>globals.css</code>. Cada página/modal los adopta añadiendo clases. El hook <code>useDirtyForm</code> sí se crea.</p>
+      <div class="pros-cons" style="margin-top:8px;">
+        <div class="pros"><h4>Pros</h4><ul><li>Menos archivos nuevos</li><li>No hay que tocar las interfaces de los componentes existentes</li></ul></div>
+        <div class="cons"><h4>Cons</h4><ul><li>El markup puede divergir otra vez (no hay contrato)</li><li>El Cancelar hay que agregarlo manualmente en cada modal sin garantía de consistencia</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>ModalShell únicamente (sin AuthFormCard)</h3>
+      <p>Crear solo <code>ModalShell</code> + <code>useDirtyForm</code>. Las auth pages (login/forgot/reset) solo se limpian de tokens hardcodeados pero no adoptan un componente común — siguen siendo páginas independientes.</p>
+      <div class="pros-cons" style="margin-top:8px;">
+        <div class="pros"><h4>Pros</h4><ul><li>Menos cambios en auth pages (riesgo de regresión bajo)</li><li>ModalShell aun así unifica todos los modales del dashboard</li></ul></div>
+        <div class="cons"><h4>Cons</h4><ul><li>Si se agrega una 4ª página de auth, hay que copiar la estructura otra vez</li><li>Login y forgot-password siguen siendo idénticas en estructura pero sin contrato</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div style="margin-top:20px;padding:14px;background:#F8FAFC;border-radius:10px;border:1px solid #E2E8F0;font-size:12px;">
+  <strong>En todos los enfoques se elimina BottomNav.</strong> El <code>DashboardLayout</code> quita el import, el JSX y el padding inferior. En móvil queda solo el hamburger → Sidebar.
+</div>

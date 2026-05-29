@@ -55,33 +55,30 @@ JWT-based, stateless. The token payload is `{ id, email, role }`.
 - `src/context/AuthContext.tsx` — client-side React context; stores `auth_user` and `auth_token` in `localStorage`.
 - Roles: `ADMIN` and `EMPLOYEE`. Authorization is done manually in controllers/services by checking `employee.role`.
 
-#### OBLIGATORIO: convención de autenticación en endpoints
+**Mandatory convention — every write endpoint must begin with auth:**
 
-**Todo nuevo endpoint protegido DEBE llamar `getAuthEmployee(req)` o `requireAdmin(req)` como primera operación del handler**, antes de leer el body o consultar la BD. Sin esto, el endpoint acepta tokens forjados con `alg:none`.
-
-```ts
-// Endpoints de solo admin
-import { requireAdmin } from '@/lib/auth-guard'
-export async function GET(req: NextRequest) {
-    try { requireAdmin(req) } catch (e) {
-        return NextResponse.json({ message: (e as Error).message }, { status: 401 })
-    }
-    // ...resto del handler
-}
-
-// Endpoints para cualquier empleado autenticado
-import { getAuthEmployee } from '@/lib/auth-guard'
-export async function GET(req: NextRequest) {
-    try { getAuthEmployee(req) } catch (e) {
-        return NextResponse.json({ message: (e as Error).message }, { status: 401 })
-    }
-    // ...resto del handler
-}
+```typescript
+// All POST / PUT / PATCH / DELETE handlers must start with:
+const employee = await getAuthEmployee(req)   // authenticated user or 401
+// For admin-only operations:
+const employee = await requireAdmin(req)      // ADMIN role required or 403
 ```
 
-Endpoints **correctamente públicos** (sin guard): `auth/login`, `auth/register`, `auth/forgot-password`, `auth/reset-password`, `cotizaciones/calcular`, `cotizaciones/ciudades`, `docs`.
+No exceptions. Public endpoints (e.g. `POST /api/cotizaciones/calcular`) must be explicitly listed as intentional exceptions in this file.
 
-El JWT se firma y verifica con **HS256** explícito (`{ algorithms: ['HS256'] }`) en `src/modules/auth/services/jwt.service.ts`. No usar `jwt.decode()` en ningún endpoint — siempre `jwtService.verify()` vía `getAuthEmployee()`.
+Endpoints públicos permitidos sin guard: `auth/login`, `auth/register`, `auth/forgot-password`, `auth/reset-password`, `cotizaciones/calcular`, `cotizaciones/ciudades`, `docs`.
+
+El JWT se firma y verifica con **HS256** explícito en `src/modules/auth/services/jwt.service.ts`. No usar `jwt.decode()` directamente — siempre `getAuthEmployee()`.
+
+**Role-based data access for GET endpoints:**
+
+When an endpoint returns records that belong to a specific employee (quotations, attendance, tasks), filter by role:
+
+```typescript
+const where = employee.role === 'ADMIN' ? {} : { employeeId: employee.id }
+```
+
+ADMIN sees all records; EMPLOYEE sees only their own.
 
 ### Frontend
 

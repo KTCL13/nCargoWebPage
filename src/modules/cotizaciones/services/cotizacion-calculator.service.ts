@@ -1,10 +1,10 @@
-import { prisma } from "@/lib/prisma";
 import {
   CalcularCotizacionDto,
   CotizacionBreakdownDto,
   CityDropdownItemDto,
   CiudadesResponseDto,
 } from "../dtos/cotizacion.dto";
+import { cotizacionRepository, ConfigRow } from "../repositories/cotizacion.repository";
 
 const roundUp = (v: number) => Math.ceil(v);
 
@@ -14,25 +14,7 @@ class CotizacionCalculatorService {
   // ── Config ────────────────────────────────────────────────────────
 
   private async getConfig(): Promise<Record<string, number | boolean>> {
-    const rows = await prisma.systemConfig.findMany({
-      where: {
-        key: {
-          in: [
-            "divisor",
-            "insurance_rate",
-            "customs_rate",
-            "customs_threshold",
-            "pickup_base",
-            "pickup_per_extra_mile",
-            "pickup_free_miles",
-            "co_flat_rate_enabled",
-            "co_flat_rate_price",
-            "mx_flat_rate_enabled",
-            "mx_flat_rate_price",
-          ],
-        },
-      },
-    });
+    const rows: ConfigRow[] = await cotizacionRepository.getConfig();
     const cfg: Record<string, number | boolean> = {};
     for (const r of rows) {
       const raw = r.value;
@@ -122,10 +104,7 @@ class CotizacionCalculatorService {
           "destinationCityId es requerido cuando la tarifa plana está desactivada para este país",
         );
       }
-      const rate = await prisma.shippingRate.findFirst({
-        where: { locationId: input.destinationCityId },
-        include: { location: true },
-      });
+      const rate = await cotizacionRepository.findShippingRateByLocation(input.destinationCityId);
       if (!rate)
         throw new Error("No se encontró tarifa para la ciudad seleccionada");
       cityDelivery = Number(rate.price);
@@ -153,47 +132,43 @@ class CotizacionCalculatorService {
     const source = input.employeeId ? 'EMPLOYEE' : 'PUBLIC';
 
     // Save to Quotation table (awaited to capture the ID for Odoo linking).
-    const quotation = await prisma.quotation.create({
-      data: {
-        employeeId: input.employeeId ?? null,
-        destinationLocationId: input.destinationCityId ?? null,
-        weightLbs: chargeableWeightLb,
-        volume,
-        declaredValue: input.declaredValueUsd,
-        totalPrice: total,
-        country: input.country,
-        source,
-        status: 'DRAFT',
-      },
+    const quotation = await cotizacionRepository.createQuotation({
+      employeeId: input.employeeId ?? null,
+      destinationLocationId: input.destinationCityId ?? null,
+      weightLbs: chargeableWeightLb,
+      volume,
+      declaredValue: input.declaredValueUsd,
+      totalPrice: total,
+      country: input.country,
+      source,
+      status: 'DRAFT',
     });
 
     // Fire-and-forget detailed record — never blocks the response.
-    prisma.cotizacionRecord
-      .create({
-        data: {
-          country: input.country,
-          destinationLocationId: input.destinationCityId ?? null,
-          heightIn: input.heightIn,
-          widthIn: input.widthIn,
-          lengthIn: input.lengthIn,
-          actualWeightLb: input.actualWeightLb,
-          volumetricWeightLb: volumetricLb,
-          chargeableWeightLb,
-          declaredValueUsd: input.declaredValueUsd,
-          pickupMiles: input.pickupMiles ?? null,
-          transport,
-          volumetricSurcharge,
-          insurance,
-          customs,
-          cityDelivery,
-          pickup,
-          total,
-          flatRateApplied: flatEnabled,
-          source,
-          employeeId: input.employeeId ?? null,
-          shipmentId: input.shipmentId ?? null,
-          quotationId: quotation.id,
-        },
+    cotizacionRepository
+      .createRecord({
+        country: input.country,
+        destinationLocationId: input.destinationCityId ?? null,
+        heightIn: input.heightIn,
+        widthIn: input.widthIn,
+        lengthIn: input.lengthIn,
+        actualWeightLb: input.actualWeightLb,
+        volumetricWeightLb: volumetricLb,
+        chargeableWeightLb,
+        declaredValueUsd: input.declaredValueUsd,
+        pickupMiles: input.pickupMiles ?? null,
+        transport,
+        volumetricSurcharge,
+        insurance,
+        customs,
+        cityDelivery,
+        pickup,
+        total,
+        flatRateApplied: flatEnabled,
+        source,
+        employeeId: input.employeeId ?? null,
+        shipmentId: input.shipmentId ?? null,
+        quotationId: quotation.id,
       })
       .catch((err) => console.error("[CotizacionRecord] save failed:", err));
 
@@ -236,11 +211,7 @@ class CotizacionCalculatorService {
       };
     }
 
-    const rates = await prisma.shippingRate.findMany({
-      where: { countryCode: country.toUpperCase(), location: { type: "CITY" } },
-      include: { location: { include: { parent: true } } },
-      orderBy: { location: { name: "asc" } },
-    });
+    const rates = await cotizacionRepository.findShippingRatesByCountry(country);
 
     const seen = new Set<number>();
     const data: CityDropdownItemDto[] = [];

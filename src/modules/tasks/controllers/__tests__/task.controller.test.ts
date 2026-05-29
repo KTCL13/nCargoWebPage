@@ -274,7 +274,7 @@ describe('taskController.remove (DELETE /tasks?id=X)', () => {
     const res: any = await taskController.remove(makeReq({ url: 'http://localhost/api/tasks?id=5' }))
 
     expect(res.status).toBe(204)
-    expect(taskService.delete).toHaveBeenCalledWith(5)
+    expect(taskService.delete).toHaveBeenCalledWith(5, undefined, 1)
   })
 
   it('G2 error de negocio: tarea no existe → 400', async () => {

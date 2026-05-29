@@ -167,11 +167,11 @@ export function EmployeeForm({
                             {contractTypes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                         </select>
 
-                        <input placeholder="Salario" value={form.salary}
+                        <input type="number" placeholder="Salario" step="0.01" min="0.01" max="9999999999.99" value={form.salary}
                             onChange={e => setForm(f => ({ ...f, salary: e.target.value }))}
                             className="input" />
 
-                        <input placeholder="Tarifa hora" value={form.hourlyRate}
+                        <input type="number" placeholder="Tarifa hora" step="0.01" min="0.01" max="99999999.99" value={form.hourlyRate}
                             onChange={e => setForm(f => ({ ...f, hourlyRate: e.target.value }))}
                             className="input" />
 

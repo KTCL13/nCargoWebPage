@@ -1,44 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { cotizacionCalculatorService } from '../services/cotizacion-calculator.service'
+import { CalcularCotizacionSchema } from '../dtos/cotizacion.dto'
 
 class CotizacionesController {
   async calcular(req: NextRequest) {
     try {
-      const body = await req.json()
-      const { country, actualWeightLb, heightIn, lengthIn, widthIn, declaredValueUsd } = body
-
-      if (
-        !country ||
-        actualWeightLb === undefined ||
-        !heightIn ||
-        !lengthIn ||
-        !widthIn ||
-        declaredValueUsd === undefined
-      ) {
-        return NextResponse.json(
-          {
-            message:
-              'Campos requeridos: country, actualWeightLb, heightIn, lengthIn, widthIn, declaredValueUsd',
-          },
-          { status: 400 },
-        )
+      const raw = await req.json().catch(() => null)
+      if (!raw || typeof raw !== 'object') {
+        return NextResponse.json({ message: 'Body inválido' }, { status: 400 })
       }
 
-      if (!['CO', 'MX'].includes(String(country).toUpperCase())) {
-        return NextResponse.json({ message: 'country debe ser CO o MX' }, { status: 400 })
+      // Normalize country to uppercase before Zod parses it
+      const normalized = { ...raw, country: String((raw as Record<string, unknown>).country ?? '').toUpperCase() }
+
+      const parsed = CalcularCotizacionSchema.safeParse(normalized)
+      if (!parsed.success) {
+        const first = parsed.error.issues[0]
+        return NextResponse.json({ message: first?.message ?? 'Datos de entrada inválidos' }, { status: 400 })
       }
 
-      const employeeId: number | undefined =
-        body.employeeId != null ? Number(body.employeeId) : undefined
-      const shipmentId: number | undefined =
-        body.shipmentId != null ? Number(body.shipmentId) : undefined
-
-      const result = await cotizacionCalculatorService.calculate({
-        ...body,
-        country:    String(country).toUpperCase() as 'CO' | 'MX',
-        employeeId,
-        shipmentId,
-      })
+      const result = await cotizacionCalculatorService.calculate(parsed.data)
       return NextResponse.json(result)
     } catch (error: unknown) {
       const msg = error instanceof Error ? error.message : 'Error interno'
@@ -51,7 +32,7 @@ class CotizacionesController {
       const country = new URL(req.url).searchParams.get('country') ?? ''
       if (!['CO', 'MX'].includes(country.toUpperCase())) {
         return NextResponse.json(
-          { message: 'Parámetro country debe ser CO o MX' },
+          { message: 'El parámetro "country" debe ser CO (Colombia) o MX (México)' },
           { status: 400 },
         )
       }

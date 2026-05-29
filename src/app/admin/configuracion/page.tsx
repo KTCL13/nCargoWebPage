@@ -55,7 +55,7 @@ export default function ConfiguracionPage() {
             <input type="checkbox" checked={flat.enabled} onChange={e => setFlatByCountry(prev => ({ ...prev, [c.code]: { ...flat, enabled: e.target.checked } }))} className="w-4 h-4" />
             <span className="text-sm font-semibold">Tarifa plana</span>
           </label>
-          {flat.enabled && <input type="number" value={flat.price} onChange={e => setFlatByCountry(prev => ({ ...prev, [c.code]: { ...flat, price: e.target.value } }))} className={`${CLS.input} w-28`} placeholder="USD" step="0.01" />}
+          {flat.enabled && <input type="number" value={flat.price} onChange={e => setFlatByCountry(prev => ({ ...prev, [c.code]: { ...flat, price: e.target.value } }))} className={`${CLS.input} w-28`} placeholder="USD" step="0.01" min="0" />}
           <button onClick={() => saveFlatRate(c.code)} disabled={saving === `flat-${c.code}`} className={`${CLS.btn} bg-green-600 disabled:opacity-50`}>{saving === `flat-${c.code}` ? '...' : '💾 Guardar'}</button>
         </div>
         {!flat.enabled && (
@@ -92,7 +92,7 @@ export default function ConfiguracionPage() {
             <div className={CLS.grid}>
               <div><label className={CLS.label}>Transportadora</label><select value={providerId ?? ''} onChange={e => setProviderId(Number(e.target.value))} className={CLS.input}>{providers.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select></div>
               {configs.map(cfg => (
-                <div key={cfg.key}><label className={CLS.label}>{CONFIG_LABELS[cfg.key] ?? cfg.key}</label><div className="flex gap-2"><input type="number" step="0.01" defaultValue={String(cfg.value)} onBlur={e => saveConfig(cfg.key, e.target.value)} className={CLS.input} /><button className="bg-gray-100 p-2 rounded hover:bg-gray-200">💾</button></div></div>
+                <div key={cfg.key}><label className={CLS.label}>{CONFIG_LABELS[cfg.key] ?? cfg.key}</label><div className="flex gap-2"><input type="number" step="0.01" min="0" defaultValue={String(cfg.value)} onBlur={e => saveConfig(cfg.key, e.target.value)} className={CLS.input} /><button className="bg-gray-100 p-2 rounded hover:bg-gray-200">💾</button></div></div>
               ))}
             </div>
           </div>
@@ -100,13 +100,20 @@ export default function ConfiguracionPage() {
         </div>
       ) : (
         <div className={CLS.card}>
-          <h3 className="font-bold mb-4 text-gray-800">Variables de Nómina y Contratación</h3>
+          <h3 className="font-bold mb-3 text-gray-800">Variables de Nómina y Contratación</h3>
+          <div className="flex items-start gap-2.5 mb-5 px-3.5 py-3 bg-blue-50 border border-blue-200 rounded-xl text-blue-800">
+            <span className="text-base shrink-0 mt-0.5">💵</span>
+            <p className="text-xs font-semibold leading-snug">
+              Todos los valores monetarios de esta sección están expresados en <span className="font-bold">dólares estadounidenses (USD)</span>.
+              Asegúrate de ingresar los montos en USD antes de guardar.
+            </p>
+          </div>
           <div className="space-y-6">
             {CONTRACT_CONFIG_KEYS.map(cfg => (
               <div key={cfg.key} className="flex flex-col md:flex-row md:items-center gap-4 p-4 rounded-xl border border-gray-100 bg-gray-50/50">
                 <div className="flex-1"><label className="block text-sm font-bold text-gray-700 mb-0.5">{cfg.label}</label><p className="text-xs text-gray-500">{cfg.hint}</p></div>
                 <div className="flex items-center gap-2">
-                  <div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-mono text-sm">{cfg.prefix}</span><input type="number" step={cfg.step} value={contractCfg[cfg.key] ?? ''} onChange={e => setContractCfg(prev => ({ ...prev, [cfg.key]: e.target.value }))} className={`form-input w-40 ${cfg.prefix ? 'pl-7' : ''} font-mono text-right`} /></div>
+                  <div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-mono text-sm">{cfg.prefix}</span><input type="number" step={cfg.step} min="0" value={contractCfg[cfg.key] ?? ''} onChange={e => setContractCfg(prev => ({ ...prev, [cfg.key]: e.target.value }))} className={`form-input w-40 ${cfg.prefix ? 'pl-7' : ''} font-mono text-right`} /></div>
                   <button onClick={() => saveContractCfg(cfg.key)} disabled={savingCfgKey === cfg.key} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-bold disabled:opacity-50 transition">{savingCfgKey === cfg.key ? '...' : 'Guardar'}</button>
                 </div>
               </div>

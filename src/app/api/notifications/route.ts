@@ -4,7 +4,7 @@ import { getAuthEmployee } from '@/lib/auth-guard'
 
 export async function GET(req: NextRequest) {
   try {
-    const me = getAuthEmployee(req)
+    const me = await getAuthEmployee(req)
     const { searchParams } = new URL(req.url)
     const page     = parseInt(searchParams.get('page')     ?? '1')
     const pageSize = parseInt(searchParams.get('pageSize') ?? '0')
@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
 
 export async function PATCH(req: NextRequest) {
   try {
-    const me   = getAuthEmployee(req)
+    const me   = await getAuthEmployee(req)
     const body = await req.json()
 
     if (body.all) {
@@ -44,7 +44,7 @@ export async function PATCH(req: NextRequest) {
 
 export async function DELETE(req: NextRequest) {
   try {
-    const me = getAuthEmployee(req)
+    const me = await getAuthEmployee(req)
     const id = parseInt(new URL(req.url).searchParams.get('id') ?? '0')
     if (!id) return NextResponse.json({ message: 'id requerido' }, { status: 400 })
 

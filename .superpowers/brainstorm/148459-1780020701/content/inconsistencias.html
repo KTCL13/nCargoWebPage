@@ -1,0 +1,95 @@
+<h2>Inconsistencias visuales actuales</h2>
+<p class="subtitle">Los tres módulos usan patrones distintos. ¿En qué dirección unificamos?</p>
+
+<div class="split" style="gap:16px; margin-top:24px;">
+
+  <!-- LOGIN ACTUAL -->
+  <div class="mockup" style="flex:1;">
+    <div class="mockup-header">Login / Forgot password — estado actual</div>
+    <div class="mockup-body" style="background:#F9FAFB; padding:20px; font-family:'Segoe UI',sans-serif;">
+      <div style="text-align:center;margin-bottom:16px;">
+        <div style="background:linear-gradient(135deg,#040626,#FF003B);height:36px;width:130px;margin:0 auto;border-radius:8px;display:flex;align-items:center;justify-content:center;color:white;font-weight:900;font-size:13px;letter-spacing:1px;">N-CARGO</div>
+        <p style="margin-top:12px;font-size:18px;font-weight:900;text-transform:uppercase;letter-spacing:-0.5px;color:#040626;">LOGIN</p>
+      </div>
+      <div style="margin-bottom:10px;">
+        <label style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:#374151;display:block;margin-bottom:4px;">EMAIL</label>
+        <div style="border:1px solid #E5E7EB;border-radius:12px;background:#F9FAFB;padding:10px 14px;font-size:13px;color:#9CA3AF;">correo@ejemplo.com</div>
+      </div>
+      <div style="margin-bottom:14px;">
+        <label style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:#374151;display:block;margin-bottom:4px;">CONTRASEÑA</label>
+        <div style="border:1px solid #E5E7EB;border-radius:12px;background:#F9FAFB;padding:10px 14px;font-size:13px;color:#9CA3AF;">••••••••</div>
+      </div>
+      <button style="width:100%;padding:12px;border-radius:12px;border:none;background:linear-gradient(90deg,#040626,#FF003B);color:white;font-weight:700;font-size:13px;letter-spacing:0.5px;">Iniciar sesión</button>
+      <div style="margin-top:8px;font-size:10px;color:#ef4444;background:#FEF2F2;padding:6px 10px;border-radius:6px;display:none;">Error de credenciales</div>
+      <p style="text-align:center;margin-top:12px;font-size:10px;color:#6B7280;">¿Olvidaste tu contraseña?</p>
+      <div style="margin-top:16px;padding:10px;background:#FFF3CD;border-radius:8px;border-left:3px solid #F59E0B;">
+        <p style="margin:0;font-size:10px;font-weight:700;color:#92400E;">⚠ Tokens hardcodeados</p>
+        <p style="margin:2px 0 0;font-size:9px;color:#92400E;">Usa #040626, #FF003B, border-gray-200, bg-[#F9FAFB], inline style=fontFamily en cada elemento</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- DASHBOARD ACTUAL -->
+  <div class="mockup" style="flex:1;">
+    <div class="mockup-header">Dashboard Admin/Employee — estado actual</div>
+    <div class="mockup-body" style="padding:0;overflow:hidden;background:#F3F4F6;">
+      <!-- Topbar -->
+      <div style="background:#040626;padding:10px 16px;display:flex;align-items:center;justify-content:space-between;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="width:28px;height:28px;background:rgba(255,255,255,0.1);border-radius:6px;display:flex;align-items:center;justify-content:center;">
+            <span style="color:white;font-size:14px;">☰</span>
+          </div>
+          <span style="color:white;font-size:14px;font-weight:700;">Dashboard</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div style="width:28px;height:28px;background:#2563eb;border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-size:10px;font-weight:700;">TS</div>
+          <button style="background:#FF003B;color:white;border:none;border-radius:8px;padding:4px 10px;font-size:10px;font-weight:600;">Salir</button>
+        </div>
+      </div>
+      <!-- Content area -->
+      <div style="padding:14px;background:white;margin:10px;border-radius:12px;border:1px solid #E5E7EB;">
+        <p style="margin:0 0 10px;font-size:11px;font-weight:700;text-transform:uppercase;color:#040626;">Formulario modal</p>
+        <div style="margin-bottom:8px;">
+          <label style="font-size:9px;font-weight:600;color:#4B5563;display:block;margin-bottom:3px;">Nombre <span style="color:#ef4444;">*</span></label>
+          <div style="border:1px solid #D1D5DB;border-radius:8px;background:white;padding:7px 10px;font-size:11px;color:#9CA3AF;">Carlos</div>
+        </div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px;">
+          <button style="padding:6px 14px;border:1px solid #D1D5DB;border-radius:8px;font-size:10px;font-weight:600;background:white;color:#374151;">Cancelar</button>
+          <button style="padding:6px 14px;background:#FF003B;border:none;border-radius:8px;font-size:10px;font-weight:600;color:white;">Guardar</button>
+        </div>
+        <div style="margin-top:10px;padding:10px;background:#DCFCE7;border-radius:8px;border-left:3px solid #22C55E;">
+          <p style="margin:0;font-size:10px;font-weight:700;color:#14532D;">✓ Usa CSS variables</p>
+          <p style="margin:2px 0 0;font-size:9px;color:#14532D;">var(--color-nc-red), var(--color-nc-dark), clases .btn-primary, .form-input, .font-subtitles</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div style="margin-top:24px;">
+  <h3 style="font-size:15px;margin-bottom:12px;">¿Qué dirección tomamos para unificar?</h3>
+  <div class="options">
+    <div class="option" data-choice="a" onclick="toggleSelect(this)">
+      <div class="letter">A</div>
+      <div class="content">
+        <h3>Tokens primero</h3>
+        <p>Login/forgot-password adoptan las CSS variables y clases del proyecto (<code>var(--color-nc-*)</code>, <code>btn-primary</code>, <code>form-input</code>). Sin cambiar el look visual — mismos colores, mismas formas — solo se reemplaza el código hardcodeado. Cambio mínimo, máximo impacto en consistencia.</p>
+      </div>
+    </div>
+    <div class="option" data-choice="b" onclick="toggleSelect(this)">
+      <div class="letter">B</div>
+      <div class="content">
+        <h3>Componentes compartidos</h3>
+        <p>Crear componentes reutilizables (<code>AuthInput</code>, <code>AuthButton</code>, <code>AuthCard</code>) usados por login, forgot-password y reset-password. Los modales del dashboard también usan <code>ModalShell</code> unificado con cabecera + botón Cancelar estándar.</p>
+      </div>
+    </div>
+    <div class="option" data-choice="c" onclick="toggleSelect(this)">
+      <div class="letter">C</div>
+      <div class="content">
+        <h3>Tokens + Componentes (completo)</h3>
+        <p>Ambas anteriores: reemplazar hardcodes AND crear los componentes compartidos. Login/forgot/reset usan los mismos tokens y un <code>AuthFormCard</code> común. Dashboard: <code>ModalShell</code> unificado para todos los modales con Cancelar estándar.</p>
+      </div>
+    </div>
+  </div>
+</div>

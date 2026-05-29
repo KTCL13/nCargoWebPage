@@ -33,6 +33,7 @@ jest.mock('../../services/employee.service', () => ({
     findContractById: jest.fn(),
     createContract: jest.fn(),
     updateContract: jest.fn(),
+    checkDuplicates: jest.fn(),
     assignRoles: jest.fn(),
   },
 }))
@@ -44,6 +45,7 @@ jest.mock('@/lib/auth-guard', () => ({
 
 import { employeeController } from '../employee.controller'
 import { employeeService } from '../../services/employee.service'
+import { requireAdmin } from '@/lib/auth-guard'
 
 const mocked = <T extends (...args: any) => any>(fn: T) => fn as unknown as jest.Mock
 
@@ -422,5 +424,218 @@ describe('employeeController.updateContract (PUT /employees/contracts?contractId
 
     expect(res.status).toBe(400)
     await expect(res.json()).resolves.toEqual({ message: 'Invalid value for field "salary"' })
+  })
+})
+
+// =====================================================================
+// Auth error handling — covers authErrorStatus helper + auth catch blocks
+// =====================================================================
+describe('auth error handling (401 / 403 / 400)', () => {
+  beforeEach(() => jest.clearAllMocks())
+
+  it('returns 401 when requireAdmin throws a Token error', async () => {
+    mocked(requireAdmin).mockRejectedValueOnce(new Error('Token inválido o expirado'))
+
+    const res: any = await employeeController.findAll(makeReq())
+
+    expect(res.status).toBe(401)
+    await expect(res.json()).resolves.toEqual({ message: 'Token inválido o expirado' })
+  })
+
+  it('returns 403 when requireAdmin throws a Forbidden error', async () => {
+    mocked(requireAdmin).mockRejectedValueOnce(new Error('Forbidden: se requiere rol ADMIN'))
+
+    const res: any = await employeeController.findAll(makeReq())
+
+    expect(res.status).toBe(403)
+    await expect(res.json()).resolves.toEqual({ message: 'Forbidden: se requiere rol ADMIN' })
+  })
+
+  it('returns 400 when requireAdmin throws a generic error', async () => {
+    mocked(requireAdmin).mockRejectedValueOnce(new Error('Sesión inválida o expirada'))
+
+    const res: any = await employeeController.findAll(makeReq())
+
+    expect(res.status).toBe(400)
+    await expect(res.json()).resolves.toEqual({ message: 'Sesión inválida o expirada' })
+  })
+
+  it('returns 401 from findOne when token is invalid', async () => {
+    mocked(requireAdmin).mockRejectedValueOnce(new Error('Token no proporcionado'))
+    const res: any = await employeeController.findOne(makeReq({ url: 'http://localhost/api/employees?id=1' }))
+    expect(res.status).toBe(401)
+  })
+
+  it('returns 401 from create when token is missing', async () => {
+    mocked(requireAdmin).mockRejectedValueOnce(new Error('Token no proporcionado'))
+    const res: any = await employeeController.create(makeReq({ body: {} }))
+    expect(res.status).toBe(401)
+  })
+
+  it('returns 401 from update when token is expired', async () => {
+    mocked(requireAdmin).mockRejectedValueOnce(new Error('Token inválido o expirado'))
+    const res: any = await employeeController.update(makeReq({ url: 'http://localhost/api/employees?id=1', body: {} }))
+    expect(res.status).toBe(401)
+  })
+
+  it('returns 401 from remove when token is missing', async () => {
+    mocked(requireAdmin).mockRejectedValueOnce(new Error('Token no proporcionado'))
+    const res: any = await employeeController.remove(makeReq({ url: 'http://localhost/api/employees?id=1' }))
+    expect(res.status).toBe(401)
+  })
+
+  it('returns 401 from getContracts when token is invalid', async () => {
+    mocked(requireAdmin).mockRejectedValueOnce(new Error('Token inválido o expirado'))
+    const res: any = await employeeController.getContracts(makeReq({ url: 'http://localhost/api/employees/contracts?employeeId=1' }))
+    expect(res.status).toBe(401)
+  })
+
+  it('returns 401 from findContractById when token is invalid', async () => {
+    mocked(requireAdmin).mockRejectedValueOnce(new Error('Token inválido o expirado'))
+    const res: any = await employeeController.findContractById(makeReq({ url: 'http://localhost/api/employees/contracts?contractId=1' }))
+    expect(res.status).toBe(401)
+  })
+
+  it('returns 401 from createContract when token is missing', async () => {
+    mocked(requireAdmin).mockRejectedValueOnce(new Error('Token no proporcionado'))
+    const res: any = await employeeController.createContract(makeReq({ url: 'http://localhost/api/employees/contracts?employeeId=1', body: {} }))
+    expect(res.status).toBe(401)
+  })
+
+  it('returns 401 from updateContract when token is invalid', async () => {
+    mocked(requireAdmin).mockRejectedValueOnce(new Error('Token inválido o expirado'))
+    const res: any = await employeeController.updateContract(makeReq({ url: 'http://localhost/api/employees/contracts?contractId=1', body: {} }))
+    expect(res.status).toBe(401)
+  })
+})
+
+// =====================================================================
+// friendlyErrorMessage — numeric overflow and non-Error thrown
+// =====================================================================
+describe('friendlyErrorMessage edge cases (via create / createContract)', () => {
+  beforeEach(() => jest.clearAllMocks())
+
+  it('maps "numeric field overflow" to the friendly salary message', async () => {
+    mocked(employeeService.create).mockRejectedValueOnce(new Error('numeric field overflow on column salary'))
+
+    const res: any = await employeeController.create(makeReq({ body: {} }))
+
+    expect(res.status).toBe(400)
+    const body = await res.json()
+    expect(body.message).toMatch(/salario|tarifa/)
+  })
+
+  it('maps Prisma error code 22003 to the friendly message', async () => {
+    mocked(employeeService.createContract).mockRejectedValueOnce(new Error('value out of range 22003'))
+
+    const res: any = await employeeController.createContract(
+      makeReq({ url: 'http://localhost/api/employees/contracts?employeeId=1', body: {} }),
+    )
+
+    expect(res.status).toBe(400)
+    const body = await res.json()
+    expect(body.message).toMatch(/salario|tarifa/)
+  })
+
+  it('returns "Error interno del servidor" when a non-Error is thrown', async () => {
+    mocked(employeeService.create).mockRejectedValueOnce('unexpected string error')
+
+    const res: any = await employeeController.create(makeReq({ body: {} }))
+
+    expect(res.status).toBe(400)
+    await expect(res.json()).resolves.toEqual({ message: 'Error interno del servidor' })
+  })
+})
+
+// =====================================================================
+// GET /employees/check-duplicates — checkDuplicates
+// =====================================================================
+describe('employeeController.checkDuplicates (GET /employees/check-duplicates)', () => {
+  beforeEach(() => jest.clearAllMocks())
+
+  it('G1 happy path: retorna 200 con objeto de duplicados (vacío cuando no hay)', async () => {
+    mocked(requireAdmin).mockResolvedValue({ id: 1, email: 'admin@ncargo.com', role: 'ADMIN', jti: 'jti' } as any)
+    mocked(employeeService.checkDuplicates).mockResolvedValue({})
+
+    const res: any = await employeeController.checkDuplicates(
+      makeReq({ url: 'http://localhost/api/employees/check-duplicates?email=a@b.com&phone=3001234567' }),
+    )
+
+    expect(res.status).toBe(200)
+    await expect(res.json()).resolves.toEqual({})
+    expect(employeeService.checkDuplicates).toHaveBeenCalledWith('a@b.com', '3001234567', undefined)
+  })
+
+  it('G2 retorna emailOwner cuando hay duplicado de correo', async () => {
+    mocked(requireAdmin).mockResolvedValue({ id: 1, email: 'admin@ncargo.com', role: 'ADMIN', jti: 'jti' } as any)
+    mocked(employeeService.checkDuplicates).mockResolvedValue({ emailOwner: 'Alice Smith' })
+
+    const res: any = await employeeController.checkDuplicates(
+      makeReq({ url: 'http://localhost/api/employees/check-duplicates?email=dup@b.com' }),
+    )
+
+    expect(res.status).toBe(200)
+    await expect(res.json()).resolves.toEqual({ emailOwner: 'Alice Smith' })
+  })
+
+  it('G3 excluye excludeId del resultado cuando se indica', async () => {
+    mocked(requireAdmin).mockResolvedValue({ id: 1, email: 'admin@ncargo.com', role: 'ADMIN', jti: 'jti' } as any)
+    mocked(employeeService.checkDuplicates).mockResolvedValue({})
+
+    const res: any = await employeeController.checkDuplicates(
+      makeReq({ url: 'http://localhost/api/employees/check-duplicates?email=a@b.com&excludeId=5' }),
+    )
+
+    expect(res.status).toBe(200)
+    expect(employeeService.checkDuplicates).toHaveBeenCalledWith('a@b.com', '', 5)
+  })
+})
+
+// =====================================================================
+// POST /employees/roles?id=X — assignRoles
+// =====================================================================
+describe('employeeController.assignRoles (POST /employees/roles?id=X)', () => {
+  beforeEach(() => jest.clearAllMocks())
+
+  it('G1 happy path: retorna 200 con el empleado actualizado', async () => {
+    mocked(requireAdmin).mockResolvedValue({ id: 1, email: 'admin@ncargo.com', role: 'ADMIN', jti: 'jti' } as any)
+    const emp = { id: 3, name: 'Bob', email: 'b@c.com', status: 'ACTIVE', roles: ['ADMIN'], activeContract: null }
+    mocked(employeeService.assignRoles).mockResolvedValue(emp as any)
+
+    const res: any = await employeeController.assignRoles(
+      makeReq({ url: 'http://localhost/api/employees/roles?id=3', body: { roleIds: [1] } }),
+    )
+
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.id).toBe(3)
+    expect(body.roles).toEqual(['ADMIN'])
+    expect(employeeService.assignRoles).toHaveBeenCalledWith(3, { roleIds: [1] })
+  })
+
+  it('G2 error de negocio: empleado no existe → 400 con mensaje', async () => {
+    mocked(requireAdmin).mockResolvedValue({ id: 1, email: 'admin@ncargo.com', role: 'ADMIN', jti: 'jti' } as any)
+    mocked(employeeService.assignRoles).mockRejectedValue(new Error('Employee not found with id 999'))
+
+    const res: any = await employeeController.assignRoles(
+      makeReq({ url: 'http://localhost/api/employees/roles?id=999', body: { roleIds: [1] } }),
+    )
+
+    expect(res.status).toBe(400)
+    await expect(res.json()).resolves.toEqual({ message: 'Employee not found with id 999' })
+  })
+
+  it('G3 caso inválido controlado: id ausente (NaN) → servicio lanza → 400', async () => {
+    // caso inválido controlado
+    mocked(requireAdmin).mockResolvedValue({ id: 1, email: 'admin@ncargo.com', role: 'ADMIN', jti: 'jti' } as any)
+    mocked(employeeService.assignRoles).mockRejectedValue(new Error('Employee not found with id NaN'))
+
+    const res: any = await employeeController.assignRoles(
+      makeReq({ url: 'http://localhost/api/employees/roles', body: { roleIds: [] } }),
+    )
+
+    expect(res.status).toBe(400)
+    const body = await res.json()
+    expect(body.message).toContain('Employee not found')
   })
 })

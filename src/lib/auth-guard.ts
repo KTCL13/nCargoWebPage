@@ -1,9 +1,10 @@
 import { NextRequest } from 'next/server'
-import { jwtService } from '@/modules/auth/services/jwt.service'
+import { jwtService, JwtPayload } from '@/modules/auth/services/jwt.service'
+import { prisma } from '@/lib/prisma'
 
-type AuthEmployee = { id: number; email: string; role: string }
+export type AuthEmployee = { id: number; email: string; role: string; jti: string }
 
-export function getAuthEmployee(req: NextRequest): AuthEmployee {
+export async function getAuthEmployee(req: NextRequest): Promise<AuthEmployee> {
     const authHeader = req.headers.get('authorization')
 
     if (!authHeader?.startsWith('Bearer ')) {
@@ -11,11 +12,22 @@ export function getAuthEmployee(req: NextRequest): AuthEmployee {
     }
 
     const token = authHeader.slice(7)
-    return jwtService.verify(token)
+    const payload = jwtService.verify(token) as JwtPayload
+
+    // Validate that the session is still active (covers eviction and explicit logout)
+    if (payload.jti) {
+        const session = await prisma.userSession.findFirst({
+            where: { tokenJti: payload.jti, logoutAt: null },
+            select: { id: true },
+        })
+        if (!session) throw new Error('Sesión inválida o expirada')
+    }
+
+    return { id: payload.id, email: payload.email, role: payload.role, jti: payload.jti }
 }
 
-export function requireAdmin(req: NextRequest): AuthEmployee {
-    const employee = getAuthEmployee(req)
+export async function requireAdmin(req: NextRequest): Promise<AuthEmployee> {
+    const employee = await getAuthEmployee(req)
     if (employee.role !== 'ADMIN') {
         throw new Error('Forbidden: se requiere rol ADMIN')
     }

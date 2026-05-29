@@ -88,6 +88,7 @@ model Contract {
   job            Job          @relation(fields: [jobId], references: [id])
   jobHistory     JobHistory[]
 
+  @@index([employeeId, isActive], map: "idx_contracts_employee_active")
   @@map("contracts")
 }
 
@@ -100,6 +101,7 @@ model JobHistory {
   contract   Contract  @relation(fields: [contractId], references: [id])
   employee   Employee  @relation(fields: [employeeId], references: [id])
 
+  @@index([employeeId], map: "idx_job_history_employee")
   @@map("job_history")
 }
 
@@ -149,6 +151,8 @@ model Task {
   employee           Employee       @relation("EmployeeTasks", fields: [employeeId], references: [id])
   status             TaskStatus     @relation(fields: [statusId], references: [id])
 
+  @@index([employeeId, createdAt(sort: Desc)], map: "idx_tasks_employee_created")
+  @@index([employeeId, statusId], map: "idx_tasks_employee_status")
   @@map("tasks")
 }
 
@@ -164,6 +168,8 @@ model Attendance {
   events      AttendanceEvent[]
   tasks       Task[]
 
+  @@index([employeeId, startedAt(sort: Desc)], map: "idx_attendance_employee_started")
+  @@index([employeeId, status], map: "idx_attendance_employee_status")
   @@map("attendance")
 }
 
@@ -176,6 +182,7 @@ model AttendanceEvent {
   createdAt        DateTime            @default(now()) @map("created_at")
   attendance       Attendance          @relation(fields: [attendanceId], references: [id])
 
+  @@index([attendanceId, timestamp(sort: Asc)], map: "idx_attendance_events_attendance")
   @@map("attendance_events")
 }
 
@@ -186,8 +193,10 @@ model UserSession {
   logoutAt   DateTime? @map("logout_at")
   ipAddress  String?   @map("ip_address") @db.VarChar(45)
   deviceInfo Json?     @map("device_info")
+  tokenJti   String?   @unique @map("token_jti") @db.VarChar(36)
   employee   Employee  @relation(fields: [employeeId], references: [id])
 
+  @@index([employeeId, loginAt(sort: Desc)], map: "idx_sessions_employee")
   @@map("user_sessions")
 }
 
@@ -271,6 +280,7 @@ model Quotation {
   shippingRate          ShippingRate?      @relation(fields: [shippingRateId], references: [id])
   shipments             Shipment[]
 
+  @@index([employeeId, createdAt(sort: Desc)], map: "idx_quotations_employee_created")
   @@map("quotations")
 }
 
@@ -330,6 +340,8 @@ model Shipment {
   quotation          Quotation?         @relation(fields: [quotationId], references: [id])
   status             ShipmentStatus     @relation(fields: [statusId], references: [id])
 
+  @@index([lockerId, createdAt(sort: Desc)], map: "idx_shipments_locker")
+  @@index([statusId, createdAt(sort: Desc)], map: "idx_shipments_status_created")
   @@map("shipments")
 }
 
@@ -343,6 +355,7 @@ model ShipmentEvent {
   employee    Employee? @relation(fields: [performedBy], references: [id])
   shipment    Shipment  @relation(fields: [shipmentId], references: [id])
 
+  @@index([shipmentId, createdAt(sort: Desc)], map: "idx_shipment_events_shipment")
   @@map("shipment_events")
 }
 
@@ -356,6 +369,7 @@ model Notification {
   createdAt  DateTime  @default(now()) @map("created_at")
   employee   Employee? @relation(fields: [employeeId], references: [id])
 
+  @@index([employeeId, read, createdAt(sort: Desc)], map: "idx_notifications_employee_read")
   @@map("notifications")
 }
 
@@ -369,6 +383,7 @@ model GeneratedDocument {
   createdAt   DateTime  @default(now()) @map("created_at")
   employee    Employee? @relation(fields: [employeeId], references: [id])
 
+  @@index([employeeId, createdAt(sort: Desc)], map: "idx_docs_employee")
   @@map("generated_documents")
 }
 
@@ -378,11 +393,14 @@ model AuditLog {
   entityId    Int       @map("entity_id")
   action      String    @db.VarChar(50)
   performedBy Int?      @map("performed_by")
+  ipAddress   String?   @map("ip_address") @db.VarChar(45)
   oldValues   Json?     @map("old_values")
   newValues   Json?     @map("new_values")
   createdAt   DateTime  @default(now()) @map("created_at")
   employee    Employee? @relation(fields: [performedBy], references: [id])
 
+  @@index([entityType, entityId, createdAt(sort: Desc)], map: "idx_audit_entity")
+  @@index([performedBy, createdAt(sort: Desc)], map: "idx_audit_performer")
   @@map("audit_logs")
 }
 
@@ -448,6 +466,7 @@ model EmployeeAlert {
   createdAt  DateTime  @default(now()) @map("created_at")
   employee   Employee  @relation(fields: [employeeId], references: [id])
 
+  @@index([employeeId, createdAt(sort: Desc)], map: "idx_alerts_employee")
   @@map("employee_alerts")
 }
 
@@ -460,6 +479,7 @@ model PasswordResetToken {
   createdAt  DateTime  @default(now()) @map("created_at")
   employee   Employee  @relation(fields: [employeeId], references: [id])
 
+  @@index([employeeId, expiresAt(sort: Desc)], map: "idx_prt_employee_expires")
   @@map("password_reset_tokens")
 }
 
@@ -493,8 +513,8 @@ model CotizacionRecord {
   quotation             Quotation? @relation(fields: [quotationId], references: [id])
   shipment              Shipment?  @relation(fields: [shipmentId], references: [id])
 
-  @@index([source])
-  @@index([createdAt(sort: Desc)])
+  @@index([source, createdAt(sort: Desc)], map: "idx_cotizacion_source_created")
+  @@index([employeeId, createdAt(sort: Desc)], map: "idx_cotizacion_employee_created")
   @@map("cotizacion_records")
 }
 

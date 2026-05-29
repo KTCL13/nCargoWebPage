@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin, getAuthEmployee } from '@/lib/auth-guard'
+import { auditLog } from '@/lib/audit-logger'
 import { odooLockerService } from '../services/odoo-locker.service'
 
 function authErrorResponse(error: unknown) {
@@ -13,8 +14,9 @@ function authErrorResponse(error: unknown) {
 
 class OdooLockerController {
   async syncLockers(req: NextRequest) {
+    let admin
     try {
-      requireAdmin(req)
+      admin = await requireAdmin(req)
     } catch (error) {
       return authErrorResponse(error)
     }
@@ -22,6 +24,13 @@ class OdooLockerController {
       const body = await req.json().catch(() => ({}))
       const searchTerm: string = body.searchTerm?.trim() || 'Suscripción Casillero'
       const result = await odooLockerService.syncFromOdoo(searchTerm)
+      auditLog({
+        entityType: 'odoo_locker_sync',
+        entityId: 0,
+        action: 'SYNC_LOCKERS',
+        performedBy: admin.id,
+        newValues: { lockers: result.lockers, shipments: result.shipments, searchTerm },
+      }).catch(() => { /* non-blocking */ })
       return NextResponse.json(result)
     } catch (error) {
       return NextResponse.json({ message: (error as Error).message }, { status: 400 })
@@ -73,7 +82,7 @@ class OdooLockerController {
   async updateShipment(req: NextRequest) {
     let employee
     try {
-      employee = getAuthEmployee(req)
+      employee = await getAuthEmployee(req)
     } catch (error) {
       return authErrorResponse(error)
     }
@@ -84,6 +93,13 @@ class OdooLockerController {
       const result = await odooLockerService.updateShipment(
         Number(id), trackingNumber, odooStageName, comment, employee.id,
       )
+      auditLog({
+        entityType: 'shipment',
+        entityId: Number(id),
+        action: 'UPDATE_SHIPMENT',
+        performedBy: employee.id,
+        newValues: { trackingNumber, odooStageName, comment },
+      }).catch(() => { /* non-blocking */ })
       return NextResponse.json(result)
     } catch (error) {
       return NextResponse.json({ message: (error as Error).message }, { status: 400 })
@@ -111,7 +127,7 @@ class OdooLockerController {
   async createLockerShipment(req: NextRequest, lockerId: number) {
     let employee
     try {
-      employee = getAuthEmployee(req)
+      employee = await getAuthEmployee(req)
     } catch (error) {
       return authErrorResponse(error)
     }

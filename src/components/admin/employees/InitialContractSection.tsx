@@ -1,6 +1,7 @@
 import React from 'react'
 import { AlertCircle } from 'lucide-react'
 import { Job, ContractType, EmployeeFormState } from '@/types/admin/employees'
+import { JobSearch } from '@/components/ui/JobSearch'
 
 // ── Date helpers ──────────────────────────────────────────────────────────────
 
@@ -84,20 +85,22 @@ export function InitialContractSection({
       <div className="grid grid-cols-2 gap-3">
         {/* Cargo / Puesto */}
         <div className="col-span-2 sm:col-span-1">
-          <label htmlFor="initial-jobId" className="block text-xs font-subtitles font-semibold text-gray-600 mb-1">
-            Cargo / Puesto
-          </label>
-          <select
-            id="initial-jobId"
-            required
-            disabled={isViewOnly}
-            value={form.jobId || ''}
-            onChange={e => setForm(f => ({ ...f, jobId: e.target.value }))}
-            className={`${inputBase} bg-white`}
-          >
-            <option value="">Seleccionar cargo...</option>
-            {safeJobs.map(j => <option key={j.id} value={j.id}>{j.title}</option>)}
-          </select>
+          {isViewOnly ? (
+            <div>
+              <label className="block text-xs font-subtitles font-semibold text-gray-600 mb-1">Cargo / Puesto</label>
+              <div className={`${inputBase} bg-gray-50 text-gray-700`}>
+                {safeJobs.find(j => String(j.id) === String(form.jobId))?.title || 'Sin cargo asignado'}
+              </div>
+            </div>
+          ) : (
+            <JobSearch
+              label="Cargo / Puesto"
+              value={form.jobId ? (safeJobs.find(j => String(j.id) === String(form.jobId)) ?? null) : null}
+              onChange={job => setForm(f => ({ ...f, jobId: job ? String(job.id) : '' }))}
+              placeholder="Buscar cargo o puesto..."
+              error={!form.jobId ? undefined : undefined}
+            />
+          )}
         </div>
 
         {/* Tipo de contrato */}
@@ -126,6 +129,8 @@ export function InitialContractSection({
           <input
             id="initial-salaryRate"
             type="number" required step="0.01" placeholder="0.00"
+            min="0.01"
+            max={isHourly ? '99999999.99' : '9999999999.99'}
             disabled={isViewOnly}
             value={isHourly ? (form.hourlyRate || '') : (form.salary || '')}
             onChange={e => {

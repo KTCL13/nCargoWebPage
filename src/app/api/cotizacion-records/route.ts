@@ -4,7 +4,7 @@ import { requireAdmin } from '@/lib/auth-guard'
 
 export async function GET(req: NextRequest) {
   try {
-    requireAdmin(req)
+    await requireAdmin(req)
   } catch (error) {
     const status =
       error instanceof Error && error.message.startsWith('Forbidden')
@@ -46,4 +46,46 @@ export async function GET(req: NextRequest) {
   const total = await prisma.cotizacionRecord.count({ where })
 
   return NextResponse.json({ data, total, page, pageSize, totalPages: Math.ceil(total / pageSize) })
+}
+
+export async function PUT(req: NextRequest) {
+  try { await requireAdmin(req) } catch (error) {
+    return NextResponse.json({ message: error instanceof Error ? error.message : 'No autorizado' }, { status: 401 })
+  }
+  const { searchParams } = new URL(req.url)
+  const id = Number(searchParams.get('id'))
+  if (!id) return NextResponse.json({ message: 'id requerido' }, { status: 400 })
+
+  try {
+    const body = await req.json()
+    const updated = await prisma.cotizacionRecord.update({
+      where: { id },
+      data: {
+        ...(body.heightIn       !== undefined && { heightIn:       body.heightIn }),
+        ...(body.widthIn        !== undefined && { widthIn:        body.widthIn }),
+        ...(body.lengthIn       !== undefined && { lengthIn:       body.lengthIn }),
+        ...(body.actualWeightLb !== undefined && { actualWeightLb: body.actualWeightLb }),
+        ...(body.declaredValueUsd !== undefined && { declaredValueUsd: body.declaredValueUsd }),
+      },
+    })
+    return NextResponse.json(updated)
+  } catch (error) {
+    return NextResponse.json({ message: error instanceof Error ? error.message : 'Error interno' }, { status: 400 })
+  }
+}
+
+export async function DELETE(req: NextRequest) {
+  try { await requireAdmin(req) } catch (error) {
+    return NextResponse.json({ message: error instanceof Error ? error.message : 'No autorizado' }, { status: 401 })
+  }
+  const { searchParams } = new URL(req.url)
+  const id = Number(searchParams.get('id'))
+  if (!id) return NextResponse.json({ message: 'id requerido' }, { status: 400 })
+
+  try {
+    await prisma.cotizacionRecord.delete({ where: { id } })
+    return new NextResponse(null, { status: 204 })
+  } catch (error) {
+    return NextResponse.json({ message: error instanceof Error ? error.message : 'Error interno' }, { status: 400 })
+  }
 }

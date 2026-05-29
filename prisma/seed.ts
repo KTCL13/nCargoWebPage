@@ -72,6 +72,16 @@ async function main() {
       value: 5.0,
       description: "Tarifa plana México USD",
     },
+    {
+      key: "overtime_multiplier",
+      value: 1.5,
+      description: "Multiplicador horas extras (1.5 = 50% recargo)",
+    },
+    {
+      key: "overtime_threshold_hours",
+      value: 8,
+      description: "Horas diarias antes de aplicar recargo por horas extras",
+    },
   ];
 
   for (const { key, value, description } of configs) {

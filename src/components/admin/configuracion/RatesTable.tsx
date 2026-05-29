@@ -177,7 +177,7 @@ export function RatesTable({
                     <input type="text" value={editing[rate.id]?.region ?? (rate.destination.region ?? '')} onChange={e => setEditing(prev => ({ ...prev, [rate.id]: { ...prev[rate.id], region: e.target.value } }))} placeholder="—" className={txtInputCls} />
                   </td>
                   <td role="gridcell" className="px-3 py-2">
-                    <div className="flex items-center gap-1"><span className="text-[#3fb950] font-mono text-xs font-bold shrink-0">$</span><input type="number" step="0.5" value={editing[rate.id]?.price ?? String(rate.basePrice)} onChange={e => setEditing(prev => ({ ...prev, [rate.id]: { ...prev[rate.id], price: e.target.value } }))} className={numInputCls} /></div>
+                    <div className="flex items-center gap-1"><span className="text-[#3fb950] font-mono text-xs font-bold shrink-0">$</span><input type="number" step="0.5" min="0" value={editing[rate.id]?.price ?? String(rate.basePrice)} onChange={e => setEditing(prev => ({ ...prev, [rate.id]: { ...prev[rate.id], price: e.target.value } }))} className={numInputCls} /></div>
                   </td>
                   <td role="gridcell" className="px-3 py-2">
                     <div className="flex items-center justify-end gap-1.5">{isSaved && !isDirty ? <span className="text-xs text-[#3fb950] font-semibold">✓ Guardado</span> : isDirty ? <><button onClick={() => handleSave(rate.id)} disabled={isSaving} className="px-2.5 py-1 text-xs font-semibold rounded bg-[#1f6feb] hover:bg-[#388bfd] text-white disabled:opacity-50 transition-colors">{isSaving ? '...' : 'Guardar'}</button><button onClick={() => handleDiscard(rate.id)} disabled={isSaving} className="px-2 py-1 text-xs rounded bg-[#21262d] hover:bg-[#30363d] text-[#8b949e] disabled:opacity-50 transition-colors">✕</button></> : <><span className="text-[#484f58] text-xs select-none">—</span><button onClick={() => onDeleteRate(rate.id)} title="Eliminar tarifa" className="w-6 h-6 flex items-center justify-center text-xs rounded text-[#6e7681] hover:text-[#f85149] hover:bg-[#21262d] transition-colors">✕</button></>}</div>
@@ -202,7 +202,7 @@ export function RatesTable({
       )}
       <div className="flex flex-wrap items-center gap-2 px-4 py-3 border-t border-[#30363d] bg-[#161b22]">
         <CityCombobox locations={locations} value={newRate.destId} onChange={id => onNewRateChange({ ...newRate, destId: id })} />
-        <div className="flex items-center gap-1"><span className="text-[#3fb950] font-mono text-sm font-bold">$</span><input type="number" placeholder="0.00" step="0.5" value={newRate.price} onChange={e => onNewRateChange({ ...newRate, price: e.target.value })} className={numInputCls} /></div>
+        <div className="flex items-center gap-1"><span className="text-[#3fb950] font-mono text-sm font-bold">$</span><input type="number" placeholder="0.00" step="0.5" min="0" value={newRate.price} onChange={e => onNewRateChange({ ...newRate, price: e.target.value })} className={numInputCls} /></div>
         <button onClick={onAddRate} disabled={addSaving || !newRate.destId || !newRate.price} className="px-3 py-1.5 text-sm font-semibold rounded bg-[#1f6feb] hover:bg-[#388bfd] text-white disabled:opacity-40 transition-colors whitespace-nowrap">{addSaving ? '...' : '➕ Agregar'}</button>
       </div>
     </div>

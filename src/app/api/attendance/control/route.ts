@@ -3,7 +3,7 @@ import { getAuthEmployee } from '@/lib/auth-guard'
 
 export async function PATCH(req: NextRequest) {
     try {
-        const employee = getAuthEmployee(req)
+        const employee = await getAuthEmployee(req)
         if (employee.role !== 'ADMIN') {
             return NextResponse.json({ message: 'Acceso denegado' }, { status: 403 })
         }

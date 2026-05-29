@@ -1,14 +1,33 @@
+import { z } from 'zod'
+
+const posNum = (label: string) =>
+  z.number({ error: `"${label}" debe ser un número válido` })
+   .positive(`"${label}" debe ser mayor a cero`)
+
+export const CalcularCotizacionSchema = z.object({
+  country:           z.enum(['CO', 'MX'], { error: 'Selecciona un país de destino: Colombia (CO) o México (MX)' }),
+  destinationCityId: z.number().int().positive().optional(),
+  heightIn:          posNum('Alto'),
+  lengthIn:          posNum('Largo'),
+  widthIn:           posNum('Ancho'),
+  actualWeightLb:    posNum('Peso real'),
+  declaredValueUsd:  z.number({ error: '"Valor declarado" debe ser un número válido' }).min(0, '"Valor declarado" no puede ser negativo').optional().default(0),
+  pickupMiles:       z.number().min(0).optional().default(0),
+  employeeId:        z.number().int().positive().optional(),
+  shipmentId:        z.number().int().positive().optional(),
+})
+
 export interface CalcularCotizacionDto {
   country: 'CO' | 'MX'
-  destinationCityId?: number       // required when flat_rate disabled for the country (Excel col G)
-  heightIn: number                 // Excel col B — Alto (inches)
-  lengthIn: number                 // Excel col C — Largo (inches)
-  widthIn: number                  // Excel col D — Ancho (inches)
-  actualWeightLb: number           // Excel col A — Peso (lb)
-  declaredValueUsd: number         // Excel col F — Valor declarado (USD)
-  pickupMiles?: number             // Excel col H — Millas de recogida (default 0)
-  employeeId?: number              // set by employee dashboard; absent on public quotes
-  shipmentId?: number              // links the quote to a specific envío/locker task
+  destinationCityId?: number
+  heightIn: number
+  lengthIn: number
+  widthIn: number
+  actualWeightLb: number
+  declaredValueUsd: number
+  pickupMiles?: number
+  employeeId?: number
+  shipmentId?: number
 }
 
 export interface CotizacionBreakdownDto {

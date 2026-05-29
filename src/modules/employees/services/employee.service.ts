@@ -12,84 +12,17 @@ import { UpdateEmployeeDto } from '../dtos/update-employee.dto'
 import { CreateContractDto } from '../dtos/create-contract.dto'
 import { UpdateContractDto } from '../dtos/update-contract.dto'
 import { hashService } from '../../auth/services/hash.service'
-import { Employee, Contract, JobHistory, IdentificationType } from '@prisma/client'
+import { JobHistory } from '@prisma/client'
 import { ContractResponseDto } from '../dtos/contract-response.dto'
+import { fullName, toContractResponseDto, toEmployeeResponseDto } from './employee-mapper'
+import { assertValidEmail, assertValidPassword, validateContractRates } from './employee-validator'
 
-type EmployeeWithIdType = Employee & { identificationType: IdentificationType }
-
-export function fullName(emp: { firstName: string; lastName: string }): string {
-    return `${emp.firstName} ${emp.lastName}`.trim()
-}
+export { fullName }
 
 class EmployeeService {
-    private async toEmployeeResponseDto(employee: EmployeeWithIdType): Promise<EmployeeResponseDto> {
-        const roles = await roleRepository.getRolesByEmployeeId(employee.id)
-        const contracts = await contractRepository.getContractsByEmployeeId(employee.id)
-        const activeContract = contracts.find(contract => contract.isActive)
-
-        return {
-            id: employee.id,
-            firstName: employee.firstName,
-            lastName: employee.lastName,
-            name: fullName(employee),
-            identificationNumber: employee.identificationNumber,
-            identificationType: {
-                id: employee.identificationType.id,
-                code: employee.identificationType.code,
-                name: employee.identificationType.name,
-            },
-            email: employee.email,
-            status: employee.status,
-            roles: roles.map(role => role.name),
-            activeContract: activeContract ? await this.toContractResponseDto(activeContract) : null,
-            createdAt: employee.createdAt,
-        }
-    }
-
-    private async toContractResponseDto(contract: Contract): Promise<ContractResponseDto> {
-        const [job, contractType] = await Promise.all([
-            prisma.job.findUnique({ where: { id: contract.jobId } }),
-            prisma.contractType.findUnique({ where: { id: contract.contractTypeId } }),
-        ])
-
-        return {
-            id: contract.id,
-            job: job ?? { id: contract.jobId, title: '—', description: null },
-            contractType: contractType ?? { id: contract.contractTypeId, name: '—' },
-            salary: Number(contract.salary),
-            hourlyRate: Number(contract.hourlyRate),
-            startDate: contract.startDate,
-            endDate: contract.endDate,
-            isActive: contract.isActive,
-        }
-    }
-
-    // Validates salary/hourlyRate against SystemConfig thresholds based on contract type.
-    // Monthly contracts check salary against SMLV; hourly contracts check hourlyRate against min_hourly_rate.
-    private async validateContractRates(contractTypeId: number, salary: number, hourlyRate: number): Promise<void> {
-        const [smlvCfg, minHourlyCfg, contractType] = await Promise.all([
-            prisma.systemConfig.findUnique({ where: { key: 'smlv' } }),
-            prisma.systemConfig.findUnique({ where: { key: 'min_hourly_rate' } }),
-            prisma.contractType.findUnique({ where: { id: contractTypeId } }),
-        ])
-
-        const isHourly = contractType?.name?.toUpperCase().includes('HORA') ?? false
-
-        if (!isHourly && smlvCfg) {
-            const smlv = Number(smlvCfg.value)
-            if (salary < smlv)
-                throw new Error(`El salario no puede ser menor al SMLV ($${smlv.toLocaleString('es-CO')})`)
-        }
-        if (isHourly && minHourlyCfg) {
-            const minRate = Number(minHourlyCfg.value)
-            if (hourlyRate < minRate)
-                throw new Error(`La tarifa por hora no puede ser menor al mínimo legal ($${minRate.toLocaleString('es-CO')}/h)`)
-        }
-    }
-
     async findAll(filter: FilterEmployeeDto): Promise<PaginatedResponseDto> {
         const { employees, total } = await employeeRepository.getEmployees(filter)
-        const employeeDtos = await Promise.all(employees.map(emp => this.toEmployeeResponseDto(emp)))
+        const employeeDtos = await Promise.all(employees.map(emp => toEmployeeResponseDto(emp)))
         return {
             data: employeeDtos,
             total,
@@ -100,12 +33,8 @@ class EmployeeService {
 
     async findOne(id: number): Promise<EmployeeResponseDto> {
         const employee = await employeeRepository.getEmployeeById(id)
-
-        if (!employee) {
-            throw new Error(`Employee not found with id ${id}`)
-        }
-
-        return this.toEmployeeResponseDto(employee)
+        if (!employee) throw new Error(`Employee not found with id ${id}`)
+        return toEmployeeResponseDto(employee)
     }
 
     async checkDuplicates(email: string, phone: string, excludeId?: number): Promise<{ emailOwner?: string; phoneOwner?: string }> {
@@ -126,6 +55,8 @@ class EmployeeService {
         if (!lastName?.trim()) throw new Error('El apellido es obligatorio')
         if (!identificationNumber?.trim()) throw new Error('El número de identificación es obligatorio')
         if (!identificationTypeId) throw new Error('El tipo de identificación es obligatorio')
+        assertValidEmail(email)
+        const normalizedEmail = email.trim().toLowerCase()
 
         const existing = await employeeRepository.findByIdentification(identificationTypeId, identificationNumber.trim())
         if (existing) {
@@ -133,17 +64,15 @@ class EmployeeService {
             throw new Error(`Ya existe un empleado con el mismo número de ${idType}: ${identificationNumber.trim()}`)
         }
 
-        const emailExists = await employeeRepository.findByEmailExcluding(email)
+        const emailExists = await employeeRepository.findByEmailExcluding(normalizedEmail)
         if (emailExists) {
-            throw new Error(`El correo electrónico "${email}" ya está registrado por otro empleado`)
+            throw new Error(`El correo electrónico "${normalizedEmail}" ya está registrado por otro empleado`)
         }
 
-        if (!password || password.length < 8 || !/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/[0-9]/.test(password))
-            throw new Error('La contraseña debe tener al menos 8 caracteres, una mayúscula, una minúscula y un número')
+        assertValidPassword(password)
 
-        // Validate contract rates BEFORE any DB write so we fail early with no side effects
         if (initialContract) {
-            await this.validateContractRates(initialContract.contractTypeId, initialContract.salary, initialContract.hourlyRate)
+            await validateContractRates(initialContract.contractTypeId, initialContract.salary, initialContract.hourlyRate)
         }
 
         const passwordHash = await hashService.hash(password)
@@ -156,7 +85,7 @@ class EmployeeService {
                     lastName: lastName.trim(),
                     identificationNumber: identificationNumber.trim(),
                     identificationTypeId,
-                    email,
+                    email: normalizedEmail,
                     passwordHash,
                     status,
                     metadata: metadata ?? {},
@@ -175,8 +104,8 @@ class EmployeeService {
                         employeeId: emp.id,
                         jobId: initialContract.jobId,
                         contractTypeId: initialContract.contractTypeId,
-                        salary: initialContract.salary,
-                        hourlyRate: initialContract.hourlyRate,
+                        salary: initialContract.salary || null,
+                        hourlyRate: initialContract.hourlyRate || null,
                         startDate,
                         endDate: initialContract.endDate ? new Date(initialContract.endDate) : null,
                         isActive: true,
@@ -196,11 +125,12 @@ class EmployeeService {
             return emp
         })
 
-        return this.toEmployeeResponseDto(employee)
+        return toEmployeeResponseDto(employee)
     }
 
     async update(id: number, data: UpdateEmployeeDto): Promise<EmployeeResponseDto> {
         const { roleIds, password, ...rest } = data
+        if (rest.email !== undefined && rest.email !== '') assertValidEmail(rest.email)
         const repoData: Parameters<typeof employeeRepository.updateEmployee>[1] = {
             ...rest,
             ...(rest.email && { email: rest.email.trim().toLowerCase() }),
@@ -229,7 +159,7 @@ class EmployeeService {
             }
         }
 
-        return this.toEmployeeResponseDto(updatedEmployee)
+        return toEmployeeResponseDto(updatedEmployee)
     }
 
     async remove(id: number): Promise<void> {
@@ -249,17 +179,17 @@ class EmployeeService {
 
     async getContracts(employeeId: number): Promise<ContractResponseDto[]> {
         const contracts = await contractRepository.getContractsByEmployeeId(employeeId)
-        return Promise.all(contracts.map(contract => this.toContractResponseDto(contract)))
+        return Promise.all(contracts.map(contract => toContractResponseDto(contract)))
     }
 
     async findContractById(contractId: number): Promise<ContractResponseDto> {
         const contract = await contractRepository.findById(contractId)
         if (!contract) throw new Error(`Contract not found with id ${contractId}`)
-        return this.toContractResponseDto(contract)
+        return toContractResponseDto(contract)
     }
 
     async createContract(employeeId: number, data: CreateContractDto): Promise<ContractResponseDto> {
-        await this.validateContractRates(data.contractTypeId, data.salary, data.hourlyRate)
+        await validateContractRates(data.contractTypeId, data.salary, data.hourlyRate)
 
         const newStartDate = new Date(data.startDate)
 
@@ -282,8 +212,8 @@ class EmployeeService {
                     employeeId,
                     jobId: data.jobId,
                     contractTypeId: data.contractTypeId,
-                    salary: data.salary,
-                    hourlyRate: data.hourlyRate,
+                    salary: data.salary || null,
+                    hourlyRate: data.hourlyRate || null,
                     startDate: newStartDate,
                     endDate: data.endDate ? new Date(data.endDate) : null,
                     isActive: true,
@@ -302,21 +232,24 @@ class EmployeeService {
             return newContract
         })
 
-        return this.toContractResponseDto(contract)
+        return toContractResponseDto(contract)
     }
 
     async updateContract(contractId: number, data: UpdateContractDto): Promise<ContractResponseDto> {
+        if (data.salary !== undefined && data.salary > 9_999_999_999.99)
+            throw new Error(`El salario no puede superar $${(9_999_999_999.99).toLocaleString('es-CO')}`)
+        if (data.hourlyRate !== undefined && data.hourlyRate > 99_999_999.99)
+            throw new Error(`La tarifa por hora no puede superar $${(99_999_999.99).toLocaleString('es-CO')}/h`)
         const updateData = { ...data }
         if (data.endDate) {
             updateData.endDate = new Date(data.endDate)
         }
         const contract = await contractRepository.updateContract(contractId, updateData)
-        return this.toContractResponseDto(contract)
+        return toContractResponseDto(contract)
     }
 
     async getJobHistory(employeeId: number): Promise<JobHistory[]> {
-        const jobHistory = await jobHistoryRepository.getJobHistoryByEmployeeId(employeeId)
-        return jobHistory
+        return jobHistoryRepository.getJobHistoryByEmployeeId(employeeId)
     }
 
     async assignRoles(employeeId: number, data: AssignRoleDto): Promise<EmployeeResponseDto> {
@@ -327,12 +260,9 @@ class EmployeeService {
         }
 
         const updatedEmployee = await employeeRepository.getEmployeeById(employeeId)
+        if (!updatedEmployee) throw new Error(`Employee not found with id ${employeeId}`)
 
-        if (!updatedEmployee) {
-            throw new Error(`Employee not found with id ${employeeId}`)
-        }
-
-        return this.toEmployeeResponseDto(updatedEmployee)
+        return toEmployeeResponseDto(updatedEmployee)
     }
 }
 

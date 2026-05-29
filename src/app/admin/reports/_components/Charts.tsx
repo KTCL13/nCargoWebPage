@@ -40,8 +40,8 @@ export function Charts({ timeSeries }: { timeSeries: TimePoint[] }) {
           <AreaChart data={data} margin={{ top: 4, right: 4, left: -22, bottom: 0 }}>
             <defs>
               <linearGradient id="kpiHoursGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%"  stopColor="#0C1E8C" stopOpacity={0.18} />
-                <stop offset="95%" stopColor="#0C1E8C" stopOpacity={0} />
+                <stop offset="5%"  style={{ stopColor: 'var(--color-nc-blue)' }} stopOpacity={0.18} />
+                <stop offset="95%" style={{ stopColor: 'var(--color-nc-blue)' }} stopOpacity={0} />
               </linearGradient>
             </defs>
             <CartesianGrid strokeDasharray="3 3" stroke="#f0f2f5" />
@@ -54,7 +54,7 @@ export function Charts({ timeSeries }: { timeSeries: TimePoint[] }) {
             <Area
               type="monotone"
               dataKey="workedHours"
-              stroke="#0C1E8C"
+              stroke="var(--color-nc-blue)"
               fill="url(#kpiHoursGrad)"
               strokeWidth={2}
               dot={false}
@@ -79,7 +79,7 @@ export function Charts({ timeSeries }: { timeSeries: TimePoint[] }) {
             />
             <Bar
               dataKey="tasksCompleted"
-              fill="#FF003B"
+              fill="var(--color-nc-red)"
               radius={[5, 5, 0, 0]}
               maxBarSize={36}
             />

@@ -7,7 +7,7 @@ export async function PATCH(
   { params }: { params: Promise<{ key: string }> },
 ) {
   try {
-    requireAdmin(req)
+    await requireAdmin(req)
     const { key } = await params
     const body = await req.json()
     if (body.value === undefined) {

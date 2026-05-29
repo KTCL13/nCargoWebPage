@@ -26,7 +26,7 @@ class TaskController {
     async findById(req: NextRequest) {
         let auth
         try {
-            auth = getAuthEmployee(req)
+            auth = await getAuthEmployee(req)
         } catch (error) {
             return authErrorResponse(error)
         }
@@ -51,7 +51,7 @@ class TaskController {
     async findAll(req: NextRequest) {
         let auth
         try {
-            auth = getAuthEmployee(req)
+            auth = await getAuthEmployee(req)
         } catch (error) {
             return authErrorResponse(error)
         }
@@ -87,7 +87,7 @@ class TaskController {
     async assignTask(req: NextRequest) {
         let admin
         try {
-            admin = getAuthEmployee(req)
+            admin = await getAuthEmployee(req)
         } catch (error) {
             return authErrorResponse(error)
         }
@@ -106,7 +106,7 @@ class TaskController {
     async reassignTask(req: NextRequest) {
         let admin
         try {
-            admin = getAuthEmployee(req)
+            admin = await getAuthEmployee(req)
         } catch (error) {
             return authErrorResponse(error)
         }
@@ -127,7 +127,7 @@ class TaskController {
     async update(req: NextRequest) {
         let actor
         try {
-            actor = getAuthEmployee(req)
+            actor = await getAuthEmployee(req)
         } catch (error) {
             return authErrorResponse(error)
         }
@@ -146,16 +146,18 @@ class TaskController {
     }
 
     async remove(req: NextRequest) {
+        let admin
         try {
-            requireAdmin(req)
+            admin = await requireAdmin(req)
         } catch (error) {
             return authErrorResponse(error)
         }
         try {
             const url = new URL(req.url)
             const id = Number(url.searchParams.get('id'))
+            const body = await req.json().catch(() => ({})) as { reason?: string }
 
-            await taskService.delete(id)
+            await taskService.delete(id, body.reason, admin.id)
             return new NextResponse(null, { status: 204 })
         } catch (error: unknown) {
             return NextResponse.json(
@@ -168,7 +170,7 @@ class TaskController {
     async bulkAssign(req: NextRequest) {
         let admin
         try {
-            admin = getAuthEmployee(req)
+            admin = await getAuthEmployee(req)
         } catch (error) {
             return authErrorResponse(error)
         }
@@ -188,7 +190,7 @@ class TaskController {
 
     async checkOverdue(req: NextRequest) {
         try {
-            requireAdmin(req)
+            await requireAdmin(req)
         } catch (error) {
             return authErrorResponse(error)
         }

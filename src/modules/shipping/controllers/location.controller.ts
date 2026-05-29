@@ -11,7 +11,7 @@ function errStatus(msg: string) {
 class LocationController {
   async findAll(req: NextRequest) {
     try {
-      getAuthEmployee(req)
+      await getAuthEmployee(req)
       const country = new URL(req.url).searchParams.get('country')
       if (country) {
         const data = await locationService.findByCountry(country)
@@ -27,7 +27,7 @@ class LocationController {
 
   async create(req: NextRequest) {
     try {
-      requireAdmin(req)
+      await requireAdmin(req)
       const { name, code } = await req.json()
       if (!name || !code) {
         return NextResponse.json({ message: 'name y code son requeridos' }, { status: 400 })
@@ -45,7 +45,7 @@ class LocationController {
 
   async update(req: NextRequest, id: number) {
     try {
-      requireAdmin(req)
+      await requireAdmin(req)
       const { name } = await req.json()
       if (!name || typeof name !== 'string' || !name.trim()) {
         return NextResponse.json({ message: 'name es requerido' }, { status: 400 })

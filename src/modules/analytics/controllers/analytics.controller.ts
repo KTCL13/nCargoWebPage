@@ -11,7 +11,7 @@ class AnalyticsController {
 
     async getEmployeePerformance(req: NextRequest): Promise<NextResponse> {
         try {
-            requireAdmin(req)
+            await requireAdmin(req)
             const { searchParams } = new URL(req.url)
             const employeeId = searchParams.get('employeeId')
                 ? Number(searchParams.get('employeeId'))
@@ -32,7 +32,7 @@ class AnalyticsController {
 
     async getTaskCompletionTimes(req: NextRequest): Promise<NextResponse> {
         try {
-            requireAdmin(req)
+            await requireAdmin(req)
             const { searchParams } = new URL(req.url)
             const employeeId = searchParams.get('employeeId')
                 ? Number(searchParams.get('employeeId'))
@@ -51,7 +51,7 @@ class AnalyticsController {
 
     async getWorkloadDistribution(req: NextRequest): Promise<NextResponse> {
         try {
-            requireAdmin(req)
+            await requireAdmin(req)
             const { searchParams } = new URL(req.url)
             const from = this.parseDate(searchParams.get('from'))
             const to = this.parseDate(searchParams.get('to'))
@@ -67,7 +67,7 @@ class AnalyticsController {
 
     async aggregateKPIs(req: NextRequest): Promise<NextResponse> {
         try {
-            requireAdmin(req)
+            await requireAdmin(req)
             const body = await req.json().catch(() => ({}))
             const result = await analyticsService.aggregateKPIs({
                 employeeId: body.employeeId ? Number(body.employeeId) : undefined,
@@ -85,7 +85,7 @@ class AnalyticsController {
 
     async getAlerts(req: NextRequest): Promise<NextResponse> {
         try {
-            requireAdmin(req)
+            await requireAdmin(req)
             const { searchParams } = new URL(req.url)
             const from = this.parseDate(searchParams.get('from'))
             const to = this.parseDate(searchParams.get('to'))

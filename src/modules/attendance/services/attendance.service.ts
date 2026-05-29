@@ -269,8 +269,10 @@ class AttendanceService {
         employeeId: number,
         page: number,
         limit: number,
+        from?: Date,
+        to?: Date,
     ): Promise<{ data: AttendanceWithEvents[]; total: number; page: number; limit: number }> {
-        const { data, total } = await attendanceRepository.findByEmployee(employeeId, page, limit)
+        const { data, total } = await attendanceRepository.findByEmployee(employeeId, page, limit, from, to)
         return { data: data as AttendanceWithEvents[], total, page, limit }
     }
 

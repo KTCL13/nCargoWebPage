@@ -12,11 +12,12 @@ describe('jwt.service', () => {
     })
 
     describe('sign', () => {
-        it('G1 happy path: returns a non-empty JWT string with strong secret', () => {
+        it('G1 happy path: returns a token string and a uuid jti', () => {
             process.env.JWT_SECRET = STRONG_SECRET
-            const token = jwtService.sign({ id: 1, email: 'a@b.c', role: 'ADMIN' })
+            const { token, jti } = jwtService.sign({ id: 1, email: 'a@b.c', role: 'ADMIN' })
             expect(typeof token).toBe('string')
             expect(token.split('.')).toHaveLength(3)
+            expect(jti).toMatch(/^[0-9a-f-]{36}$/)
         })
 
         it('G2 throws when JWT_SECRET is not defined', () => {
@@ -36,11 +37,11 @@ describe('jwt.service', () => {
     })
 
     describe('verify', () => {
-        it('G1 happy path: round-trips a payload signed with the same secret', () => {
+        it('G1 happy path: round-trips a payload signed with the same secret (includes jti)', () => {
             process.env.JWT_SECRET = STRONG_SECRET
-            const token = jwtService.sign({ id: 5, email: 'r@t.c', role: 'EMPLOYEE' })
+            const { token, jti } = jwtService.sign({ id: 5, email: 'r@t.c', role: 'EMPLOYEE' })
             const payload = jwtService.verify(token)
-            expect(payload).toMatchObject({ id: 5, email: 'r@t.c', role: 'EMPLOYEE' })
+            expect(payload).toMatchObject({ id: 5, email: 'r@t.c', role: 'EMPLOYEE', jti })
         })
 
         it('G2 throws on tampered / invalid tokens', () => {
@@ -50,7 +51,7 @@ describe('jwt.service', () => {
 
         it('G3 throws when verifying with a different secret', () => {
             process.env.JWT_SECRET = STRONG_SECRET
-            const token = jwtService.sign({ id: 1, email: 'x', role: 'ADMIN' })
+            const { token } = jwtService.sign({ id: 1, email: 'x', role: 'ADMIN' })
             process.env.JWT_SECRET = 'b'.repeat(48)
             expect(() => jwtService.verify(token)).toThrow(/Token inválido/)
         })
