@@ -274,7 +274,13 @@ export function NotificationBell() {
           <div
             role="dialog"
             aria-label="Panel de notificaciones"
-            className="absolute right-0 top-[calc(100%+12px)] w-[400px] max-w-[calc(100vw-20px)] bg-white rounded-2xl shadow-[0_12px_48px_rgba(4,6,38,0.18)] border border-gray-100/80 z-50 overflow-hidden"
+            className="
+              fixed sm:absolute
+              inset-x-2 sm:inset-x-auto sm:right-0 sm:left-auto
+              top-[88px] sm:top-[calc(100%+12px)]
+              sm:w-[400px]
+              bg-white rounded-2xl shadow-[0_12px_48px_rgba(4,6,38,0.18)] border border-gray-100/80 z-[60] overflow-hidden
+            "
             style={{ animation: 'nb-slide-in 0.15s ease-out' }}
           >
             <style>{`
@@ -317,7 +323,7 @@ export function NotificationBell() {
             </div>
 
             {/* ── Notification list ─────────────────────────────────── */}
-            <div className="max-h-[430px] overflow-y-auto overscroll-contain divide-y divide-gray-50">
+            <div className="max-h-[calc(100vh-200px)] sm:max-h-[430px] overflow-y-auto overscroll-contain divide-y divide-gray-50">
               {loading ? (
                 <LoadingRows />
               ) : items.length === 0 ? (

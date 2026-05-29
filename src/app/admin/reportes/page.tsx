@@ -9,7 +9,9 @@ import dynamic from 'next/dynamic'
 
 const LazyPieChart = dynamic(() => import('./_components/LazyPieChart'), { ssr: false, loading: () => <LoadingSkeleton rows={1} /> })
 const LazyBarChart = dynamic(() => import('./_components/LazyBarChart'), { ssr: false, loading: () => <LoadingSkeleton rows={1} /> })
+const LazyCotizacionAnalytics = dynamic(() => import('./_components/CotizacionAnalytics'), { ssr: false, loading: () => <LoadingSkeleton rows={4} /> })
 import { useReports } from '@/lib/admin/reports/useReports'
+import { useCotizacionAnalytics } from '@/lib/admin/reports/useCotizacionAnalytics'
 import { SEVERITY_ORDER, SEVERITY_LABEL, TYPE_LABEL } from '@/types/admin/reports'
 import { EmployeeSearch } from '@/components/ui/EmployeeSearch'
 
@@ -43,6 +45,8 @@ function sortBy<T>(items: T[], sortKey: string, customOrder?: Record<string, num
   })
 }
 
+type Tab = 'empleados' | 'cotizaciones'
+
 export default function ReportesPage() {
   const { token } = useAuth()
   const {
@@ -50,6 +54,21 @@ export default function ReportesPage() {
     fromDate, setFromDate, toDate, setToDate, selectedEmployeeId, setSelectedEmployeeId,
     appliedFilters, setAppliedFilters, loading, fetchMain, handlePerfPageChange
   } = useReports(token)
+
+  const [activeTab, setActiveTab] = useState<Tab>('empleados')
+
+  // Cotizaciones tab filters (applied on click)
+  const [cotizFrom, setCotizFrom] = useState('')
+  const [cotizTo, setCotizTo] = useState('')
+  const [cotizCountry, setCotizCountry] = useState('')
+  const [appliedCotiz, setAppliedCotiz] = useState({ from: '', to: '', country: '' })
+
+  const { data: cotizData, loading: cotizLoading, error: cotizError, refetch: cotizRefetch } = useCotizacionAnalytics(
+    token,
+    appliedCotiz.from,
+    appliedCotiz.to,
+    appliedCotiz.country,
+  )
 
   const [alertPage, setAlertPage] = useState(0)
   const [workloadPage, setWorkloadPage] = useState(0)
@@ -103,16 +122,39 @@ export default function ReportesPage() {
     win.document.close()
   }
 
-  return (
-    <DashboardLayout pageTitle="Reportes" navItems={NAV_ITEMS} onReload={fetchMain}>
-      <div className="space-y-8">
+  const handleReload = activeTab === 'cotizaciones' ? cotizRefetch : fetchMain
 
-        {/* ── Cabecera + filtros ── */}
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <h1 className="font-titles text-2xl font-extrabold text-[var(--color-foreground)]">Reportes y Analítica</h1>
-            <p className="text-gray-500 text-sm mt-1">Rendimiento, carga de trabajo y alertas del equipo</p>
+  return (
+    <DashboardLayout pageTitle="Reportes" navItems={NAV_ITEMS} onReload={handleReload}>
+      <div className="space-y-6">
+
+        {/* ── Cabecera + tabs ── */}
+        <div>
+          <h1 className="font-titles text-2xl font-extrabold text-[var(--color-foreground)]">Reportes y Analítica</h1>
+          <p className="text-gray-500 text-sm mt-1">
+            {activeTab === 'empleados' ? 'Rendimiento, carga de trabajo y alertas del equipo' : 'Ingresos, costos y patrones de cotizaciones'}
+          </p>
+          <div className="flex gap-1 mt-4 border-b border-gray-200">
+            {(['empleados', 'cotizaciones'] as Tab[]).map(tab => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`px-4 py-2 text-sm font-semibold rounded-t-lg transition-colors border-b-2 -mb-px ${
+                  activeTab === tab
+                    ? 'border-[var(--color-primary)] text-[var(--color-primary)] bg-white'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                {tab === 'empleados' ? '👥 Empleados' : '📦 Cotizaciones'}
+              </button>
+            ))}
           </div>
+        </div>
+
+        {/* ── Filtros empleados ── */}
+        {activeTab === 'empleados' && (
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div />
           <div className="flex flex-wrap items-end gap-3 bg-white p-3 rounded-[var(--radius-lg)] border border-gray-100 shadow-sm">
             <div className="flex flex-col gap-1">
               <label className="text-[10px] font-bold text-gray-400 uppercase ml-1">Desde</label>
@@ -151,8 +193,43 @@ export default function ReportesPage() {
             </div>
           </div>
         </div>
+        )}
 
-        {/* ── KPI cards ── */}
+        {/* ── Filtros cotizaciones ── */}
+        {activeTab === 'cotizaciones' && (
+        <div className="flex flex-wrap items-end gap-3 bg-white p-3 rounded-[var(--radius-lg)] border border-gray-100 shadow-sm w-fit ml-auto">
+          <div className="flex flex-col gap-1">
+            <label className="text-[10px] font-bold text-gray-400 uppercase ml-1">Desde</label>
+            <input type="date" value={cotizFrom} onChange={e => setCotizFrom(e.target.value)} className="form-input text-xs py-1.5" />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-[10px] font-bold text-gray-400 uppercase ml-1">Hasta</label>
+            <input type="date" value={cotizTo} min={cotizFrom} onChange={e => setCotizTo(e.target.value)} className="form-input text-xs py-1.5" />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-[10px] font-bold text-gray-400 uppercase ml-1">País</label>
+            <select value={cotizCountry} onChange={e => setCotizCountry(e.target.value)} className="form-input text-xs py-1.5">
+              <option value="">Todos</option>
+              <option value="CO">Colombia</option>
+              <option value="MX">México</option>
+            </select>
+          </div>
+          <button
+            onClick={() => setAppliedCotiz({ from: cotizFrom, to: cotizTo, country: cotizCountry })}
+            className="px-3 py-1.5 rounded-lg bg-[var(--color-primary)] text-white text-xs font-bold hover:opacity-90 transition shadow-sm"
+          >
+            🔄 Filtrar
+          </button>
+        </div>
+        )}
+
+        {/* ── Cotizaciones analytics tab ── */}
+        {activeTab === 'cotizaciones' && (
+          <LazyCotizacionAnalytics data={cotizData} loading={cotizLoading} error={cotizError} />
+        )}
+
+        {/* ── Empleados tab content ── */}
+        {activeTab === 'empleados' && (<>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 min-h-[120px]">
           <KpiCard icon="🚨" label="Alertas" value={loading.alerts ? '—' : alerts.length} accent="bg-red-50 border-red-100" />
           <KpiCard icon="✅" label="Tareas OK" value={loading.performance ? '—' : performance.reduce((s, p) => s + p.tasksCompleted, 0)} />
@@ -402,6 +479,7 @@ export default function ReportesPage() {
             </>
           )}
         </Section>
+        </>)}
 
       </div>
     </DashboardLayout>

@@ -55,14 +55,14 @@ export function Topbar({
       </div>
 
       {/* Right section */}
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2 sm:gap-3 md:gap-4 min-w-0">
 
-        {/* Reload */}
+        {/* Reload — hidden on very small screens to save space */}
         {onReload && (
           <button
             onClick={onReload}
             aria-label="Recargar página"
-            className="w-10 h-10 flex items-center justify-center rounded-[var(--radius-md)] border border-transparent text-white/80 hover:bg-white/10 hover:text-white transition-colors focus-visible:ring-3 focus-visible:ring-[var(--color-secondary)] outline-none"
+            className="hidden xs:flex w-10 h-10 items-center justify-center rounded-[var(--radius-md)] border border-transparent text-white/80 hover:bg-white/10 hover:text-white transition-colors focus-visible:ring-3 focus-visible:ring-[var(--color-secondary)] outline-none sm:flex"
           >
             ↻
           </button>
@@ -72,12 +72,12 @@ export function Topbar({
         <NotificationBell />
 
         {/* User */}
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold bg-[var(--color-secondary)] flex-shrink-0">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-white text-sm font-bold bg-[var(--color-secondary)] flex-shrink-0">
             {initials}
           </div>
-          <div className="leading-tight hidden sm:block">
-            <div className="text-sm font-subtitles font-medium text-white">
+          <div className="leading-tight hidden sm:block min-w-0">
+            <div className="text-sm font-subtitles font-medium text-white truncate max-w-[120px] md:max-w-none">
               {userName}
             </div>
             <div className="text-xs font-subtitles text-white/70">
@@ -86,10 +86,10 @@ export function Topbar({
           </div>
         </div>
 
-        {/* Logout */}
+        {/* Logout — desktop only; mobile logout is in sidebar */}
         <button
           onClick={onLogout}
-          className="btn-primary hidden md:inline-flex text-sm px-5 py-2.5"
+          className="btn-primary hidden md:inline-flex text-sm px-4 py-2 lg:px-5 lg:py-2.5 whitespace-nowrap"
         >
           Salir
         </button>

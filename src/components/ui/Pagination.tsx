@@ -60,40 +60,9 @@ export function Pagination({
   }
 
   return (
-    <nav aria-label="Paginación" className="flex flex-col sm:flex-row items-center justify-between gap-4 w-full mt-4 bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
-      {/* Information and Page Size Selector */}
-      <div className="flex items-center gap-4 order-2 sm:order-1">
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-subtitles text-gray-500 whitespace-nowrap" aria-hidden="true">Mostrar</span>
-          <label htmlFor="registros-por-pagina" className="sr-only">Mostrar registros por página</label>
-          <select
-            id="registros-por-pagina"
-            name="pageSize"
-            value={pageSize}
-            onChange={(e) => {
-              onPageSizeChange(Number(e.target.value))
-              onPageChange(0) // Reset to first page when changing size
-            }}
-            className="text-xs font-subtitles px-2 py-1 rounded-md border border-gray-200 bg-white focus:border-[var(--color-nc-red)] outline-none cursor-pointer hover:border-gray-300 transition"
-          >
-            {pageSizeOptions.map((option) => (
-              <option key={option} value={option}>
-                {option}
-              </option>
-            ))}
-          </select>
-          <span className="text-xs font-subtitles text-gray-500 whitespace-nowrap" aria-hidden="true">por página</span>
-        </div>
-        
-        <div className="hidden md:block h-4 w-px bg-gray-200" />
-        
-        <p className="text-xs font-subtitles text-gray-500 whitespace-nowrap">
-          Mostrando <span className="font-bold text-gray-700">{page * pageSize + 1}</span> - <span className="font-bold text-gray-700">{Math.min((page + 1) * pageSize, totalItems)}</span> de <span className="font-bold text-gray-700">{totalItems}</span>
-        </p>
-      </div>
-
-      {/* Navigation Controls */}
-      <div className="flex items-center gap-2 order-1 sm:order-2">
+    <nav aria-label="Paginación" className="flex flex-col sm:flex-row items-center justify-between gap-3 w-full mt-4 bg-white p-3 sm:p-4 rounded-xl border border-gray-100 shadow-sm">
+      {/* Navigation Controls — arriba en móvil */}
+      <div className="flex items-center gap-1 sm:gap-2 order-1 sm:order-2 flex-wrap justify-center">
         <button
           onClick={() => onPageChange(0)}
           disabled={page === 0}
@@ -110,9 +79,13 @@ export function Pagination({
           ‹
         </button>
 
-        <div className="flex items-center gap-1">
+        {/* En móvil: solo página actual / total; en desktop: todos los botones */}
+        <div className="hidden sm:flex items-center gap-1">
           {renderPageButtons()}
         </div>
+        <span className="sm:hidden text-xs font-subtitles text-gray-600 px-2">
+          {page + 1} / {Math.max(pageCount, 1)}
+        </span>
 
         <button
           onClick={() => onPageChange(Math.min(pageCount - 1, page + 1))}
@@ -129,6 +102,33 @@ export function Pagination({
         >
           »
         </button>
+      </div>
+
+      {/* Info + selector de tamaño — abajo en móvil */}
+      <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-4 order-2 sm:order-1">
+        <div className="flex items-center gap-1.5">
+          <label htmlFor="registros-por-pagina" className="text-xs font-subtitles text-gray-500 whitespace-nowrap">Mostrar</label>
+          <select
+            id="registros-por-pagina"
+            name="pageSize"
+            value={pageSize}
+            onChange={(e) => {
+              onPageSizeChange(Number(e.target.value))
+              onPageChange(0)
+            }}
+            className="text-xs font-subtitles px-2 py-1 rounded-md border border-gray-200 bg-white focus:border-[var(--color-nc-red)] outline-none cursor-pointer hover:border-gray-300 transition"
+          >
+            {pageSizeOptions.map((option) => (
+              <option key={option} value={option}>
+                {option}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <p className="text-xs font-subtitles text-gray-500 whitespace-nowrap">
+          <span className="font-bold text-gray-700">{page * pageSize + 1}</span>–<span className="font-bold text-gray-700">{Math.min((page + 1) * pageSize, totalItems)}</span> de <span className="font-bold text-gray-700">{totalItems}</span>
+        </p>
       </div>
     </nav>
   )

@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { ReactNode } from 'react'
 import Image from 'next/image'
+import { useAuth } from '@/context/AuthContext'
 
 export interface NavItem {
   label: string
@@ -31,6 +32,7 @@ export function Sidebar({
   onClose,
 }: SidebarProps) {
   const pathname = usePathname()
+  const { logout } = useAuth()
 
   const visible = items.filter(
     item => !item.roles || item.roles.includes(userRole)
@@ -64,7 +66,7 @@ export function Sidebar({
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 py-2 overflow-y-auto">
+        <nav className="flex-1 py-2 overflow-y-auto min-h-0">
           {visible.map((item, idx) => {
             const isActive =
               pathname === item.href ||
@@ -108,6 +110,19 @@ export function Sidebar({
             )
           })}
         </nav>
+
+        {/* Logout — visible only on mobile (topbar has it on md+) */}
+        <div className="md:hidden shrink-0 px-3 py-4 border-t border-white/10">
+          <button
+            onClick={() => { onClose(); logout() }}
+            className="w-full flex items-center gap-3 px-4 py-2.5 rounded-md text-sm font-subtitles text-white/75 hover:text-white hover:bg-white/10 transition-all duration-200"
+          >
+            <span className="w-8 h-8 flex items-center justify-center rounded-md bg-white/10 text-white flex-shrink-0">
+              🚪
+            </span>
+            <span className="flex-1">Cerrar sesión</span>
+          </button>
+        </div>
       </aside>
     </>
   )
