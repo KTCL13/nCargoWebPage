@@ -133,7 +133,7 @@ describe('attendanceController.getHistory', () => {
             makeReq({ url: 'http://localhost/api/attendance/history?page=2&limit=5' }),
         )
         expect(res.status).toBe(200)
-        expect(attendanceService.getHistory).toHaveBeenCalledWith(7, 2, 5)
+        expect(attendanceService.getHistory).toHaveBeenCalledWith(7, 2, 5, undefined, undefined)
     })
 
     it('G2 non-admin asking for other employee → 403', async () => {
@@ -149,6 +149,6 @@ describe('attendanceController.getHistory', () => {
         await attendanceController.getHistory(
             makeReq({ url: 'http://localhost/api/attendance/history?employeeId=42&page=1&limit=10' }),
         )
-        expect(attendanceService.getHistory).toHaveBeenCalledWith(42, 1, 10)
+        expect(attendanceService.getHistory).toHaveBeenCalledWith(42, 1, 10, undefined, undefined)
     })
 })

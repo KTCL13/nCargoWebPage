@@ -1,3 +1,4 @@
+import React from 'react'
 import { Country, Dimensions, CityItem } from '@/types/cotizaciones'
 
 interface CalculatorFormProps {
@@ -25,6 +26,16 @@ interface CalculatorFormProps {
 }
 
 const inp = 'border border-black/15 rounded-lg px-3 py-2 text-sm font-body outline-none focus:border-[var(--color-nc-blue)] transition-colors bg-white w-full'
+
+function clampPositive(v: string): string {
+  if (v === '') return ''
+  const n = parseFloat(v)
+  return isNaN(n) ? '' : n < 0 ? '0' : v
+}
+
+function blockNegativeKey(e: React.KeyboardEvent<HTMLInputElement>) {
+  if (e.key === '-' || e.key === 'e' || e.key === 'E') e.preventDefault()
+}
 
 export function CalculatorForm({
   country, setCountry, citiesLoading, flatRate, departments, dept, setDept,
@@ -95,7 +106,7 @@ export function CalculatorForm({
       <div className="grid grid-cols-2 gap-3">
         <div className="flex flex-col gap-1">
           <label className="font-subtitles text-xs font-semibold text-[var(--color-nc-dark)]/60">⚖️ Peso real (lb)</label>
-          <input type="number" value={weight} onChange={e => setWeight(e.target.value)} placeholder="ej. 5.0" min="0.1" step="0.1" className={inp} />
+          <input type="number" value={weight} onChange={e => setWeight(clampPositive(e.target.value))} onKeyDown={blockNegativeKey} placeholder="ej. 5.0" min="0.1" step="0.1" className={inp} />
         </div>
         <div className="flex flex-col gap-1">
           <label className="font-subtitles text-xs font-semibold text-[var(--color-nc-dark)]/60">📐 Peso volumétrico (lb)</label>
@@ -104,21 +115,21 @@ export function CalculatorForm({
         </div>
         <div className="flex flex-col gap-1">
           <label className="font-subtitles text-xs font-semibold text-[var(--color-nc-dark)]/60">↕ Alto (in)</label>
-          <input type="number" value={dims.h} onChange={e => setDims(p => ({ ...p, h: e.target.value }))} placeholder="0" min="0" className={inp} />
+          <input type="number" value={dims.h} onChange={e => setDims(p => ({ ...p, h: clampPositive(e.target.value) }))} onKeyDown={blockNegativeKey} placeholder="0" min="0" className={inp} />
         </div>
         <div className="flex flex-col gap-1">
           <label className="font-subtitles text-xs font-semibold text-[var(--color-nc-dark)]/60">↔ Ancho (in)</label>
-          <input type="number" value={dims.w} onChange={e => setDims(p => ({ ...p, w: e.target.value }))} placeholder="0" min="0" className={inp} />
+          <input type="number" value={dims.w} onChange={e => setDims(p => ({ ...p, w: clampPositive(e.target.value) }))} onKeyDown={blockNegativeKey} placeholder="0" min="0" className={inp} />
         </div>
         <div className="flex flex-col gap-1">
           <label className="font-subtitles text-xs font-semibold text-[var(--color-nc-dark)]/60">↕ Largo (in)</label>
-          <input type="number" value={dims.l} onChange={e => setDims(p => ({ ...p, l: e.target.value }))} placeholder="0" min="0" className={inp} />
+          <input type="number" value={dims.l} onChange={e => setDims(p => ({ ...p, l: clampPositive(e.target.value) }))} onKeyDown={blockNegativeKey} placeholder="0" min="0" className={inp} />
         </div>
         <div className="flex flex-col gap-1">
           <label className="font-subtitles text-xs font-semibold text-[var(--color-nc-dark)]/60">
             💵 Valor declarado (USD) <span className="font-normal text-[var(--color-nc-dark)]/40">— opcional</span>
           </label>
-          <input type="number" value={valor} onChange={e => setValor(e.target.value)} placeholder="0" min="0" max="200" className={inp} />
+          <input type="number" value={valor} onChange={e => setValor(clampPositive(e.target.value))} onKeyDown={blockNegativeKey} placeholder="0" min="0" max="200" className={inp} />
         </div>
       </div>
 
@@ -126,7 +137,7 @@ export function CalculatorForm({
       <div className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
         <span className="font-subtitles text-sm font-semibold text-amber-800">🛣️ Millas de recogida:</span>
         <input
-          type="number" value={millas} onChange={e => setMillas(e.target.value)}
+          type="number" value={millas} onChange={e => setMillas(clampPositive(e.target.value))} onKeyDown={blockNegativeKey}
           placeholder="0" min="0" step="0.1"
           className="w-20 border-b border-amber-400 bg-transparent px-1 py-0.5 text-sm font-body text-amber-900 outline-none text-center"
         />

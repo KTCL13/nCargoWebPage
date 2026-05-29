@@ -16,32 +16,46 @@ export function Pagination({
   totalItems,
   onPageChange,
   onPageSizeChange,
-  pageSizeOptions = [10, 20, 50],
+  pageSizeOptions = [10, 25, 50, 100],
 }: PaginationProps) {
   const pageCount = Math.ceil(totalItems / pageSize)
 
   if (totalItems === 0) return null
 
   const renderPageButtons = () => {
-    const buttons = []
-    const startPage = Math.max(0, page - 1)
-    const endPage = Math.min(pageCount - 1, page + 1)
-    
-    for (let i = startPage; i <= endPage; i++) {
-      buttons.push(
-        <button
-          key={i}
-          onClick={() => onPageChange(i)}
-          className={`w-8 h-8 flex items-center justify-center rounded-md text-sm font-subtitles transition shadow-sm ${
-            page === i
-              ? 'bg-[var(--color-nc-red)] text-white shadow-md'
-              : 'text-[var(--color-nc-dark)] border border-gray-100 bg-white hover:border-[var(--color-nc-red)] hover:text-[var(--color-nc-red)]'
-          }`}
-        >
-          {i + 1}
-        </button>
-      )
+    const btnClass = (i: number) =>
+      `w-8 h-8 flex items-center justify-center rounded-md text-sm font-subtitles transition shadow-sm ${
+        page === i
+          ? 'bg-[var(--color-nc-red)] text-white shadow-md'
+          : 'text-[var(--color-nc-dark)] border border-gray-100 bg-white hover:border-[var(--color-nc-red)] hover:text-[var(--color-nc-red)]'
+      }`
+
+    const pageBtn = (i: number) => (
+      <button key={i} onClick={() => onPageChange(i)} className={btnClass(i)}>
+        {i + 1}
+      </button>
+    )
+
+    const ellipsis = (key: string) => (
+      <span key={key} className="w-8 h-8 flex items-center justify-center text-sm text-gray-400 select-none">
+        …
+      </span>
+    )
+
+    if (pageCount <= 11) {
+      return Array.from({ length: pageCount }, (_, i) => pageBtn(i))
     }
+
+    const buttons = []
+    const windowStart = Math.max(1, page - 4)
+    const windowEnd = Math.min(pageCount - 2, page + 4)
+
+    buttons.push(pageBtn(0))
+    if (windowStart > 1) buttons.push(ellipsis('el-start'))
+    for (let i = windowStart; i <= windowEnd; i++) buttons.push(pageBtn(i))
+    if (windowEnd < pageCount - 2) buttons.push(ellipsis('el-end'))
+    buttons.push(pageBtn(pageCount - 1))
+
     return buttons
   }
 

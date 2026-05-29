@@ -235,6 +235,9 @@ class TaskService {
     async bulkAssign(dto: BulkAssignTaskDto, adminId: number): Promise<TaskResponseDto[]> {
         const pendingStatusId = await this.resolveStatusId('PENDING')
 
+        const startTime = dto.startTime ? new Date(dto.startTime) : undefined
+        const endTime = dto.endTime ? new Date(dto.endTime) : undefined
+
         const tasks = await Promise.all(
             dto.employeeIds.map(employeeId =>
                 taskRepository.create({
@@ -244,8 +247,8 @@ class TaskService {
                     createdBy: adminId,
                     assignedBy: adminId,
                     statusId: pendingStatusId,
-                    startTime: dto.startTime,
-                    endTime: dto.endTime,
+                    startTime,
+                    endTime,
                     metadata: dto.metadata as Prisma.InputJsonValue | undefined,
                 }),
             ),

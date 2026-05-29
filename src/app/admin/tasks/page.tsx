@@ -43,7 +43,7 @@ export default function GestionTareasPage() {
     if (!token) return
     setBulkLoading(true)
     try {
-      const res = await authFetch(`/api/employees?jobId=${jobId}&status=ACTIVE&limit=500`, {
+      const res = await authFetch(`/api/employees?jobId=${jobId}&status=ACTIVE&limit=500&minimal=true`, {
         headers: { Authorization: `Bearer ${token}` },
       })
       const json = await res.json()
@@ -58,7 +58,7 @@ export default function GestionTareasPage() {
     if (!token) return
     setBulkLoading(true)
     try {
-      const res = await authFetch(`/api/employees?status=ACTIVE&limit=500`, {
+      const res = await authFetch(`/api/employees?status=ACTIVE&limit=500&minimal=true`, {
         headers: { Authorization: `Bearer ${token}` },
       })
       const json = await res.json()

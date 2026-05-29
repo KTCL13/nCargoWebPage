@@ -37,6 +37,7 @@ class EmployeeController {
             )
         }
         const url = new URL(req.url)
+        const minimal = url.searchParams.get('minimal') === 'true'
         const page = Number(url.searchParams.get('page') ?? '1')
         const limit = Number(url.searchParams.get('limit') ?? '10')
         const status = url.searchParams.get('status') as 'ACTIVE' | 'INACTIVE' | null
@@ -44,16 +45,25 @@ class EmployeeController {
         const jobId = url.searchParams.get('jobId')
         const search = url.searchParams.get('search')
 
-        const filter: FilterEmployeeDto = {
-            status: status ?? undefined,
-            roleId: roleId ? Number(roleId) : undefined,
-            jobId: jobId ? Number(jobId) : undefined,
-            search: search ?? undefined,
-            page,
-            limit,
-        }
-
         try {
+            if (minimal) {
+                const { employeeRepository } = await import('../repositories/employee.repository')
+                const data = await employeeRepository.findMinimal({
+                    status: status ?? undefined,
+                    jobId: jobId ? Number(jobId) : undefined,
+                    limit: limit ?? 500,
+                })
+                return NextResponse.json(data, { status: 200 })
+            }
+
+            const filter: FilterEmployeeDto = {
+                status: status ?? undefined,
+                roleId: roleId ? Number(roleId) : undefined,
+                jobId: jobId ? Number(jobId) : undefined,
+                search: search ?? undefined,
+                page,
+                limit,
+            }
             const result = await employeeService.findAll(filter)
             return NextResponse.json(result, { status: 200 })
         } catch (error: unknown) {
