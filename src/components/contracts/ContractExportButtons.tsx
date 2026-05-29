@@ -153,8 +153,8 @@ function ExcelIcon() {
 function PdfIcon() {
   return (
     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <rect x="3" y="2" width="13" height="17" rx="2" fill="#FF003B" opacity="0.9" />
-      <path d="M14 2l7 7h-7V2z" fill="#FF003B" opacity="0.7" />
+      <rect x="3" y="2" width="13" height="17" rx="2" style={{ fill: 'var(--color-nc-red)' }} opacity="0.9" />
+      <path d="M14 2l7 7h-7V2z" style={{ fill: 'var(--color-nc-red)' }} opacity="0.7" />
       <path d="M7 12h6M7 15h4" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" />
     </svg>
   )
