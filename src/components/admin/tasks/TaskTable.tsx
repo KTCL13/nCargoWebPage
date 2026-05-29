@@ -1,6 +1,7 @@
 import { Task, STATUS_COLORS, STATUS_LABELS } from '@/types/admin/tasks'
 import { useState } from 'react'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
+import { ModalShell } from '@/components/ui/ModalShell'
 import { useTableSort, SortDirection } from '@/hooks/useTableSort'
 
 interface TaskTableProps {
@@ -144,49 +145,46 @@ export function TaskTable({ tasks, loading, onReassign, onDelete }: TaskTablePro
       </div>
 
       {taskToDelete?.employeeId ? (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-white rounded-[var(--radius-xl)] shadow-2xl w-full max-w-md animate-in fade-in zoom-in duration-200">
-            <div className="px-6 py-5 border-b border-gray-100 bg-red-50/60 flex justify-between items-center">
-              <h2 className="font-titles text-lg font-extrabold text-red-700">Cancelar tarea asignada</h2>
-              <button type="button" onClick={handleCloseDelete} className="text-gray-400 hover:text-gray-600">×</button>
-            </div>
-            <div className="p-6 space-y-4">
-              <p className="text-sm text-gray-600 font-subtitles">
-                Vas a eliminar la tarea <span className="font-bold text-gray-900">&ldquo;{taskToDelete.title}&rdquo;</span> asignada a{' '}
-                <span className="font-bold text-gray-900">
-                  {taskToDelete.employee ? `${taskToDelete.employee.firstName} ${taskToDelete.employee.lastName}` : 'un empleado'}
-                </span>.
-                <br />
-                <span className="text-red-500 font-semibold">El empleado recibirá una notificación y un correo con el motivo.</span>
-              </p>
-              <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
-                  Motivo de cancelación <span className="text-red-500">*</span>
-                </label>
-                <textarea
-                  value={cancelReason}
-                  onChange={e => setCancelReason(e.target.value)}
-                  rows={3}
-                  className="form-input w-full resize-none"
-                  placeholder="Explica el motivo por el que se cancela esta tarea..."
-                />
-              </div>
-              <div className="flex gap-3 pt-1">
-                <button type="button" onClick={handleCloseDelete}
-                  className="flex-1 py-2.5 rounded-[var(--radius-lg)] border border-gray-200 text-sm font-bold text-gray-500 hover:bg-gray-50 transition">
-                  Cancelar
-                </button>
-                <button
-                  type="button"
-                  disabled={!cancelReason.trim()}
-                  onClick={handleConfirmDelete}
-                  className="flex-1 py-2.5 rounded-[var(--radius-lg)] bg-red-600 text-white text-sm font-bold hover:bg-red-700 transition disabled:opacity-40 disabled:cursor-not-allowed">
-                  Sí, eliminar y notificar
-                </button>
-              </div>
+        <ModalShell
+          isOpen={true}
+          onClose={handleCloseDelete}
+          title="Cancelar tarea asignada"
+          cancelLabel="Volver"
+          maxWidth="sm"
+          footer={
+            <button
+              type="button"
+              disabled={!cancelReason.trim()}
+              onClick={handleConfirmDelete}
+              className="btn-danger text-sm px-5 py-2.5 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              Sí, eliminar y notificar
+            </button>
+          }
+        >
+          <div className="space-y-4">
+            <p className="text-sm text-gray-600 font-subtitles">
+              Vas a eliminar la tarea <span className="font-bold text-gray-900">&ldquo;{taskToDelete.title}&rdquo;</span> asignada a{' '}
+              <span className="font-bold text-gray-900">
+                {taskToDelete.employee ? `${taskToDelete.employee.firstName} ${taskToDelete.employee.lastName}` : 'un empleado'}
+              </span>.
+              <br />
+              <span className="text-red-500 font-semibold">El empleado recibirá una notificación y un correo con el motivo.</span>
+            </p>
+            <div>
+              <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
+                Motivo de cancelación <span className="text-red-500">*</span>
+              </label>
+              <textarea
+                value={cancelReason}
+                onChange={e => setCancelReason(e.target.value)}
+                rows={3}
+                className="form-input w-full resize-none"
+                placeholder="Explica el motivo por el que se cancela esta tarea..."
+              />
             </div>
           </div>
-        </div>
+        </ModalShell>
       ) : (
         <ConfirmDialog
           isOpen={taskToDelete !== null}
