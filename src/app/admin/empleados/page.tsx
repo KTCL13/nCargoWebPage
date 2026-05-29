@@ -22,7 +22,7 @@ export default function EmpleadosPage() {
 
   const {
     showModal, setShowModal, modalLoading, modalError, editingId, isViewOnly, form, setForm,
-    dupWarning, setDupWarning, setSkipDupCheck, openModal, handleSubmit
+    dupWarning, setDupWarning, setSkipDupCheck, openModal, handleSubmit, initialForm
   } = useEmployeeForm(roles, fetchEmployees)
 
   const {
@@ -85,6 +85,7 @@ export default function EmpleadosPage() {
         jobs={jobs} contractTypes={contractTypes}
         modalLoading={modalLoading} modalError={modalError} handleSubmit={handleSubmit}
         dupWarning={dupWarning} setDupWarning={setDupWarning} setSkipDupCheck={setSkipDupCheck}
+        initialForm={initialForm}
       />
 
       <ContractModal

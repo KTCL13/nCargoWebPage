@@ -70,6 +70,7 @@ import { employeeService } from '../employee.service'
 import { employeeRepository } from '../../repositories/employee.repository'
 import { contractRepository } from '../../repositories/contract.repository'
 import { roleRepository } from '../../repositories/role.repository'
+import { jobHistoryRepository } from '../../repositories/jobHistory.repository'
 import { hashService } from '../../../auth/services/hash.service'
 import { prisma } from '@/lib/prisma'
 
@@ -82,7 +83,7 @@ const fakeEmployee = {
   identificationNumber: '123456',
   identificationTypeId: 1,
   identificationType: { id: 1, code: 'CC', name: 'Cédula de ciudadanía', createdAt: new Date(), updatedAt: new Date() },
-  email: 'a@b.c',
+  email: 'a@b.com',
   status: 'ACTIVE',
   metadata: null,
   passwordHash: 'hash',
@@ -185,7 +186,7 @@ describe('employeeService.create', () => {
     lastName: 'Smith',
     identificationNumber: '123456',
     identificationTypeId: 1,
-    email: 'a@b.c',
+    email: 'a@b.com',
     password: 'Secret123',
     status: 'ACTIVE' as const,
     roleIds: [1, 2],
@@ -223,7 +224,7 @@ describe('employeeService.create', () => {
         lastName: 'Smith',
         identificationNumber: '123456',
         identificationTypeId: 1,
-        email: 'a@b.c',
+        email: 'a@b.com',
         passwordHash: 'hashed-pw',
         status: 'ACTIVE',
       }),
@@ -236,7 +237,7 @@ describe('employeeService.create', () => {
 
   it('G2 error de negocio: email duplicado en repo → propaga', async () => {
     mocked(employeeRepository.findByIdentification).mockResolvedValue(null)
-    mocked(employeeRepository.findByEmailExcluding).mockResolvedValue({ id: 99, email: 'a@b.c' } as any)
+    mocked(employeeRepository.findByEmailExcluding).mockResolvedValue({ id: 99, email: 'a@b.com' } as any)
 
     await expect(employeeService.create(validData)).rejects.toThrow(/ya está registrado/)
     expect(prisma.$transaction).not.toHaveBeenCalled()
@@ -447,5 +448,362 @@ describe('employeeService.updateContract', () => {
     await employeeService.updateContract(10, {})
 
     expect(contractRepository.updateContract).toHaveBeenCalledWith(10, {})
+  })
+})
+
+// =====================================================================
+// checkDuplicates
+// =====================================================================
+describe('employeeService.checkDuplicates', () => {
+  beforeEach(() => jest.clearAllMocks())
+
+  it('G1 happy path: retorna {} cuando no hay duplicados', async () => {
+    mocked(employeeRepository.findByEmailExcluding).mockResolvedValue(null)
+    mocked(employeeRepository.findByPhone).mockResolvedValue(null)
+
+    const result = await employeeService.checkDuplicates('a@b.com', '3001234567')
+
+    expect(result).toEqual({})
+    expect(employeeRepository.findByEmailExcluding).toHaveBeenCalledWith('a@b.com', undefined)
+    expect(employeeRepository.findByPhone).toHaveBeenCalledWith('3001234567', undefined)
+  })
+
+  it('G2 retorna emailOwner cuando el email ya existe', async () => {
+    mocked(employeeRepository.findByEmailExcluding).mockResolvedValue({ id: 5, firstName: 'Bob', lastName: 'Smith' } as any)
+    mocked(employeeRepository.findByPhone).mockResolvedValue(null)
+
+    const result = await employeeService.checkDuplicates('dup@b.com', '')
+
+    expect(result.emailOwner).toBe('Bob Smith')
+    expect(result.phoneOwner).toBeUndefined()
+  })
+
+  it('G3 retorna phoneOwner cuando el teléfono ya existe, excluye excludeId', async () => {
+    mocked(employeeRepository.findByEmailExcluding).mockResolvedValue(null)
+    mocked(employeeRepository.findByPhone).mockResolvedValue({ id: 7, firstName: 'Ana', lastName: 'Ruiz' } as any)
+
+    const result = await employeeService.checkDuplicates('', '300', 99)
+
+    expect(result.phoneOwner).toBe('Ana Ruiz')
+    expect(employeeRepository.findByPhone).toHaveBeenCalledWith('300', 99)
+  })
+})
+
+// =====================================================================
+// create — paths adicionales no cubiertos
+// =====================================================================
+describe('employeeService.create (paths adicionales)', () => {
+  const base = {
+    firstName: 'Alice', lastName: 'Smith', identificationNumber: '123456',
+    identificationTypeId: 1, email: 'a@b.com', password: 'Secret123',
+    status: 'ACTIVE' as const, roleIds: [1],
+  }
+
+  beforeEach(() => jest.clearAllMocks())
+
+  it('G4 duplicado de número de identificación → lanza error con el tipo de documento', async () => {
+    mocked(employeeRepository.findByIdentification).mockResolvedValue({
+      id: 5, identificationType: { name: 'Cédula de ciudadanía' },
+    } as any)
+
+    await expect(employeeService.create(base)).rejects.toThrow(/Cédula de ciudadanía/)
+    expect(employeeRepository.findByEmailExcluding).not.toHaveBeenCalled()
+  })
+
+  it('G5 contraseña inválida (sin mayúscula) → lanza antes de DB write', async () => {
+    mocked(employeeRepository.findByIdentification).mockResolvedValue(null)
+    mocked(employeeRepository.findByEmailExcluding).mockResolvedValue(null)
+
+    await expect(
+      employeeService.create({ ...base, password: 'secret123' }),
+    ).rejects.toThrow(/mayúscula/)
+    expect(hashService.hash).not.toHaveBeenCalled()
+  })
+
+  it('G6 con initialContract: crea contrato y jobHistory dentro de la transacción', async () => {
+    mocked(employeeRepository.findByIdentification).mockResolvedValue(null)
+    mocked(employeeRepository.findByEmailExcluding).mockResolvedValue(null)
+    mocked(hashService.hash).mockResolvedValue('hashed-pw')
+    mocked((prisma as any).contractType.findUnique).mockResolvedValue({ id: 2, name: 'INDEFINITE' })
+    mocked((prisma as any).systemConfig.findUnique).mockResolvedValue(null)
+    mocked(roleRepository.getRolesByEmployeeId).mockResolvedValue([{ id: 2, name: 'ADMIN' }])
+    mocked(contractRepository.getContractsByEmployeeId).mockResolvedValue([])
+    mocked((prisma as any).job.findUnique).mockResolvedValue({ id: 1, title: 'Dev', description: null })
+
+    const contractCreate = jest.fn().mockResolvedValue({ id: 99, jobId: 1, startDate: new Date('2026-01-01'), endDate: null, isActive: true })
+    const jobHistoryCreate = jest.fn().mockResolvedValue({})
+    const employeeCreate = jest.fn().mockResolvedValue({
+      id: 1, firstName: 'Alice', lastName: 'Smith', identificationNumber: '123456',
+      identificationTypeId: 1, identificationType: { id: 1, code: 'CC', name: 'Cédula' },
+      email: 'a@b.com', status: 'ACTIVE', metadata: null, passwordHash: 'hashed-pw',
+      timezone: 'America/Bogota', createdAt: new Date(), updatedAt: new Date(),
+    })
+
+    mocked(prisma.$transaction).mockImplementation(async (cb: any) =>
+      cb({
+        employee: { create: employeeCreate },
+        employeeRole: { create: jest.fn().mockResolvedValue({}) },
+        contract: { create: contractCreate },
+        jobHistory: { create: jobHistoryCreate },
+      }),
+    )
+
+    const result = await employeeService.create({
+      ...base,
+      initialContract: {
+        jobId: 1, contractTypeId: 2, salary: 5000, hourlyRate: 0,
+        startDate: new Date('2026-01-01') as any,
+      } as any,
+    })
+
+    expect(contractCreate).toHaveBeenCalled()
+    expect(jobHistoryCreate).toHaveBeenCalled()
+    expect(result.id).toBe(1)
+  })
+})
+
+// =====================================================================
+// update — paths adicionales (email, INACTIVE, roleIds)
+// =====================================================================
+describe('employeeService.update (paths adicionales)', () => {
+  beforeEach(() => jest.clearAllMocks())
+
+  it('G4 email inválido lanza error de validación', async () => {
+    await expect(
+      employeeService.update(1, { email: 'not-an-email' }),
+    ).rejects.toThrow(/correo/)
+  })
+
+  it('G5 status=INACTIVE cierra contratos activos y jobHistory abierto', async () => {
+    mocked(employeeRepository.updateEmployee).mockResolvedValue({
+      id: 1, firstName: 'Alice', lastName: 'Smith', identificationNumber: '123456',
+      identificationTypeId: 1, identificationType: { id: 1, code: 'CC', name: 'Cédula' },
+      email: 'a@b.com', status: 'INACTIVE', metadata: null, passwordHash: 'hash',
+      timezone: 'America/Bogota', createdAt: new Date(), updatedAt: new Date(),
+    })
+    mocked(roleRepository.getRolesByEmployeeId).mockResolvedValue([])
+    mocked(contractRepository.getContractsByEmployeeId).mockResolvedValue([])
+    mocked((prisma as any).contract.updateMany).mockResolvedValue({ count: 1 })
+    mocked((prisma as any).jobHistory.updateMany).mockResolvedValue({ count: 1 })
+
+    await employeeService.update(1, { status: 'INACTIVE' })
+
+    expect((prisma as any).contract.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ employeeId: 1, isActive: true }) }),
+    )
+    expect((prisma as any).jobHistory.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ employeeId: 1, endDate: null }) }),
+    )
+  })
+
+  it('G6 roleIds: borra roles anteriores y asigna los nuevos', async () => {
+    mocked(employeeRepository.updateEmployee).mockResolvedValue({
+      id: 1, firstName: 'Alice', lastName: 'Smith', identificationNumber: '123456',
+      identificationTypeId: 1, identificationType: { id: 1, code: 'CC', name: 'Cédula' },
+      email: 'a@b.com', status: 'ACTIVE', metadata: null, passwordHash: 'hash',
+      timezone: 'America/Bogota', createdAt: new Date(), updatedAt: new Date(),
+    })
+    mocked(roleRepository.getRolesByEmployeeId).mockResolvedValue([{ id: 3, name: 'EMPLOYEE' }])
+    mocked(contractRepository.getContractsByEmployeeId).mockResolvedValue([])
+    mocked((prisma as any).employeeRole.deleteMany).mockResolvedValue({ count: 1 })
+    mocked(roleRepository.assignRoleToEmployee).mockResolvedValue({ employeeId: 1, roleId: 3 } as any)
+
+    await employeeService.update(1, { roleIds: [3] })
+
+    expect((prisma as any).employeeRole.deleteMany).toHaveBeenCalledWith({ where: { employeeId: 1 } })
+    expect(roleRepository.assignRoleToEmployee).toHaveBeenCalledWith(1, 3)
+  })
+})
+
+// =====================================================================
+// createContract — transacción ejecutada (callback real)
+// =====================================================================
+describe('employeeService.createContract (transacción real)', () => {
+  beforeEach(() => jest.clearAllMocks())
+
+  it('G4 ejecuta la transacción: cierra contratos previos y crea contrato + jobHistory', async () => {
+    mocked((prisma as any).contractType.findUnique).mockResolvedValue({ id: 2, name: 'INDEFINITE' })
+    mocked((prisma as any).systemConfig.findUnique).mockResolvedValue(null)
+    mocked((prisma as any).job.findUnique).mockResolvedValue({ id: 1, title: 'Dev', description: null })
+
+    const contractUpdateMany = jest.fn().mockResolvedValue({ count: 1 })
+    const jobHistoryUpdateMany = jest.fn().mockResolvedValue({ count: 1 })
+    const newContract = { id: 20, employeeId: 1, jobId: 1, contractTypeId: 2, salary: 5000 as any, hourlyRate: 25 as any, startDate: new Date('2026-01-01'), endDate: null, isActive: true }
+    const contractCreate = jest.fn().mockResolvedValue(newContract)
+    const jobHistoryCreate = jest.fn().mockResolvedValue({})
+
+    mocked(prisma.$transaction).mockImplementation(async (cb: any) =>
+      cb({
+        contract: { updateMany: contractUpdateMany, create: contractCreate },
+        jobHistory: { updateMany: jobHistoryUpdateMany, create: jobHistoryCreate },
+      }),
+    )
+
+    const result = await employeeService.createContract(1, {
+      jobId: 1, contractTypeId: 2, salary: 5000, hourlyRate: 25,
+      startDate: new Date('2026-01-01') as any,
+    })
+
+    expect(contractUpdateMany).toHaveBeenCalled()
+    expect(jobHistoryUpdateMany).toHaveBeenCalled()
+    expect(contractCreate).toHaveBeenCalled()
+    expect(jobHistoryCreate).toHaveBeenCalled()
+    expect(result.id).toBe(20)
+  })
+})
+
+// =====================================================================
+// validateContractRates — a través de createContract
+// =====================================================================
+describe('validateContractRates (vía createContract)', () => {
+  const baseData = {
+    jobId: 1, contractTypeId: 2,
+    salary: 5000, hourlyRate: 25,
+    startDate: new Date('2026-01-01') as any,
+  }
+
+  beforeEach(() => jest.clearAllMocks())
+
+  it('lanza cuando el salario supera el máximo permitido', async () => {
+    mocked((prisma as any).contractType.findUnique).mockResolvedValue({ id: 2, name: 'MENSUAL' })
+    mocked((prisma as any).systemConfig.findUnique).mockResolvedValue(null)
+
+    await expect(
+      employeeService.createContract(1, { ...baseData, salary: 10_000_000_000 }),
+    ).rejects.toThrow(/salario/)
+  })
+
+  it('lanza cuando el salario está por debajo del SMLV configurado', async () => {
+    mocked((prisma as any).contractType.findUnique).mockResolvedValue({ id: 2, name: 'MENSUAL' })
+    mocked((prisma as any).systemConfig.findUnique)
+      .mockResolvedValueOnce({ key: 'smlv', value: '2000000' })
+      .mockResolvedValueOnce(null)
+
+    await expect(
+      employeeService.createContract(1, { ...baseData, salary: 500 }),
+    ).rejects.toThrow(/SMLV/)
+  })
+
+  it('lanza cuando la tarifa por hora supera el máximo (contrato por hora)', async () => {
+    mocked((prisma as any).contractType.findUnique).mockResolvedValue({ id: 3, name: 'POR HORA' })
+    mocked((prisma as any).systemConfig.findUnique).mockResolvedValue(null)
+
+    await expect(
+      employeeService.createContract(1, { ...baseData, contractTypeId: 3, hourlyRate: 100_000_000 }),
+    ).rejects.toThrow(/tarifa por hora/)
+  })
+
+  it('lanza cuando la tarifa por hora está por debajo del mínimo legal (contrato por hora)', async () => {
+    mocked((prisma as any).contractType.findUnique).mockResolvedValue({ id: 3, name: 'POR HORA' })
+    mocked((prisma as any).systemConfig.findUnique)
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ key: 'min_hourly_rate', value: '20000' })
+
+    await expect(
+      employeeService.createContract(1, { ...baseData, contractTypeId: 3, hourlyRate: 1 }),
+    ).rejects.toThrow(/mínimo legal/)
+  })
+})
+
+// =====================================================================
+// updateContract — límites y endDate
+// =====================================================================
+describe('employeeService.updateContract (límites y endDate)', () => {
+  beforeEach(() => jest.clearAllMocks())
+
+  it('G4 lanza cuando el salario supera el límite', async () => {
+    await expect(
+      employeeService.updateContract(10, { salary: 10_000_000_001 }),
+    ).rejects.toThrow(/salario/)
+  })
+
+  it('G5 lanza cuando la tarifa por hora supera el límite', async () => {
+    await expect(
+      employeeService.updateContract(10, { hourlyRate: 100_000_001 }),
+    ).rejects.toThrow(/tarifa por hora/)
+  })
+
+  it('G6 convierte endDate string a Date antes de llamar al repo', async () => {
+    mocked((prisma as any).contractType.findUnique).mockResolvedValue({ id: 2, name: 'INDEFINITE' })
+    mocked((prisma as any).job.findUnique).mockResolvedValue({ id: 1, title: 'Dev', description: null })
+    mocked(contractRepository.updateContract).mockResolvedValue({
+      id: 10, employeeId: 1, jobId: 1, contractTypeId: 2,
+      salary: 5000 as any, hourlyRate: 25 as any,
+      startDate: new Date('2026-01-01'), endDate: new Date('2026-12-31'), isActive: true,
+    })
+
+    await employeeService.updateContract(10, { endDate: '2026-12-31' as any })
+
+    const callArg = mocked(contractRepository.updateContract).mock.calls[0][1]
+    expect(callArg.endDate).toBeInstanceOf(Date)
+  })
+})
+
+// =====================================================================
+// getJobHistory
+// =====================================================================
+describe('employeeService.getJobHistory', () => {
+  beforeEach(() => jest.clearAllMocks())
+
+  it('G1 happy path: retorna el historial del repo', async () => {
+    const history = [{ id: 1, employeeId: 1, contractId: 10, startDate: new Date(), endDate: null }]
+    mocked(jobHistoryRepository.getJobHistoryByEmployeeId).mockResolvedValue(history as any)
+
+    const result = await employeeService.getJobHistory(1)
+
+    expect(jobHistoryRepository.getJobHistoryByEmployeeId).toHaveBeenCalledWith(1)
+    expect(result).toBe(history)
+  })
+
+  it('G2 repo lanza → propaga', async () => {
+    mocked(jobHistoryRepository.getJobHistoryByEmployeeId).mockRejectedValue(new Error('DB error'))
+
+    await expect(employeeService.getJobHistory(1)).rejects.toThrow('DB error')
+  })
+})
+
+// =====================================================================
+// assignRoles
+// =====================================================================
+describe('employeeService.assignRoles', () => {
+  beforeEach(() => jest.clearAllMocks())
+
+  it('G1 happy path: asigna todos los roles y retorna DTO del empleado', async () => {
+    mocked(roleRepository.assignRoleToEmployee).mockResolvedValue({ employeeId: 1, roleId: 2 } as any)
+    mocked(employeeRepository.getEmployeeById).mockResolvedValue({
+      id: 1, firstName: 'Alice', lastName: 'Smith', identificationNumber: '123456',
+      identificationTypeId: 1, identificationType: { id: 1, code: 'CC', name: 'Cédula' },
+      email: 'a@b.com', status: 'ACTIVE', metadata: null, passwordHash: 'hash',
+      timezone: 'America/Bogota', createdAt: new Date(), updatedAt: new Date(),
+    })
+    mocked(roleRepository.getRolesByEmployeeId).mockResolvedValue([{ id: 2, name: 'ADMIN' }])
+    mocked(contractRepository.getContractsByEmployeeId).mockResolvedValue([])
+
+    const result = await employeeService.assignRoles(1, { roleIds: [2] })
+
+    expect(roleRepository.assignRoleToEmployee).toHaveBeenCalledWith(1, 2)
+    expect(result.roles).toEqual(['ADMIN'])
+  })
+
+  it('G2 empleado no existe → lanza "Employee not found with id X"', async () => {
+    mocked(roleRepository.assignRoleToEmployee).mockResolvedValue({ employeeId: 1, roleId: 2 } as any)
+    mocked(employeeRepository.getEmployeeById).mockResolvedValue(null)
+
+    await expect(employeeService.assignRoles(999, { roleIds: [2] })).rejects.toThrow('Employee not found with id 999')
+  })
+
+  it('G3 roleIds vacío: no llama assignRoleToEmployee pero sí busca el empleado', async () => {
+    mocked(employeeRepository.getEmployeeById).mockResolvedValue({
+      id: 1, firstName: 'Alice', lastName: 'Smith', identificationNumber: '123456',
+      identificationTypeId: 1, identificationType: { id: 1, code: 'CC', name: 'Cédula' },
+      email: 'a@b.com', status: 'ACTIVE', metadata: null, passwordHash: 'hash',
+      timezone: 'America/Bogota', createdAt: new Date(), updatedAt: new Date(),
+    })
+    mocked(roleRepository.getRolesByEmployeeId).mockResolvedValue([])
+    mocked(contractRepository.getContractsByEmployeeId).mockResolvedValue([])
+
+    await employeeService.assignRoles(1, { roleIds: [] })
+
+    expect(roleRepository.assignRoleToEmployee).not.toHaveBeenCalled()
   })
 })

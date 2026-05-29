@@ -1,0 +1,43 @@
+version: '3.8'
+
+# Local development stack — not for production as-is.
+# For production use a managed database and set environment variables via your
+# cloud provider's secrets manager (see dockerize.md).
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env.docker          # copy .env.example → .env.docker and fill in values
+    environment:
+      DATABASE_URL: postgresql://ncargo:ncargo@db:5432/ncargo
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER:     ncargo
+      POSTGRES_PASSWORD: ncargo
+      POSTGRES_DB:       ncargo
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ncargo -d ncargo"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+volumes:
+  postgres_data:

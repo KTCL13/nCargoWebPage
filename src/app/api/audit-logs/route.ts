@@ -4,7 +4,7 @@ import { requireAdmin } from '@/lib/auth-guard'
 
 export async function GET(req: NextRequest) {
   try {
-    requireAdmin(req)
+    await requireAdmin(req)
   } catch (error) {
     const status =
       error instanceof Error && error.message.startsWith('Forbidden')

@@ -9,6 +9,7 @@ import { ContractExportButtons } from '@/components/contracts/ContractExportButt
 import { useState, useMemo } from 'react';
 import { useAuth } from '@/context/AuthContext'
 import { useTableSort } from '@/hooks/useTableSort'
+import { ModalShell } from '@/components/ui/ModalShell'
 
 function fmt(date: string | null) {
   if (!date) return '—'
@@ -236,92 +237,67 @@ export function ContratosClient() {
       </div>
 
       {/* Modal historial de contratos */}
-      {historyOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
-          role="dialog" aria-modal="true" aria-labelledby="history-title"
-        >
-          <div className="bg-white rounded-2xl w-full max-w-xl max-h-[85vh] flex flex-col shadow-2xl">
-            {/* Header del modal */}
-            <div className="flex items-start justify-between px-6 py-5 border-b border-gray-100">
-              <div>
-                <h2 id="history-title" className="font-bold text-base text-gray-900">Historial de contratos</h2>
-                <p className="text-sm text-gray-500 mt-0.5">{historyEmpName}</p>
-              </div>
-              <button
-                onClick={() => setHistoryOpen(false)}
-                aria-label="Cerrar modal"
-                className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors text-lg leading-none"
-              >
-                ×
-              </button>
-            </div>
-
-            {/* Export buttons */}
-            {historyEmpId !== null && user?.id && token && (
-              <div className="px-6 py-3 border-b border-gray-100 bg-gray-50/60">
-                <ContractExportButtons
-                  employeeId={historyEmpId}
-                  employeeName={historyEmpName}
-                  generatedBy={user.id}
-                  token={token}
-                />
-              </div>
-            )}
-
-            {/* Lista de contratos */}
-            <div className="overflow-y-auto px-6 py-4 space-y-3">
-              {historyLoading ? (
-                <p className="text-center text-gray-400 py-8" aria-live="polite">Cargando...</p>
-              ) : historyList.length === 0 ? (
-                <p className="text-center text-gray-400 py-8">Sin contratos registrados</p>
-              ) : (
-                historyList.map((hc) => (
-                  <div key={hc.id} className={`rounded-xl border p-4 transition-colors ${hc.isActive ? 'border-emerald-200 bg-emerald-50/40' : 'border-gray-200 bg-gray-50/60'}`}>
-                    <div className="flex items-start justify-between gap-2 mb-2">
-                      <span className="font-semibold text-sm text-gray-800">{hc.job.title}</span>
-                      <span className={`shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold ${
-                        hc.isActive
-                          ? 'bg-emerald-100 text-emerald-700 border border-emerald-200'
-                          : 'bg-gray-100 text-gray-500 border border-gray-200'
-                      }`}>
-                        {hc.isActive ? '● Activo' : '○ Cerrado'}
-                      </span>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full font-medium ${
-                        hc.contractType?.name === 'POR_HORA'
-                          ? 'bg-amber-50 text-amber-700 border border-amber-200'
-                          : 'bg-blue-50 text-blue-700 border border-blue-200'
-                      }`}>
-                        {formatContractType(hc.contractType?.name)}
-                      </span>
-                      <span className="text-gray-400">
-                        {fmt(hc.startDate)} — {fmt(hc.endDate)}
-                      </span>
-                      {(hc.salary || hc.hourlyRate) && (
-                        <span className="font-mono text-gray-600">
-                          {hc.salary ? `$${Number(hc.salary).toLocaleString('es-CO')}` : `$${Number(hc.hourlyRate).toLocaleString('es-CO')}/h`}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-
-            {/* Footer */}
-            <div className="px-6 py-4 border-t border-gray-100 flex justify-end">
-              <button
-                onClick={() => setHistoryOpen(false)}
-                className="px-4 py-2 rounded-lg text-sm font-semibold bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors"
-              >
-                Cerrar
-              </button>
-            </div>
+      <ModalShell
+        isOpen={historyOpen}
+        onClose={() => setHistoryOpen(false)}
+        title="Historial de contratos"
+        subtitle={historyEmpName}
+        cancelLabel="Cerrar"
+        maxWidth="lg"
+      >
+        {/* Export buttons */}
+        {historyEmpId !== null && user?.id && token && (
+          <div className="-mx-6 -mt-5 px-6 py-3 border-b border-gray-100 bg-gray-50/60 mb-4">
+            <ContractExportButtons
+              employeeId={historyEmpId}
+              employeeName={historyEmpName}
+              generatedBy={user.id}
+              token={token}
+            />
           </div>
+        )}
+
+        {/* Lista de contratos */}
+        <div className="space-y-3">
+          {historyLoading ? (
+            <p className="text-center text-gray-400 py-8" aria-live="polite">Cargando...</p>
+          ) : historyList.length === 0 ? (
+            <p className="text-center text-gray-400 py-8">Sin contratos registrados</p>
+          ) : (
+            historyList.map((hc) => (
+              <div key={hc.id} className={`rounded-xl border p-4 transition-colors ${hc.isActive ? 'border-emerald-200 bg-emerald-50/40' : 'border-gray-200 bg-gray-50/60'}`}>
+                <div className="flex items-start justify-between gap-2 mb-2">
+                  <span className="font-semibold text-sm text-gray-800">{hc.job.title}</span>
+                  <span className={`shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold ${
+                    hc.isActive
+                      ? 'bg-emerald-100 text-emerald-700 border border-emerald-200'
+                      : 'bg-gray-100 text-gray-500 border border-gray-200'
+                  }`}>
+                    {hc.isActive ? '● Activo' : '○ Cerrado'}
+                  </span>
+                </div>
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500">
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full font-medium ${
+                    hc.contractType?.name === 'POR_HORA'
+                      ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                      : 'bg-blue-50 text-blue-700 border border-blue-200'
+                  }`}>
+                    {formatContractType(hc.contractType?.name)}
+                  </span>
+                  <span className="text-gray-400">
+                    {fmt(hc.startDate)} — {fmt(hc.endDate)}
+                  </span>
+                  {(hc.salary || hc.hourlyRate) && (
+                    <span className="font-mono text-gray-600">
+                      {hc.salary ? `$${Number(hc.salary).toLocaleString('es-CO')}` : `$${Number(hc.hourlyRate).toLocaleString('es-CO')}/h`}
+                    </span>
+                  )}
+                </div>
+              </div>
+            ))
+          )}
         </div>
-      )}
+      </ModalShell>
     </DashboardLayout>
   )
 }

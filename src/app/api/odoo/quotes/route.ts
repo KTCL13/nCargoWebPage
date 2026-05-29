@@ -46,7 +46,7 @@ function buildDescription(country: string | undefined, q: Breakdown): string {
 
 export async function POST(req: NextRequest) {
   try {
-    const employee = getAuthEmployee(req)
+    const employee = await getAuthEmployee(req)
     const body = await req.json()
     const { customerId, quotationData, country, quotationId } = body as {
       customerId: number

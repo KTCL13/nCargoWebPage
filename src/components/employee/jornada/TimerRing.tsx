@@ -36,8 +36,8 @@ export function TimerRing({
         <svg viewBox="0 0 200 200" className="w-full h-full -rotate-90">
           <defs>
             <linearGradient id="timerGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" stopColor="#FF003B" />
-              <stop offset="100%" stopColor="#0C1E8C" />
+              <stop offset="0%" style={{ stopColor: 'var(--color-nc-red)' }} />
+              <stop offset="100%" style={{ stopColor: 'var(--color-nc-blue)' }} />
             </linearGradient>
           </defs>
           <circle cx="100" cy="100" r="90" fill="none" stroke="#E4E6EA" strokeWidth="12" />

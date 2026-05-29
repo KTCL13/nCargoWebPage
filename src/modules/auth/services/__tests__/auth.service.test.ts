@@ -21,6 +21,9 @@ jest.mock('../../repositories/session.repository', () => ({
     create: jest.fn(),
     findActiveByEmployee: jest.fn(),
     closeSession: jest.fn(),
+    closeSessionByJti: jest.fn(),
+    closeAllActiveByEmployee: jest.fn(),
+    evictOldestIfAtLimit: jest.fn(),
   },
 }))
 
@@ -46,8 +49,8 @@ jest.mock('../jwt.service', () => ({
   },
 }))
 
-jest.mock('@/lib/audit-logger', () => ({
-  auditLog: jest.fn(),
+jest.mock('@/lib/secure-logger', () => ({
+  secureAuditLog: jest.fn().mockResolvedValue(undefined),
 }))
 
 jest.mock('@/lib/email', () => ({
@@ -60,7 +63,7 @@ import { roleRepository } from '../../repositories/role.repository'
 import { sessionRepository } from '../../repositories/session.repository'
 import { hashService } from '../hash.service'
 import { jwtService } from '../jwt.service'
-import { auditLog } from '@/lib/audit-logger'
+import { secureAuditLog } from '@/lib/secure-logger'
 
 const mocked = <T extends (...args: any) => any>(fn: T) => fn as unknown as jest.Mock
 
@@ -73,7 +76,7 @@ describe('authService.register', () => {
     mocked(userRepository.create).mockResolvedValue({ id: 1, firstName: 'Alice', lastName: 'Smith', email: 'alice@example.com' })
     mocked(roleRepository.findByName).mockResolvedValue({ id: 2, name: 'EMPLOYEE' })
     mocked(roleRepository.assignRoleToEmployee).mockResolvedValue({ employeeId: 1, roleId: 2 })
-    mocked(jwtService.sign).mockReturnValue('jwt-token')
+    mocked(jwtService.sign).mockReturnValue({ token: 'jwt-token', jti: 'test-jti' })
 
     const result = await authService.register({ ...baseData, role: 'ADMIN' } as any)
 
@@ -138,41 +141,44 @@ describe('authService.login', () => {
     lastName: 'Smith',
     email: 'alice@example.com',
     passwordHash: 'stored-hash',
+    status: 'ACTIVE',
     employeeRoles: [{ role: { id: 2, name: 'ADMIN' } }],
   }
+
+  beforeEach(() => jest.clearAllMocks())
 
   it('happy path: validates password, creates session, logs audit, returns DTO', async () => {
     mocked(userRepository.findByEmail).mockResolvedValue(employee)
     mocked(hashService.compare).mockResolvedValue(true)
+    mocked(sessionRepository.evictOldestIfAtLimit).mockResolvedValue(null)
     mocked(sessionRepository.create).mockResolvedValue({ id: 10 })
-    mocked(auditLog).mockResolvedValue(undefined)
-    mocked(jwtService.sign).mockReturnValue('jwt-token')
+    mocked(jwtService.sign).mockReturnValue({ token: 'jwt-token', jti: 'test-jti' })
 
     const result = await authService.login(baseData, '1.1.1.1', 'UA/1.0')
 
     expect(userRepository.findByEmail).toHaveBeenCalledWith('alice@example.com')
     expect(hashService.compare).toHaveBeenCalledWith('secret123', 'stored-hash')
+    expect(sessionRepository.evictOldestIfAtLimit).toHaveBeenCalledWith(1)
     expect(sessionRepository.create).toHaveBeenCalledWith({
       employeeId: 1,
       ipAddress: '1.1.1.1',
       deviceInfo: { userAgent: 'UA/1.0' },
+      tokenJti: 'test-jti',
     })
-    expect(auditLog).toHaveBeenCalledWith({
-      entityType: 'UserSession',
-      entityId: 1,
+    expect(secureAuditLog).toHaveBeenCalledWith(expect.objectContaining({
       action: 'LOGIN',
       performedBy: 1,
-      newValues: { ip: '1.1.1.1' },
-    })
+      ipAddress: '1.1.1.1',
+    }))
     expect(result).toEqual({ accessToken: 'jwt-token', role: 'ADMIN', email: 'alice@example.com', name: 'Alice Smith' })
   })
 
   it('passes deviceInfo=undefined when no userAgent is provided', async () => {
     mocked(userRepository.findByEmail).mockResolvedValue(employee)
     mocked(hashService.compare).mockResolvedValue(true)
+    mocked(sessionRepository.evictOldestIfAtLimit).mockResolvedValue(null)
     mocked(sessionRepository.create).mockResolvedValue({ id: 10 })
-    mocked(auditLog).mockResolvedValue(undefined)
-    mocked(jwtService.sign).mockReturnValue('jwt-token')
+    mocked(jwtService.sign).mockReturnValue({ token: 'jwt-token', jti: 'test-jti' })
 
     await authService.login(baseData, '1.1.1.1')
 
@@ -180,6 +186,7 @@ describe('authService.login', () => {
       employeeId: 1,
       ipAddress: '1.1.1.1',
       deviceInfo: undefined,
+      tokenJti: 'test-jti',
     })
   })
 
@@ -188,9 +195,7 @@ describe('authService.login', () => {
   })
 
   it('rejects with "La contraseña es obligatoria" when password is blank', async () => {
-    await expect(authService.login({ email: 'a@b.c', password: '  ' } as any, 'ip')).rejects.toThrow(
-      'La contraseña es obligatoria',
-    )
+    await expect(authService.login({ email: 'a@b.c', password: '  ' } as any, 'ip')).rejects.toThrow('La contraseña es obligatoria')
   })
 
   it('rejects with "Credenciales inválidas" when user does not exist', async () => {
@@ -209,7 +214,7 @@ describe('authService.login', () => {
 
     await expect(authService.login(baseData, 'ip')).rejects.toThrow('Credenciales inválidas')
     expect(sessionRepository.create).not.toHaveBeenCalled()
-    expect(auditLog).not.toHaveBeenCalled()
+    expect(secureAuditLog).not.toHaveBeenCalled()
   })
 
   it('rejects when employee has no role assigned', async () => {
@@ -222,39 +227,38 @@ describe('authService.login', () => {
 })
 
 describe('authService.logout', () => {
-  it('closes active session and logs audit', async () => {
+  beforeEach(() => jest.clearAllMocks())
+
+  it('closes session by jti when jti is provided', async () => {
+    mocked(sessionRepository.closeSessionByJti).mockResolvedValue(undefined)
+
+    await authService.logout(5, 'some-jti', '2.2.2.2')
+
+    expect(sessionRepository.closeSessionByJti).toHaveBeenCalledWith('some-jti', expect.any(Date))
+    expect(secureAuditLog).toHaveBeenCalledWith(expect.objectContaining({
+      action: 'LOGOUT',
+      performedBy: 5,
+      ipAddress: '2.2.2.2',
+    }))
+  })
+
+  it('falls back to findActiveByEmployee when no jti is provided', async () => {
     mocked(sessionRepository.findActiveByEmployee).mockResolvedValue({ id: 77, employeeId: 5 })
     mocked(sessionRepository.closeSession).mockResolvedValue({ id: 77 })
-    mocked(auditLog).mockResolvedValue(undefined)
 
     await authService.logout(5)
 
     expect(sessionRepository.findActiveByEmployee).toHaveBeenCalledWith(5)
-    expect(sessionRepository.closeSession).toHaveBeenCalledTimes(1)
-    const [sessionId, logoutAt] = mocked(sessionRepository.closeSession).mock.calls[0]
-    expect(sessionId).toBe(77)
-    expect(logoutAt).toBeInstanceOf(Date)
-    expect(auditLog).toHaveBeenCalledWith({
-      entityType: 'UserSession',
-      entityId: 5,
-      action: 'LOGOUT',
-      performedBy: 5,
-    })
+    expect(sessionRepository.closeSession).toHaveBeenCalledWith(77, expect.any(Date))
   })
 
   it('skips closeSession when there is no active session but still audits', async () => {
     mocked(sessionRepository.findActiveByEmployee).mockResolvedValue(null)
-    mocked(auditLog).mockResolvedValue(undefined)
 
     await authService.logout(5)
 
     expect(sessionRepository.closeSession).not.toHaveBeenCalled()
-    expect(auditLog).toHaveBeenCalledWith({
-      entityType: 'UserSession',
-      entityId: 5,
-      action: 'LOGOUT',
-      performedBy: 5,
-    })
+    expect(secureAuditLog).toHaveBeenCalledWith(expect.objectContaining({ action: 'LOGOUT' }))
   })
 
   it('propagates errors from the session repository', async () => {

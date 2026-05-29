@@ -26,7 +26,7 @@ class TaskController {
     async findById(req: NextRequest) {
         let auth
         try {
-            auth = getAuthEmployee(req)
+            auth = await getAuthEmployee(req)
         } catch (error) {
             return authErrorResponse(error)
         }
@@ -51,7 +51,7 @@ class TaskController {
     async findAll(req: NextRequest) {
         let auth
         try {
-            auth = getAuthEmployee(req)
+            auth = await getAuthEmployee(req)
         } catch (error) {
             return authErrorResponse(error)
         }
@@ -86,7 +86,7 @@ class TaskController {
 
     async assignTask(req: NextRequest) {
         try {
-            const admin = getAuthEmployee(req)
+            const admin = await getAuthEmployee(req)
             const body: CreateTaskDto = await req.json()
 
             const result = await taskService.assignTask(body, admin.id)
@@ -101,7 +101,7 @@ class TaskController {
 
     async reassignTask(req: NextRequest) {
         try {
-            const admin = getAuthEmployee(req)
+            const admin = await getAuthEmployee(req)
             const url = new URL(req.url)
             const id = Number(url.searchParams.get('id'))
             const body: ReassignTaskDto = await req.json()
@@ -118,7 +118,7 @@ class TaskController {
 
     async update(req: NextRequest) {
         try {
-            const actor = getAuthEmployee(req)
+            const actor = await getAuthEmployee(req)
             const url = new URL(req.url)
             const id = Number(url.searchParams.get('id'))
             const body: UpdateTaskDto = await req.json()
@@ -136,7 +136,7 @@ class TaskController {
     async remove(req: NextRequest) {
         let admin
         try {
-            admin = requireAdmin(req)
+            admin = await requireAdmin(req)
         } catch (error) {
             return authErrorResponse(error)
         }
@@ -157,7 +157,7 @@ class TaskController {
 
     async bulkAssign(req: NextRequest) {
         try {
-            const admin = getAuthEmployee(req)
+            const admin = await getAuthEmployee(req)
             const body: BulkAssignTaskDto = await req.json()
 
             const result = await taskService.bulkAssign(body, admin.id)
@@ -174,7 +174,7 @@ class TaskController {
 
     async checkOverdue(req: NextRequest) {
         try {
-            requireAdmin(req)
+            await requireAdmin(req)
         } catch (error) {
             return authErrorResponse(error)
         }

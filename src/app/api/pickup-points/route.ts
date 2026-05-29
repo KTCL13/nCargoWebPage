@@ -6,7 +6,7 @@ import { z } from "zod";
 
 export async function GET(req: NextRequest) {
   try {
-    getAuthEmployee(req);
+    await getAuthEmployee(req);
   } catch (error) {
     const status =
       error instanceof Error && error.message.includes("Token") ? 401 : 400;

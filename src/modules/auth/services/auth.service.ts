@@ -4,7 +4,7 @@ import { sessionRepository } from '../repositories/session.repository'
 import { passwordResetRepository } from '../repositories/password-reset.repository'
 import { hashService } from './hash.service'
 import { jwtService } from './jwt.service'
-import { auditLog } from '@/lib/audit-logger'
+import { secureAuditLog } from '@/lib/secure-logger'
 import { sendPasswordResetEmail } from '@/lib/email'
 import { AuthResponseDto, ForgotPasswordDto, LoginDto, RegisterDto, ResetPasswordDto, RoleType } from '../dtos/auth.types'
 
@@ -54,7 +54,7 @@ class AuthService {
 
         await roleRepository.assignRoleToEmployee(employee.id, role.id)
 
-        const accessToken = jwtService.sign({ id: employee.id, email: employee.email, role: role.name })
+        const { token: accessToken } = jwtService.sign({ id: employee.id, email: employee.email, role: role.name })
         const name = `${employee.firstName} ${employee.lastName}`.trim()
 
         return { accessToken, role: role.name as RoleType, email: employee.email, name }
@@ -80,37 +80,55 @@ class AuthService {
         const role = employee.employeeRoles[0]?.role
         if (!role) throw new Error('El usuario no tiene rol asignado')
 
+        // Evict oldest session if the employee already has 3 active ones
+        const evicted = await sessionRepository.evictOldestIfAtLimit(employee.id)
+        if (evicted) {
+            await secureAuditLog({
+                entityType: 'UserSession',
+                entityId:   evicted.id,
+                action:     'SESSION_EVICTED',
+                performedBy: employee.id,
+                ipAddress:  ip,
+                oldValues: { sessionId: evicted.id, loginAt: evicted.loginAt.toISOString() },
+            })
+        }
+
+        const { token: accessToken, jti } = jwtService.sign({ id: employee.id, email: employee.email, role: role.name })
+
         await sessionRepository.create({
             employeeId: employee.id,
-            ipAddress: ip,
+            ipAddress:  ip,
             deviceInfo: userAgent ? { userAgent } : undefined,
+            tokenJti:   jti,
         })
 
-        await auditLog({
-            entityType: 'UserSession',
-            entityId: employee.id,
-            action: 'LOGIN',
+        await secureAuditLog({
+            entityType:  'UserSession',
+            entityId:    employee.id,
+            action:      'LOGIN',
             performedBy: employee.id,
-            newValues: { ip },
+            ipAddress:   ip,
         })
 
-        const accessToken = jwtService.sign({ id: employee.id, email: employee.email, role: role.name })
         const name = `${employee.firstName} ${employee.lastName}`.trim()
 
         return { accessToken, role: role.name as RoleType, email: employee.email, name }
     }
 
-    async logout(employeeId: number): Promise<void> {
-        const session = await sessionRepository.findActiveByEmployee(employeeId)
-        if (session) {
-            await sessionRepository.closeSession(session.id, new Date())
+    async logout(employeeId: number, jti?: string, ip?: string): Promise<void> {
+        if (jti) {
+            await sessionRepository.closeSessionByJti(jti, new Date())
+        } else {
+            const session = await sessionRepository.findActiveByEmployee(employeeId)
+            if (session) await sessionRepository.closeSession(session.id, new Date())
         }
 
-        await auditLog({
-            entityType: 'UserSession',
-            entityId: employeeId,
-            action: 'LOGOUT',
+        await secureAuditLog({
+            entityType:  'UserSession',
+            entityId:    employeeId,
+            action:      'LOGOUT',
             performedBy: employeeId,
+            ipAddress:   ip,
         })
     }
 
@@ -126,7 +144,7 @@ class AuthService {
         await sendPasswordResetEmail(employee.email, resetUrl)
     }
 
-    async resetPassword(data: ResetPasswordDto): Promise<void> {
+    async resetPassword(data: ResetPasswordDto, ip?: string): Promise<void> {
         if (!data.token)    throw new Error('Token inválido')
         if (!data.password) throw new Error('La contraseña es obligatoria')
 
@@ -145,11 +163,12 @@ class AuthService {
         // Invalidate any open sessions so a previously-compromised access is severed
         await sessionRepository.closeAllActiveByEmployee(record.employeeId, new Date())
 
-        await auditLog({
-            entityType: 'Employee',
-            entityId: record.employeeId,
-            action: 'PASSWORD_RESET',
+        await secureAuditLog({
+            entityType:  'Employee',
+            entityId:    record.employeeId,
+            action:      'PASSWORD_RESET',
             performedBy: record.employeeId,
+            ipAddress:   ip,
         })
     }
 }

@@ -4,7 +4,7 @@ import { requireAdmin } from '@/lib/auth-guard'
 
 export async function GET(req: NextRequest) {
   try {
-    requireAdmin(req)
+    await requireAdmin(req)
   } catch (error) {
     const status =
       error instanceof Error && error.message.startsWith('Forbidden')
@@ -49,7 +49,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function PUT(req: NextRequest) {
-  try { requireAdmin(req) } catch (error) {
+  try { await requireAdmin(req) } catch (error) {
     return NextResponse.json({ message: error instanceof Error ? error.message : 'No autorizado' }, { status: 401 })
   }
   const { searchParams } = new URL(req.url)
@@ -75,7 +75,7 @@ export async function PUT(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
-  try { requireAdmin(req) } catch (error) {
+  try { await requireAdmin(req) } catch (error) {
     return NextResponse.json({ message: error instanceof Error ? error.message : 'No autorizado' }, { status: 401 })
   }
   const { searchParams } = new URL(req.url)
